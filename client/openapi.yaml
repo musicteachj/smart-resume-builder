@@ -1,0 +1,662 @@
+openapi: 3.0.3
+info:
+  title: Smart Resume Builder API
+  version: 0.1.0
+  description: AI-powered resume builder — resumes, auth, and Claude-assisted content.
+paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      description: Obtain a JWT pair via email + password; also returns the user.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailTokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailTokenObtainPair'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/auth/me:
+    get:
+      operationId: get_me
+      description: Return the currently authenticated user.
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/refresh:
+    post:
+      operationId: refresh_token
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+          description: ''
+  /api/auth/register:
+    post:
+      operationId: register
+      description: Create an account and return the user plus a JWT access/refresh
+        pair.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/resumes/:
+    get:
+      operationId: list_resumes
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      tags:
+      - resumes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResumeList'
+          description: ''
+    post:
+      operationId: create_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      tags:
+      - resumes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Resume'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Resume'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Resume'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
+  /api/resumes/{id}/:
+    get:
+      operationId: get_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume.
+        required: true
+      tags:
+      - resumes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
+    put:
+      operationId: update_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume.
+        required: true
+      tags:
+      - resumes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Resume'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Resume'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Resume'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
+    patch:
+      operationId: patch_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume.
+        required: true
+      tags:
+      - resumes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedResume'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedResume'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedResume'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
+    delete:
+      operationId: delete_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume.
+        required: true
+      tags:
+      - resumes
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/resumes/{id}/duplicate/:
+    post:
+      operationId: duplicate_resume
+      description: |-
+        CRUD for the authenticated user's resumes, plus a duplicate action.
+        All queries are scoped to request.user — a user can never see or touch
+        another user's resume (returns 404).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume.
+        required: true
+      tags:
+      - resumes
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
+components:
+  schemas:
+    AIUsage:
+      type: object
+      description: Per-user AI usage snapshot (limits enforced in Phase 7).
+      properties:
+        calls_today:
+          type: integer
+        calls_this_month:
+          type: integer
+        daily_limit:
+          type: integer
+        monthly_limit:
+          type: integer
+        is_admin:
+          type: boolean
+      required:
+      - calls_this_month
+      - calls_today
+      - daily_limit
+      - is_admin
+      - monthly_limit
+    AuthResponse:
+      type: object
+      description: 'Returned by register and login: the user plus a JWT pair.'
+      properties:
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+      - user
+    Education:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 64
+        school:
+          type: string
+          maxLength: 120
+        degree:
+          type: string
+          maxLength: 120
+        field:
+          type: string
+          maxLength: 120
+        graduationDate:
+          type: string
+        gpa:
+          type: string
+          maxLength: 10
+      required:
+      - degree
+      - field
+      - graduationDate
+      - id
+      - school
+    EmailTokenObtainPair:
+      type: object
+      description: |-
+        Login via email/password; returns the user alongside the token pair and
+        keeps the admin flag in sync with ADMIN_EMAILS.
+      properties:
+        email:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    PatchedResume:
+      type: object
+      description: Full read + write representation of a resume (retrieve/create/update).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 100
+        template:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PersonalInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          maxLength: 40
+        location:
+          type: string
+          maxLength: 100
+        linkedin:
+          type: string
+          format: uri
+        github:
+          type: string
+          format: uri
+        website:
+          type: string
+          format: uri
+      required:
+      - email
+      - name
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 64
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+        technologies:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+        url:
+          type: string
+          format: uri
+      required:
+      - description
+      - id
+      - name
+    Register:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - name
+      - password
+    Resume:
+      type: object
+      description: Full read + write representation of a resume (retrieve/create/update).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 100
+        template:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - title
+      - updated_at
+    ResumeContent:
+      type: object
+      properties:
+        personalInfo:
+          $ref: '#/components/schemas/PersonalInfo'
+        summary:
+          type: string
+          maxLength: 1000
+        workExperience:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkExperience'
+        education:
+          type: array
+          items:
+            $ref: '#/components/schemas/Education'
+        skills:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          maxItems: 60
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+      required:
+      - education
+      - personalInfo
+      - skills
+      - workExperience
+    ResumeList:
+      type: object
+      description: |-
+        Lightweight representation for the dashboard list — omits the heavy
+        `content` blob, exposing only what resume cards render (incl. skills for
+        the chips).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        template:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        skills:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - skills
+      - template
+      - title
+      - updated_at
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+    TokenRefreshResponse:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        is_admin:
+          type: boolean
+          readOnly: true
+          description: 'App-level admin: bypasses AI usage limits.'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ai_usage:
+          allOf:
+          - $ref: '#/components/schemas/AIUsage'
+          readOnly: true
+      required:
+      - ai_usage
+      - created_at
+      - email
+      - id
+      - is_admin
+      - name
+    WorkExperience:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 64
+        company:
+          type: string
+          maxLength: 120
+        position:
+          type: string
+          maxLength: 120
+        location:
+          type: string
+          maxLength: 120
+        startDate:
+          type: string
+        endDate:
+          type: string
+          nullable: true
+        bullets:
+          type: array
+          items:
+            type: string
+            maxLength: 500
+          maxItems: 12
+      required:
+      - bullets
+      - company
+      - id
+      - position
+      - startDate
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

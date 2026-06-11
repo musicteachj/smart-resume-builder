@@ -2,11 +2,16 @@ from django.urls import path
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from .serializers import TokenRefreshResponseSerializer
 from .views import LoginView, MeView, RegisterView
 
-# Give the refresh endpoint a clean operation_id for the generated client.
+# Give the refresh endpoint a clean operation_id + typed response for the client.
 RefreshView = extend_schema_view(
-    post=extend_schema(operation_id="refresh_token", tags=["auth"])
+    post=extend_schema(
+        operation_id="refresh_token",
+        responses={200: TokenRefreshResponseSerializer},
+        tags=["auth"],
+    )
 )(TokenRefreshView)
 
 urlpatterns = [

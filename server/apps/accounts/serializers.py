@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -33,6 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    @extend_schema_field(AIUsageSerializer)
     def get_ai_usage(self, obj) -> dict:
         return {
             "calls_today": obj.ai_calls_today,
@@ -86,3 +88,18 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             self.user.save(update_fields=["is_admin"])
         data["user"] = UserSerializer(self.user).data
         return data
+
+
+# --- Response shapes (for OpenAPI / Orval; not used for input validation) ---
+
+
+class AuthResponseSerializer(serializers.Serializer):
+    """Returned by register and login: the user plus a JWT pair."""
+
+    user = UserSerializer(read_only=True)
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
+
+
+class TokenRefreshResponseSerializer(serializers.Serializer):
+    access = serializers.CharField(read_only=True)

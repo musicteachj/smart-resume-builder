@@ -1,14 +1,11 @@
-from drf_spectacular.utils import (
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-)
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
+    AuthResponseSerializer,
     EmailTokenObtainPairSerializer,
     RegisterSerializer,
     UserSerializer,
@@ -18,7 +15,8 @@ from .serializers import (
 @extend_schema_view(
     post=extend_schema(
         operation_id="register",
-        responses={201: OpenApiResponse(description="User created; returns user + JWT pair.")},
+        request=RegisterSerializer,
+        responses={201: AuthResponseSerializer},
         tags=["auth"],
     )
 )
@@ -43,7 +41,14 @@ class RegisterView(generics.CreateAPIView):
         )
 
 
-@extend_schema_view(post=extend_schema(operation_id="login", tags=["auth"]))
+@extend_schema_view(
+    post=extend_schema(
+        operation_id="login",
+        request=EmailTokenObtainPairSerializer,
+        responses={200: AuthResponseSerializer},
+        tags=["auth"],
+    )
+)
 class LoginView(TokenObtainPairView):
     """Obtain a JWT pair via email + password; also returns the user."""
 
