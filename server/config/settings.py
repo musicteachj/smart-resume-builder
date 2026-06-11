@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,8 +18,17 @@ REPO_ROOT = BASE_DIR.parent
 # Load repo-root .env in local dev (no-op if absent; real env vars win)
 load_dotenv(REPO_ROOT / ".env")
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+
+# Require a real SECRET_KEY in production; only fall back to a placeholder in DEBUG.
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-only-insecure-key-not-for-production-use-0123456789"
+    else:
+        raise ImproperlyConfigured(
+            "SECRET_KEY environment variable is required when DEBUG=False"
+        )
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
@@ -41,13 +51,16 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
-    # Local apps live under apps/ (added in later phases:
-    # accounts, resumes, ai)
+    # Local apps (live under apps/)
+    "apps.accounts",
+    # resumes, ai — added in later phases
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # WhiteNoise (serves the built SPA + static) is inserted below for non-DEBUG.
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -56,6 +69,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if not DEBUG:
+    # In dev, Django's runserver serves static; WhiteNoise is only needed in
+    # the production container (after collectstatic).
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = "config.urls"
 
