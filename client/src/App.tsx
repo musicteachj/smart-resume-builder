@@ -1,23 +1,32 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+
+import { AuthedLayout } from "@/components/layout/AuthedLayout";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { RegisterPage } from "@/features/auth/RegisterPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { EditorPlaceholderPage } from "@/features/editor/EditorPlaceholderPage";
+import { LandingPage } from "@/features/marketing/LandingPage";
+import { ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
+
 function App() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
-        AI Resume Builder
-      </p>
-      <h1 className="text-4xl font-semibold text-foreground">
-        Smart Resume Builder
-      </h1>
-      <p className="max-w-md text-center text-muted-foreground">
-        Scaffold complete. Editorial Ink tokens, Fraunces &amp; Inter, and the
-        Vite + Tailwind toolchain are wired up.
-      </p>
-      <button
-        type="button"
-        className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-shadow hover:shadow-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
-      >
-        Phase 1 ✓
-      </button>
-    </div>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AuthedLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/resumes/:id" element={<EditorPlaceholderPage />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

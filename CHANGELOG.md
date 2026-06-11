@@ -9,7 +9,29 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 4 — client foundation (routing, auth flow, Orval-generated API client, dashboard) next._
+_Phase 5 — split-screen resume editor (form + live preview, autosave) next._
+
+## [0.4.0] - 2026-06-11
+
+Phase 4 — client foundation.
+
+### Added
+- **Orval-generated API client** (`client/src/api/generated/`) from the Django OpenAPI schema —
+  typed axios + TanStack Query hooks (`useLogin`/`useRegister`/`useListResumes`/`useCreateResume`/…);
+  Zod generation off; `npm run gen:api` regenerates schema + client
+- **Auth flow:** Zustand store (tokens persisted to localStorage), axios interceptors (Bearer attach +
+  single-flight token refresh on 401), React Router with protected/public-only route guards
+- **UI primitives** (Editorial Ink, token-driven): Button, Input, Label, Field, Card, Spinner,
+  DropdownMenu + ConfirmDialog (Radix-based, accessible), UsagePill
+- **Pages:** landing, login, register (React Hook Form + Zod, password toggle, API error mapping),
+  and a dashboard (list/create/duplicate/delete with confirm dialog, empty state, resume cards) — built
+  against `screens/5` and `screens/3`. Placeholder editor route for Phase 5.
+- App shell/header (brand, AI-usage pill, account menu + sign out)
+
+### Changed
+- Auth endpoints now declare typed request/response schemas (`AuthResponse`, refresh response) and the
+  `ai_usage` field is typed (`AIUsage`) — so the generated client has correct types
+- TanStack-friendly token config (Tailwind colors use `<alpha-value>` for opacity utilities)
 
 ## [0.3.0] - 2026-06-11
 
@@ -83,7 +105,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/musicteachj/smart-resume-builder/releases/tag/v0.1.0

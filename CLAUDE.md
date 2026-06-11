@@ -91,6 +91,17 @@ during a phase, then on phase completion cut a new SemVer section (`[0.x.0] - YY
 per phase; `1.0.0` = first production deploy) and bump `package.json` `version`. Update the compare
 links at the file bottom. Then STOP — James reviews and commits himself.
 
+## Future hardening (tech debt)
+
+- **JWTs (access + refresh) are stored in `localStorage`** (`client/src/stores/auth.ts`) — convenient and
+  standard, but exposed to any XSS, and the long-lived **refresh** token is the higher-value target.
+  **Fix later:** move the refresh token to an `httpOnly` cookie (immune to JS), keep only the short-lived
+  access token in JS/memory. Requires adding CSRF handling on the cookie path — treat as a deliberate
+  change (good to pair with the Phase 10 deploy hardening). Until then: never introduce
+  `dangerouslySetInnerHTML`, and add a CSP at deploy.
+- Login/register have no rate-limiting yet — add a DRF throttle (anti-brute-force) in a later phase.
+- Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
+
 ## Phase status
 
 - ✅ Phase 1 — scaffold (root files, client toolchain + tokens, Django skeleton, /health, docker Postgres)
@@ -100,7 +111,15 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 - ✅ Phase 3 — resumes API: `Resume` model (UUID pk, JSONB content), nested content serializers
   (validates + rich Orval type), user-scoped `ResumeViewSet` (CRUD + duplicate, ownership isolation)
   under `/api/resumes/`, pytest suite.
-- ⬜ Phase 4 — client foundation: React Router, auth flow (login/register, JWT storage + guards),
-  **run Orval** against `/api/schema/` → `client/src/api/generated/` (Zod off, axios mutator with JWT),
-  TanStack Query setup, dashboard (list/create/duplicate/delete). Build against `screens/3` + `screens/5`.
-- ⬜ Phase 5 editor · 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 4 — client foundation: Orval client (`gen:api` → `client/src/api/generated/`, never hand-edit),
+  auth flow (Zustand store + localStorage, axios JWT/refresh interceptors), router + guards, Editorial Ink
+  UI primitives (incl. Radix DropdownMenu/Dialog), landing + login + register + dashboard. Backend auth
+  endpoints now have typed request/response schemas; `ai_usage` typed.
+- ⬜ Phase 5 — split-screen editor: form (RHF + Zod) ↔ live preview at `/resumes/:id` (replaces the
+  placeholder), autosave (debounced `usePatchResume`), the shared ATS-safe resume template component
+  (Georgia/Arial, used by preview + PDF). Build against `screens/1` + `screens/4`.
+- ⬜ Phase 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+
+Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
+`client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk
+(~540kB) — route-level code-splitting is a future optimization.
