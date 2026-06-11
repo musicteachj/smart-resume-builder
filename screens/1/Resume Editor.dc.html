@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#FBFAF8; }
+  input,textarea,select,button{ font-family:'Inter',system-ui,sans-serif; }
+  input[type=text],input[type=email],input[type=tel],textarea{
+    width:100%; padding:9px 11px; border:1px solid #E7E5E0; border-radius:8px;
+    background:#fff; color:#1B1B1A; font-size:14px; line-height:1.55; outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input::placeholder,textarea::placeholder{ color:#9c9890; }
+  input:focus,textarea:focus{ border-color:#0F5132; box-shadow:0 0 0 3px rgba(15,81,50,.12); }
+  *:focus-visible{ outline:2px solid #0F5132; outline-offset:2px; }
+  ::selection{ background:rgba(15,81,50,.16); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes fadeInUp{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+  @media print{
+    [data-noprint]{ display:none !important; }
+    html,body{ background:#fff !important; }
+    #editor-root{ height:auto !important; display:block !important; }
+    #preview-pane{ overflow:visible !important; background:#fff !important; padding:0 !important; }
+    #resume-page{ box-shadow:none !important; border:none !important; max-width:none !important; }
+  }
+</style>
+</helmet>
+
+<div id="editor-root" data-screen-label="Resume Editor" style="height:100vh; display:flex; flex-direction:column; background:#FBFAF8; color:#1B1B1A; font-family:'Inter',system-ui,sans-serif; font-size:14px; overflow:hidden;">
+
+  <a href="#preview-pane" style="position:absolute; left:-9999px; top:0; z-index:1001; background:#0F5132; color:#fff; padding:8px 14px; border-radius:0 0 8px 0; font-size:13px; font-weight:600; text-decoration:none;" style-focus="left:0;">Skip to preview</a>
+
+  <!-- ===================== TOP BAR ===================== -->
+  <header data-noprint style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 20px; background:#fff; border-bottom:1px solid #E7E5E0; flex-shrink:0; z-index:10;">
+
+    <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+      <button aria-label="Back to dashboard" style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid transparent; border-radius:8px; background:transparent; color:#55534E; cursor:pointer; flex-shrink:0;" style-hover="background:#F2F1EC; color:#1B1B1A;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      </button>
+      <div style="width:1px; height:26px; background:#E7E5E0; flex-shrink:0;"></div>
+      <div style="display:flex; flex-direction:column; gap:1px; min-width:0;">
+        <input type="text" aria-label="Resume title" defaultValue="Maya Chen — Product Design" onChange="{{ onTitle }}" spellcheck="false" style="font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:500; letter-spacing:-0.01em; color:#1B1B1A; border:1px solid transparent; background:transparent; padding:1px 7px; border-radius:7px; width:320px; max-width:42vw; box-shadow:none;" style-hover="background:#FBFAF8;" style-focus="background:#fff; border-color:#0F5132;">
+        <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#55534E; padding-left:8px; height:16px;">
+          <sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}">
+            <span style="display:inline-block; width:11px; height:11px; border:2px solid #E7E5E0; border-top-color:#55534E; border-radius:50%; animation:spin .7s linear infinite;"></span>
+            <span>Saving…</span>
+          </sc-if>
+          <sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>Saved</span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+      <!-- AI usage pill -->
+      <div title="AI usage today" style="display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid #E7E5E0; border-radius:999px; background:#F2F1EC; font-size:12px; color:#55534E; white-space:nowrap;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#55534E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>
+        <span><b style="color:#1B1B1A; font-weight:600; font-variant-numeric:tabular-nums;">7</b> / 10 today</span>
+      </div>
+
+      <!-- Template switcher -->
+      <div style="position:relative;">
+        <button data-menu="template" onClick="{{ onToggleMenu }}" aria-haspopup="menu" aria-expanded="{{ templateMenuOpen }}" style="display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#FBFAF8; border-color:#d9d6d0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55534E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          <span>Template:&nbsp;<span style="color:#55534E;">{{ templateLabel }}</span></span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <sc-if value="{{ templateMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeMenu }}" style="position:fixed; inset:0; z-index:15;"></div>
+          <div role="menu" style="position:absolute; right:0; top:calc(100% + 8px); width:280px; background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 12px 32px rgba(27,27,26,.12); padding:6px; z-index:20;">
+            <sc-for list="{{ templateOptions }}" as="opt" hint-placeholder-count="2">
+              <button role="menuitemradio" data-id="{{ opt.id }}" onClick="{{ onPickTemplate }}" style="width:100%; display:flex; align-items:flex-start; gap:10px; padding:10px; border:none; background:transparent; border-radius:8px; cursor:pointer; text-align:left;" style-hover="background:#F2F1EC;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; flex-shrink:0; margin-top:1px;">
+                  <sc-if value="{{ opt.active }}" hint-placeholder-val="{{ true }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F5132" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  </sc-if>
+                </span>
+                <span style="min-width:0;">
+                  <span style="display:block; font-size:13px; font-weight:600; color:#1B1B1A;">{{ opt.label }}</span>
+                  <span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">{{ opt.desc }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- AI menu -->
+      <div style="position:relative;">
+        <button data-menu="ai" onClick="{{ onToggleMenu }}" aria-haspopup="menu" aria-expanded="{{ aiMenuOpen }}" style="display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:600; cursor:pointer;" style-hover="background:#FBFAF8; border-color:#d9d6d0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F5132" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>
+          <span>AI</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <sc-if value="{{ aiMenuOpen }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeMenu }}" style="position:fixed; inset:0; z-index:15;"></div>
+          <div role="menu" style="position:absolute; right:0; top:calc(100% + 8px); width:300px; background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 12px 32px rgba(27,27,26,.12); padding:6px; z-index:20;">
+            <div style="padding:8px 10px 6px; font-size:11px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#55534E;">AI assist</div>
+            <button role="menuitem" onClick="{{ closeMenu }}" style="width:100%; display:flex; align-items:flex-start; gap:11px; padding:10px; border:none; background:transparent; border-radius:8px; cursor:pointer; text-align:left;" style-hover="background:#F2F1EC;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:7px; background:#F2F1EC; flex-shrink:0; color:#0F5132;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg></span>
+              <span><span style="display:block; font-size:13px; font-weight:600; color:#1B1B1A;">Improve a bullet</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Rewrite for impact and metrics</span></span>
+            </button>
+            <button role="menuitem" onClick="{{ closeMenu }}" style="width:100%; display:flex; align-items:flex-start; gap:11px; padding:10px; border:none; background:transparent; border-radius:8px; cursor:pointer; text-align:left;" style-hover="background:#F2F1EC;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:7px; background:#F2F1EC; flex-shrink:0; color:#0F5132;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3"/><path d="M17 6H3"/><path d="M21 18H3"/></svg></span>
+              <span><span style="display:block; font-size:13px; font-weight:600; color:#1B1B1A;">Generate summary</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Draft a summary from your experience</span></span>
+            </button>
+            <button role="menuitem" onClick="{{ closeMenu }}" style="width:100%; display:flex; align-items:flex-start; gap:11px; padding:10px; border:none; background:transparent; border-radius:8px; cursor:pointer; text-align:left;" style-hover="background:#F2F1EC;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:7px; background:#F2F1EC; flex-shrink:0; color:#0F5132;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span><span style="display:block; font-size:13px; font-weight:600; color:#1B1B1A;">Tailor to a job description</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Match keywords and score the fit</span></span>
+            </button>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- Export -->
+      <button onClick="{{ exportPdf }}" style="display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border:1px solid #0F5132; border-radius:8px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.06); transition:box-shadow .15s ease, transform .1s ease;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        Export PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================== BODY ===================== -->
+  <div style="flex:1; display:flex; min-height:0; overflow:hidden;">
+
+    <!-- LEFT: FORM -->
+    <section data-noprint aria-label="Resume editor form" style="flex:1 1 480px; min-width:380px; max-width:600px; overflow-y:auto; border-right:1px solid #E7E5E0; background:#FBFAF8;">
+      <div style="padding:22px clamp(16px,2.4vw,26px) 56px; display:flex; flex-direction:column; gap:13px;">
+
+        <!-- Personal Info -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="personal" onClick="{{ onToggle }}" aria-expanded="{{ open.personal }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Personal Info</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Name, title, and contact details</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevPersonal }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.personal }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:6px 16px 18px; border-top:1px solid #E7E5E0;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+                <label style="display:flex; flex-direction:column; gap:5px; grid-column:1 / -1;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Full name</span><input type="text" data-field="name" defaultValue="Maya Chen" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px; grid-column:1 / -1;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Professional title</span><input type="text" data-field="title" defaultValue="Senior Product Designer" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Email</span><input type="email" data-field="email" defaultValue="maya.chen@email.com" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Phone</span><input type="tel" data-field="phone" defaultValue="(415) 555-0148" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px; grid-column:1 / -1;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Location</span><input type="text" data-field="location" defaultValue="San Francisco, CA" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">LinkedIn</span><input type="text" data-field="linkedin" defaultValue="linkedin.com/in/mayachen" onChange="{{ onPersonal }}" /></label>
+                <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Website</span><input type="text" data-field="website" defaultValue="mayachen.design" onChange="{{ onPersonal }}" /></label>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Summary -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="summary" onClick="{{ onToggle }}" aria-expanded="{{ open.summary }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Summary</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">A short professional overview</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevSummary }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.summary }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:14px 16px 18px; border-top:1px solid #E7E5E0;">
+              <textarea data-field="summary" onChange="{{ onSummary }}" style="min-height:108px; resize:vertical;" defaultValue="Senior product designer with 8+ years shaping end-to-end experiences for B2B SaaS and consumer fintech. I lead design systems, mentor cross-functional teams, and turn ambiguous problems into measurable outcomes — pairing rigorous research with a high craft bar."></textarea>
+              <p style="margin:8px 0 0; font-size:12px; color:#55534E;">Aim for 2–3 sentences. The AI menu can draft this from your experience.</p>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Work Experience -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="work" onClick="{{ onToggle }}" aria-expanded="{{ open.work }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Work Experience</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">{{ workCountLabel }}</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevWork }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.work }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:16px; border-top:1px solid #E7E5E0; display:flex; flex-direction:column; gap:14px;">
+              <sc-for list="{{ workView }}" as="job" hint-placeholder-count="3">
+                <div style="border:1px solid #E7E5E0; border-radius:10px; padding:14px; background:#FBFAF8;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:2px;">
+                    <span style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#55534E;">{{ job.posLabel }}</span>
+                    <button data-wi="{{ job.wi }}" onClick="{{ onRemoveJob }}" aria-label="Remove position" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:7px; background:transparent; color:#9c9890; cursor:pointer;" style-hover="background:#fbeae8; color:#B42318;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <label style="display:flex; flex-direction:column; gap:5px; grid-column:1 / -1;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Role</span><input type="text" data-wi="{{ job.wi }}" data-field="role" value="{{ job.role }}" onChange="{{ onWorkField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Company</span><input type="text" data-wi="{{ job.wi }}" data-field="company" value="{{ job.company }}" onChange="{{ onWorkField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Location</span><input type="text" data-wi="{{ job.wi }}" data-field="location" value="{{ job.location }}" onChange="{{ onWorkField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Start</span><input type="text" data-wi="{{ job.wi }}" data-field="start" value="{{ job.start }}" onChange="{{ onWorkField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">End</span><input type="text" data-wi="{{ job.wi }}" data-field="end" value="{{ job.end }}" onChange="{{ onWorkField }}" /></label>
+                  </div>
+                  <div style="margin-top:13px;">
+                    <span style="font-size:12px; font-weight:600; color:#1B1B1A;">Highlights</span>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+                      <sc-for list="{{ job.bullets }}" as="bullet" hint-placeholder-count="2">
+                        <div>
+                          <div style="display:flex; gap:9px; align-items:flex-start;">
+                            <span style="color:#9c9890; font-size:15px; line-height:1; padding-top:11px; flex-shrink:0;">—</span>
+                            <div style="flex:1; min-width:0;">
+                              <textarea data-wi="{{ bullet.wi }}" data-bi="{{ bullet.bi }}" value="{{ bullet.text }}" onChange="{{ onBullet }}" style="min-height:56px; resize:vertical; font-size:13px;"></textarea>
+                              <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                                <button data-wi="{{ bullet.wi }}" data-bi="{{ bullet.bi }}" onClick="{{ onImprove }}" style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid #E7E5E0; border-radius:6px; background:#fff; color:#55534E; font-size:12px; font-weight:500; cursor:pointer;" style-hover="border-color:#0F5132; color:#0F5132;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg>Improve with AI</button>
+                                <button data-wi="{{ bullet.wi }}" data-bi="{{ bullet.bi }}" onClick="{{ onRemoveBullet }}" aria-label="Remove highlight" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid #E7E5E0; border-radius:6px; background:#fff; color:#9c9890; cursor:pointer;" style-hover="border-color:#B42318; color:#B42318;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                              </div>
+                            </div>
+                          </div>
+                          <sc-if value="{{ bullet.active }}" hint-placeholder-val="{{ false }}">
+                            <div style="margin:8px 0 2px 26px; background:#fff; border:1px solid #E7E5E0; border-radius:10px; box-shadow:0 4px 12px rgba(27,27,26,.08); overflow:hidden;">
+                              <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid #E7E5E0; background:#F2F1EC;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F5132" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg>
+                                <span style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#0F5132;">AI suggestion</span>
+                                <button onClick="{{ dismissImprove }}" aria-label="Dismiss suggestion" style="margin-left:auto; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:none; border-radius:6px; background:transparent; color:#55534E; cursor:pointer;" style-hover="background:#e7e5e0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                              </div>
+                              <div style="padding:12px;">
+                                <sc-if value="{{ improveLoading }}" hint-placeholder-val="{{ true }}">
+                                  <div style="display:flex; align-items:center; gap:10px; color:#55534E; font-size:13px;"><span style="display:inline-block; width:15px; height:15px; border:2px solid #E7E5E0; border-top-color:#0F5132; border-radius:50%; animation:spin .7s linear infinite;"></span><span>Rewriting for impact and metrics…</span></div>
+                                </sc-if>
+                                <sc-if value="{{ improveReady }}" hint-placeholder-val="{{ false }}">
+                                  <p style="margin:0 0 12px; font-size:14px; line-height:1.55; color:#1B1B1A;">{{ improveSuggestion }}</p>
+                                  <div style="display:flex; gap:8px;">
+                                    <button onClick="{{ acceptImprove }}" style="display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border:1px solid #0F5132; border-radius:7px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Replace bullet</button>
+                                    <button onClick="{{ dismissImprove }}" style="padding:7px 13px; border:1px solid #E7E5E0; border-radius:7px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC;">Keep original</button>
+                                  </div>
+                                </sc-if>
+                              </div>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <button data-wi="{{ job.wi }}" onClick="{{ onAddBullet }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border:1px dashed #d9d6d0; border-radius:8px; background:transparent; color:#55534E; font-size:13px; font-weight:500; cursor:pointer;" style-hover="border-color:#0F5132; color:#0F5132;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add highlight</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+              <button onClick="{{ onAddJob }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px dashed #d9d6d0; border-radius:8px; background:transparent; color:#55534E; font-size:13px; font-weight:600; cursor:pointer;" style-hover="border-color:#0F5132; color:#0F5132;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add position</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Education -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="education" onClick="{{ onToggle }}" aria-expanded="{{ open.education }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Education</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Degrees and schools</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevEducation }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.education }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px; border-top:1px solid #E7E5E0; display:flex; flex-direction:column; gap:14px;">
+              <sc-for list="{{ eduView }}" as="edu" hint-placeholder-count="1">
+                <div style="border:1px solid #E7E5E0; border-radius:10px; padding:14px; background:#FBFAF8;">
+                  <div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
+                    <button data-ei="{{ edu.i }}" onClick="{{ onRemoveEducation }}" aria-label="Remove education" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:7px; background:transparent; color:#9c9890; cursor:pointer;" style-hover="background:#fbeae8; color:#B42318;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <label style="display:flex; flex-direction:column; gap:5px; grid-column:1 / -1;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">School</span><input type="text" data-ei="{{ edu.i }}" data-field="school" value="{{ edu.school }}" onChange="{{ onEduField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Degree</span><input type="text" data-ei="{{ edu.i }}" data-field="degree" value="{{ edu.degree }}" onChange="{{ onEduField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Field of study</span><input type="text" data-ei="{{ edu.i }}" data-field="field" value="{{ edu.field }}" onChange="{{ onEduField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Graduation</span><input type="text" data-ei="{{ edu.i }}" data-field="grad" value="{{ edu.grad }}" onChange="{{ onEduField }}" /></label>
+                  </div>
+                </div>
+              </sc-for>
+              <button onClick="{{ onAddEducation }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px dashed #d9d6d0; border-radius:8px; background:transparent; color:#55534E; font-size:13px; font-weight:600; cursor:pointer;" style-hover="border-color:#0F5132; color:#0F5132;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add education</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Skills -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="skills" onClick="{{ onToggle }}" aria-expanded="{{ open.skills }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Skills</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Core competencies and tools</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevSkills }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.skills }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px; border-top:1px solid #E7E5E0;">
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <sc-for list="{{ skillsView }}" as="skill" hint-placeholder-count="6">
+                  <span style="display:inline-flex; align-items:center; gap:7px; padding:5px 8px 5px 11px; background:#F2F1EC; border:1px solid #E7E5E0; border-radius:6px; font-size:13px; color:#1B1B1A;">{{ skill.name }}<button data-i="{{ skill.i }}" onClick="{{ onRemoveSkill }}" aria-label="Remove skill" style="display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; border:none; border-radius:4px; background:transparent; color:#9c9890; cursor:pointer; padding:0;" style-hover="background:#e2e0da; color:#B42318;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span>
+                </sc-for>
+              </div>
+              <input type="text" placeholder="Add a skill and press Enter" onKeyDown="{{ onSkillKey }}" style="margin-top:12px;" />
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Projects -->
+        <div style="background:#fff; border:1px solid #E7E5E0; border-radius:12px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+          <button data-section="projects" onClick="{{ onToggle }}" aria-expanded="{{ open.projects }}" style="width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:transparent; border:none; cursor:pointer; text-align:left;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#F2F1EC; color:#1B1B1A; flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:600; color:#1B1B1A;">Projects</span><span style="display:block; font-size:12px; color:#55534E; margin-top:1px;">Selected work and side projects</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9c9890" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform-origin:center; transition:transform .2s ease; transform:{{ chevProjects }};"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <sc-if value="{{ open.projects }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px; border-top:1px solid #E7E5E0; display:flex; flex-direction:column; gap:14px;">
+              <sc-for list="{{ projectsView }}" as="proj" hint-placeholder-count="2">
+                <div style="border:1px solid #E7E5E0; border-radius:10px; padding:14px; background:#FBFAF8;">
+                  <div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
+                    <button data-pi="{{ proj.i }}" onClick="{{ onRemoveProject }}" aria-label="Remove project" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:7px; background:transparent; color:#9c9890; cursor:pointer;" style-hover="background:#fbeae8; color:#B42318;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Project name</span><input type="text" data-pi="{{ proj.i }}" data-field="name" value="{{ proj.name }}" onChange="{{ onProjField }}" /></label>
+                    <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Description</span><textarea data-pi="{{ proj.i }}" data-field="description" value="{{ proj.description }}" onChange="{{ onProjField }}" style="min-height:60px; resize:vertical; font-size:13px;"></textarea></label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                      <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">Technologies</span><input type="text" data-pi="{{ proj.i }}" value="{{ proj.techString }}" onChange="{{ onProjTech }}" placeholder="Comma separated" /></label>
+                      <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12px; font-weight:600; color:#1B1B1A;">URL</span><input type="text" data-pi="{{ proj.i }}" data-field="url" value="{{ proj.url }}" onChange="{{ onProjField }}" /></label>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+              <button onClick="{{ onAddProject }}" style="align-self:flex-start; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px dashed #d9d6d0; border-radius:8px; background:transparent; color:#55534E; font-size:13px; font-weight:600; cursor:pointer;" style-hover="border-color:#0F5132; color:#0F5132;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add project</button>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RIGHT: LIVE PREVIEW -->
+    <section id="preview-pane" aria-label="Resume preview" style="flex:1 1 560px; min-width:420px; overflow-y:auto; background:#F2F1EC; padding:30px clamp(16px,3vw,48px) 64px; display:flex; justify-content:center; align-items:flex-start;">
+      <article id="resume-page" style="{{ pageStyle }}">
+
+        <header style="padding-bottom:14px; border-bottom:1px solid #d9d6d0;">
+          <h1 style="{{ nameStyle }}">{{ data.name }}</h1>
+          <div style="{{ titleStyle }}">{{ data.title }}</div>
+          <div style="{{ contactStyle }}">{{ contactLine }}</div>
+        </header>
+
+        <sc-if value="{{ hasSummary }}" hint-placeholder-val="{{ true }}">
+          <section>
+            <h2 style="{{ hStyle }}">Summary</h2>
+            <p style="margin:7px 0 0; font-size:13px; line-height:1.55; color:#222;">{{ data.summary }}</p>
+          </section>
+        </sc-if>
+
+        <section>
+          <h2 style="{{ hStyle }}">Experience</h2>
+          <sc-for list="{{ workView }}" as="job" hint-placeholder-count="3">
+            <div style="margin-top:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                <span style="font-weight:700; font-size:14px; color:#1a1a1a;">{{ job.role }}</span>
+                <span style="font-size:12px; color:#555; white-space:nowrap; flex-shrink:0;">{{ job.dateLine }}</span>
+              </div>
+              <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">{{ job.orgLine }}</div>
+              <ul style="margin:6px 0 0; padding-left:18px;">
+                <sc-for list="{{ job.bullets }}" as="bullet" hint-placeholder-count="2">
+                  <li style="font-size:13px; line-height:1.5; color:#222; margin-bottom:3px;">{{ bullet.text }}</li>
+                </sc-for>
+              </ul>
+            </div>
+          </sc-for>
+        </section>
+
+        <section>
+          <h2 style="{{ hStyle }}">Education</h2>
+          <sc-for list="{{ eduView }}" as="edu" hint-placeholder-count="1">
+            <div style="margin-top:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                <span style="font-weight:700; font-size:14px; color:#1a1a1a;">{{ edu.school }}</span>
+                <span style="font-size:12px; color:#555; white-space:nowrap; flex-shrink:0;">{{ edu.grad }}</span>
+              </div>
+              <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">{{ edu.line }}</div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section>
+          <h2 style="{{ hStyle }}">Skills</h2>
+          <p style="margin:7px 0 0; font-size:13px; line-height:1.7; color:#222;">{{ skillsLine }}</p>
+        </section>
+
+        <section>
+          <h2 style="{{ hStyle }}">Projects</h2>
+          <sc-for list="{{ projectsView }}" as="proj" hint-placeholder-count="2">
+            <div style="margin-top:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+                <span style="font-weight:700; font-size:14px; color:#1a1a1a;">{{ proj.name }}</span>
+                <span style="font-size:12px; color:#555; white-space:nowrap; flex-shrink:0;">{{ proj.url }}</span>
+              </div>
+              <div style="font-size:13px; line-height:1.5; color:#222; margin-top:2px;">{{ proj.description }}</div>
+              <div style="font-size:12px; color:#555; margin-top:2px;">{{ proj.techLine }}</div>
+            </div>
+          </sc-for>
+        </section>
+
+      </article>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SUGGESTION = 'Spearheaded a cross-functional redesign that increased weekly active usage 34% and cut time-to-insight from 6 minutes to under 90 seconds — now the team\u2019s benchmark for data-product UX.';
+
+class Component extends DCLogic {
+  state = {
+    data: {
+      name: 'Maya Chen',
+      title: 'Senior Product Designer',
+      email: 'maya.chen@email.com',
+      phone: '(415) 555-0148',
+      location: 'San Francisco, CA',
+      linkedin: 'linkedin.com/in/mayachen',
+      website: 'mayachen.design',
+      summary: 'Senior product designer with 8+ years shaping end-to-end experiences for B2B SaaS and consumer fintech. I lead design systems, mentor cross-functional teams, and turn ambiguous problems into measurable outcomes — pairing rigorous research with a high craft bar.',
+      work: [
+        { role: 'Senior Product Designer', company: 'Meridian', location: 'San Francisco, CA', start: 'Jan 2022', end: 'Present', bullets: [
+          'Led the end-to-end redesign of the core analytics workspace, lifting weekly active usage 34% and cutting time-to-insight from 6 minutes to under 90 seconds.',
+          'Built and governed Meridian\u2019s first design system (120+ components), adopted by 4 product teams and reducing design-to-dev handoff time by 40%.',
+          'Ran a quarterly research program of 60+ customer interviews that reprioritized the 2024 roadmap around three high-value workflows.'
+        ]},
+        { role: 'Product Designer', company: 'Flux Software', location: 'Oakland, CA', start: 'Jun 2019', end: 'Dec 2021', bullets: [
+          'Designed a self-serve onboarding flow that raised activation from 41% to 68% and became the template for three later product lines.',
+          'Partnered with engineering to ship an accessible component library meeting WCAG 2.1 AA across the flagship app.'
+        ]},
+        { role: 'UX Designer', company: 'Brightseed', location: 'Remote', start: 'Aug 2017', end: 'May 2019', bullets: [
+          'Shipped the company\u2019s first mobile experience, growing mobile revenue to 28% of total within two quarters.',
+          'Established a usability-testing cadence that surfaced 40+ prioritized issues ahead of a major launch.'
+        ]}
+      ],
+      education: [
+        { school: 'California College of the Arts', degree: 'BFA', field: 'Interaction Design', grad: '2017' }
+      ],
+      skills: ['Product Strategy','Design Systems','User Research','Prototyping','Figma','Interaction Design','Accessibility (WCAG)','Design Ops','Usability Testing','Information Architecture'],
+      projects: [
+        { name: 'Atlas Design System', description: 'Open-source component library and documentation site used by 2,000+ designers.', technologies: ['Figma','Storybook','React'], url: 'github.com/mayachen/atlas' },
+        { name: 'Field Notes', description: 'A research repository for synthesizing customer interviews; finalist, Designer Fund Bridge.', technologies: ['Next.js','Tailwind CSS'], url: 'fieldnotes.app' }
+      ]
+    },
+    open: { personal: true, summary: true, work: true, education: true, skills: true, projects: false },
+    template: 'classic',
+    save: 'saved',
+    menu: null,
+    improve: null
+  };
+
+  _t = null;
+  flagSave() {
+    this.setState({ save: 'saving' });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ save: 'saved' }), 1100);
+  }
+
+  patch(fn) { this.setState(s => ({ data: fn(s.data) })); this.flagSave(); }
+
+  onTitle = () => { this.flagSave(); };
+  onToggle = (e) => { const k = e.currentTarget.dataset.section; this.setState(s => ({ open: { ...s.open, [k]: !s.open[k] } })); };
+  onToggleMenu = (e) => { const m = e.currentTarget.dataset.menu; this.setState(s => ({ menu: s.menu === m ? null : m })); };
+  closeMenu = () => this.setState({ menu: null });
+  onPickTemplate = (e) => this.setState({ template: e.currentTarget.dataset.id, menu: null });
+  exportPdf = () => { this.setState({ menu: null }); window.print(); };
+
+  onPersonal = (e) => { const f = e.target.dataset.field, v = e.target.value; this.patch(d => ({ ...d, [f]: v })); };
+  onSummary = (e) => { const v = e.target.value; this.patch(d => ({ ...d, summary: v })); };
+
+  onWorkField = (e) => { const wi = +e.target.dataset.wi, f = e.target.dataset.field, v = e.target.value;
+    this.patch(d => ({ ...d, work: d.work.map((w, i) => i !== wi ? w : { ...w, [f]: v }) })); };
+  onBullet = (e) => { const wi = +e.target.dataset.wi, bi = +e.target.dataset.bi, v = e.target.value; this.setBullet(wi, bi, v); this.flagSave(); };
+  setBullet(wi, bi, v) { this.setState(s => ({ data: { ...s.data, work: s.data.work.map((w, i) => i !== wi ? w : { ...w, bullets: w.bullets.map((b, j) => j !== bi ? b : v) }) } })); }
+  onAddBullet = (e) => { const wi = +e.currentTarget.dataset.wi; this.patch(d => ({ ...d, work: d.work.map((w, i) => i !== wi ? w : { ...w, bullets: [...w.bullets, ''] }) })); };
+  onRemoveBullet = (e) => { const wi = +e.currentTarget.dataset.wi, bi = +e.currentTarget.dataset.bi;
+    this.setState(s => ({ improve: null, data: { ...s.data, work: s.data.work.map((w, i) => i !== wi ? w : { ...w, bullets: w.bullets.filter((_, j) => j !== bi) }) } })); this.flagSave(); };
+  onRemoveJob = (e) => { const wi = +e.currentTarget.dataset.wi; this.setState(s => ({ improve: null, data: { ...s.data, work: s.data.work.filter((_, i) => i !== wi) } })); this.flagSave(); };
+  onAddJob = () => this.patch(d => ({ ...d, work: [...d.work, { role: '', company: '', location: '', start: '', end: '', bullets: [''] }] }));
+
+  onImprove = (e) => { const wi = +e.currentTarget.dataset.wi, bi = +e.currentTarget.dataset.bi;
+    this.setState({ improve: { wi, bi, loading: true, suggestion: '' } });
+    clearTimeout(this._imp);
+    this._imp = setTimeout(() => this.setState(s => (s.improve && s.improve.wi === wi && s.improve.bi === bi) ? { improve: { ...s.improve, loading: false, suggestion: SUGGESTION } } : {}), 950);
+  };
+  acceptImprove = () => { const im = this.state.improve; if (!im) return; this.setBullet(im.wi, im.bi, im.suggestion); this.setState({ improve: null }); this.flagSave(); };
+  dismissImprove = () => this.setState({ improve: null });
+
+  onEduField = (e) => { const ei = +e.target.dataset.ei, f = e.target.dataset.field, v = e.target.value;
+    this.patch(d => ({ ...d, education: d.education.map((x, i) => i !== ei ? x : { ...x, [f]: v }) })); };
+  onAddEducation = () => this.patch(d => ({ ...d, education: [...d.education, { school: '', degree: '', field: '', grad: '' }] }));
+  onRemoveEducation = (e) => { const ei = +e.currentTarget.dataset.ei; this.patch(d => ({ ...d, education: d.education.filter((_, i) => i !== ei) })); };
+
+  onProjField = (e) => { const pi = +e.target.dataset.pi, f = e.target.dataset.field, v = e.target.value;
+    this.patch(d => ({ ...d, projects: d.projects.map((x, i) => i !== pi ? x : { ...x, [f]: v }) })); };
+  onProjTech = (e) => { const pi = +e.target.dataset.pi, v = e.target.value;
+    const arr = v.split(',').map(s => s.trim()).filter(Boolean);
+    this.patch(d => ({ ...d, projects: d.projects.map((x, i) => i !== pi ? x : { ...x, technologies: arr }) })); };
+  onAddProject = () => this.patch(d => ({ ...d, projects: [...d.projects, { name: '', description: '', technologies: [], url: '' }] }));
+  onRemoveProject = (e) => { const pi = +e.currentTarget.dataset.pi; this.patch(d => ({ ...d, projects: d.projects.filter((_, i) => i !== pi) })); };
+
+  onSkillKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value.trim(); if (v) { this.patch(d => ({ ...d, skills: [...d.skills, v] })); e.target.value = ''; } } };
+  onRemoveSkill = (e) => { const i = +e.currentTarget.dataset.i; this.patch(d => ({ ...d, skills: d.skills.filter((_, j) => j !== i) })); };
+
+  renderVals() {
+    const d = this.state.data;
+    const im = this.state.improve;
+    const classic = this.state.template === 'classic';
+
+    const workView = d.work.map((w, wi) => ({
+      ...w, wi,
+      posLabel: 'Position ' + (wi + 1),
+      dateLine: (w.start || '') + (w.start || w.end ? ' – ' : '') + (w.end || ''),
+      orgLine: w.location ? (w.company + ' · ' + w.location) : w.company,
+      bullets: w.bullets.map((text, bi) => ({ text, wi, bi, active: !!(im && im.wi === wi && im.bi === bi) }))
+    }));
+    const eduView = d.education.map((e, i) => ({ ...e, i, line: e.field ? (e.degree + ', ' + e.field) : e.degree }));
+    const projectsView = d.projects.map((p, i) => ({ ...p, i, techString: p.technologies.join(', '), techLine: p.technologies.join('  ·  ') }));
+    const skillsView = d.skills.map((name, i) => ({ name, i }));
+
+    const contactLine = [d.email, d.phone, d.location, d.linkedin, d.website].filter(Boolean).join('   ·   ');
+    const skillsLine = d.skills.join('   ·   ');
+
+    const align = classic ? 'center' : 'left';
+    const pageStyle = { width: '100%', maxWidth: '760px', background: '#fff', border: '1px solid #E7E5E0', boxShadow: '0 4px 12px rgba(27,27,26,.08)', padding: 'clamp(36px,5vw,60px)', fontFamily: classic ? 'Georgia, "Times New Roman", serif' : 'Arial, Helvetica, sans-serif', color: '#1a1a1a', lineHeight: 1.45 };
+    const nameStyle = { margin: '0', textAlign: align, fontSize: classic ? '30px' : '26px', fontWeight: 700, letterSpacing: classic ? '0.01em' : '-0.01em', color: '#1a1a1a' };
+    const titleStyle = { marginTop: '3px', fontSize: '14px', letterSpacing: '0.02em', color: '#444', textAlign: align };
+    const contactStyle = { marginTop: '9px', fontSize: '12px', color: '#555', textAlign: align };
+    const hStyle = classic
+      ? { fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.13em', color: '#1a1a1a', borderBottom: '1px solid #aaa', padding: '0 0 4px', margin: '20px 0 0' }
+      : { fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#111', borderBottom: '2px solid #111', padding: '0 0 3px', margin: '20px 0 0' };
+
+    const rot = (o) => o ? 'rotate(180deg)' : 'rotate(0deg)';
+
+    return {
+      data: d,
+      open: this.state.open,
+      saving: this.state.save === 'saving',
+      saved: this.state.save === 'saved',
+      menu: this.state.menu,
+      templateMenuOpen: this.state.menu === 'template',
+      aiMenuOpen: this.state.menu === 'ai',
+      templateLabel: classic ? 'Classic' : 'Modern',
+      templateOptions: [
+        { id: 'classic', label: 'Classic', desc: 'Serif, centered header — timeless', active: classic },
+        { id: 'modern', label: 'Modern', desc: 'Sans-serif, left-aligned — clean', active: !classic }
+      ],
+      workCountLabel: d.work.length + (d.work.length === 1 ? ' position' : ' positions'),
+      chevPersonal: rot(this.state.open.personal),
+      chevSummary: rot(this.state.open.summary),
+      chevWork: rot(this.state.open.work),
+      chevEducation: rot(this.state.open.education),
+      chevSkills: rot(this.state.open.skills),
+      chevProjects: rot(this.state.open.projects),
+      workView, eduView, projectsView, skillsView,
+      contactLine, skillsLine,
+      hasSummary: !!(d.summary && d.summary.trim()),
+      pageStyle, nameStyle, titleStyle, contactStyle, hStyle,
+      improveLoading: !!(im && im.loading),
+      improveReady: !!(im && !im.loading && im.suggestion),
+      improveSuggestion: im ? im.suggestion : '',
+      onTitle: this.onTitle, onToggle: this.onToggle, onToggleMenu: this.onToggleMenu, closeMenu: this.closeMenu,
+      onPickTemplate: this.onPickTemplate, exportPdf: this.exportPdf,
+      onPersonal: this.onPersonal, onSummary: this.onSummary,
+      onWorkField: this.onWorkField, onBullet: this.onBullet, onAddBullet: this.onAddBullet, onRemoveBullet: this.onRemoveBullet, onRemoveJob: this.onRemoveJob, onAddJob: this.onAddJob,
+      onImprove: this.onImprove, acceptImprove: this.acceptImprove, dismissImprove: this.dismissImprove,
+      onEduField: this.onEduField, onAddEducation: this.onAddEducation, onRemoveEducation: this.onRemoveEducation,
+      onProjField: this.onProjField, onProjTech: this.onProjTech, onAddProject: this.onAddProject, onRemoveProject: this.onRemoveProject,
+      onSkillKey: this.onSkillKey, onRemoveSkill: this.onRemoveSkill
+    };
+  }
+}
+</script>
+</body>
+</html>

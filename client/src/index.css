@@ -1,0 +1,71 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Editorial Ink tokens — docs/DESIGN.md is the source of truth.
+ * Values are HSL triplets consumed by tailwind.config.ts via hsl(var(--token)).
+ */
+@layer base {
+  :root {
+    --background: 40 27% 98%; /* #FBFAF8 warm paper */
+    --surface: 0 0% 100%; /* #FFFFFF */
+    --surface-variant: 50 19% 94%; /* #F2F1EC */
+    --foreground: 60 2% 10%; /* #1B1B1A ink */
+    --muted-foreground: 43 4% 32%; /* #55534E */
+    --accent: 152 69% 19%; /* #0F5132 forest green — RESERVED */
+    --accent-foreground: 0 0% 100%;
+    --border: 43 13% 89%; /* #E7E5E0 hairline */
+    --ring: 152 69% 19%;
+    --success: 142 72% 29%; /* #15803D */
+    --success-foreground: 0 0% 100%;
+    --warning: 26 90% 37%; /* #B45309 */
+    --warning-foreground: 0 0% 100%;
+    --destructive: 4 76% 40%; /* #B42318 */
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 40 6% 10%; /* #1A1917 warm charcoal */
+    --surface: 40 4% 13%; /* #232220 */
+    --surface-variant: 36 6% 16%; /* #2C2A27 */
+    --foreground: 43 26% 95%; /* #F5F3EE */
+    --muted-foreground: 37 7% 63%; /* #A8A39B */
+    --accent: 151 46% 44%; /* #3DA572 */
+    --accent-foreground: 152 37% 10%; /* #10231A */
+    --border: 34 6% 21%; /* #3A3733 */
+    --ring: 151 46% 44%;
+    --success: 142 69% 58%; /* #4ADE80 */
+    --success-foreground: 40 6% 10%;
+    --warning: 38 92% 50%; /* #F59E0B */
+    --warning-foreground: 40 6% 10%;
+    --destructive: 0 91% 71%; /* #F87171 */
+    --destructive-foreground: 40 6% 10%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-[-0.02em];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

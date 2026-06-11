@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#FBFAF8; }
+  button{ font-family:'Inter',system-ui,sans-serif; }
+  *:focus-visible{ outline:2px solid #0F5132; outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</helmet>
+
+<div data-screen-label="Dashboard" style="min-height:100vh; background:#FBFAF8; color:#1B1B1A; font-family:'Inter',system-ui,sans-serif; font-size:14px;">
+
+  <!-- Top bar -->
+  <header style="position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:13px clamp(16px,4vw,40px); background:#fff; border-bottom:1px solid #E7E5E0;">
+    <div style="display:flex; align-items:center; gap:11px;">
+      <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; background:#1B1B1A; color:#fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+      <span style="font-size:15px; font-weight:600; letter-spacing:-0.01em;">Resume Builder</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div title="AI usage today" style="display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid #E7E5E0; border-radius:999px; background:#F2F1EC; font-size:12px; color:#55534E; white-space:nowrap;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#55534E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>
+        <span><b style="color:#1B1B1A; font-weight:600; font-variant-numeric:tabular-nums;">7</b> / 10 today</span>
+      </div>
+      <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:999px; background:#F2F1EC; border:1px solid #E7E5E0; font-size:13px; font-weight:600; color:#1B1B1A;">MC</span>
+    </div>
+  </header>
+
+  <main style="max-width:1200px; margin:0 auto; padding:clamp(24px,4vw,44px) clamp(16px,4vw,40px) 72px;">
+
+    <!-- Page header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:28px;">
+      <div>
+        <h1 style="margin:0; font-family:'Fraunces',Georgia,serif; font-size:clamp(28px,4vw,34px); font-weight:600; letter-spacing:-0.02em; color:#1B1B1A;">Your resumes</h1>
+        <p style="margin:6px 0 0; font-size:14px; color:#55534E;">{{ countLabel }}</p>
+      </div>
+      <sc-if value="{{ hasResumes }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ newResume }}" style="display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border:1px solid #0F5132; border-radius:9px; background:#0F5132; color:#fff; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.06); transition:box-shadow .15s ease, transform .1s ease;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          New resume
+        </button>
+      </sc-if>
+    </div>
+
+    <!-- Grid -->
+    <sc-if value="{{ hasResumes }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px;">
+        <sc-for list="{{ resumesView }}" as="r" hint-placeholder-count="6">
+          <div role="button" tabindex="0" data-id="{{ r.id }}" onClick="{{ openEditor }}" onKeyDown="{{ cardKey }}" style="position:relative; background:#fff; border:1px solid #E7E5E0; border-radius:12px; padding:20px; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05); transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;" style-hover="transform:translateY(-4px); border-color:#0F5132; box-shadow:inset 3px 0 0 0 #0F5132, 0 4px 12px rgba(27,27,26,.08);">
+
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:9px; background:#F2F1EC; color:#55534E; flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+
+              <div style="position:relative; flex-shrink:0;">
+                <button data-id="{{ r.id }}" onClick="{{ onMore }}" aria-label="More options" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:none; border-radius:8px; background:transparent; color:#55534E; cursor:pointer;" style-hover="background:#F2F1EC; color:#1B1B1A;"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+                <sc-if value="{{ r.menuOpen }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ closeMenu }}" style="position:fixed; inset:0; z-index:20;"></div>
+                  <div role="menu" onClick="{{ stopProp }}" style="position:absolute; right:0; top:calc(100% + 6px); width:178px; background:#fff; border:1px solid #E7E5E0; border-radius:10px; box-shadow:0 12px 32px rgba(27,27,26,.12); padding:6px; z-index:21;">
+                    <button data-id="{{ r.id }}" onClick="{{ onDuplicate }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 10px; border:none; background:transparent; border-radius:7px; cursor:pointer; text-align:left; font-size:13px; color:#1B1B1A;" style-hover="background:#F2F1EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Duplicate</button>
+                    <div style="height:1px; background:#E7E5E0; margin:5px 2px;"></div>
+                    <button data-id="{{ r.id }}" onClick="{{ onDelete }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 10px; border:none; background:transparent; border-radius:7px; cursor:pointer; text-align:left; font-size:13px; color:#B42318;" style-hover="background:#fbeae8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete</button>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <h3 style="margin:15px 0 0; font-family:'Fraunces',Georgia,serif; font-size:19px; font-weight:600; letter-spacing:-0.01em; color:#1B1B1A; line-height:1.25;">{{ r.title }}</h3>
+            <p style="margin:5px 0 0; font-size:12.5px; color:#55534E;">{{ r.meta }}</p>
+
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; min-height:26px;">
+              <sc-for list="{{ r.chips }}" as="chip" hint-placeholder-count="3">
+                <span style="display:inline-flex; align-items:center; padding:4px 9px; background:#F2F1EC; border:1px solid #E7E5E0; border-radius:6px; font-size:12px; color:#55534E;">{{ chip }}</span>
+              </sc-for>
+              <sc-if value="{{ r.hasMore }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-flex; align-items:center; padding:4px 9px; border-radius:6px; font-size:12px; color:#9c9890;">{{ r.moreLabel }}</span>
+              </sc-if>
+            </div>
+
+            <div style="height:1px; background:#E7E5E0; margin:16px 0 13px;"></div>
+
+            <div style="display:flex; align-items:center; gap:9px;">
+              <span style="font-size:10px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#9c9890;">ATS</span>
+              <sc-if value="{{ r.scored }}" hint-placeholder-val="{{ true }}">
+                <div style="position:relative; width:46px; height:6px; border-radius:999px; background:#EAE8E2; overflow:hidden;"><div style="position:absolute; left:0; top:0; bottom:0; width:{{ r.scorePct }}; background:{{ r.barColor }}; border-radius:999px;"></div></div>
+                <span style="font-size:13px; font-weight:600; color:#1B1B1A; font-variant-numeric:tabular-nums;">{{ r.score }}</span>
+                <span style="font-size:12px; font-weight:600; color:{{ r.barColor }};">{{ r.bandLabel }}</span>
+              </sc-if>
+              <sc-if value="{{ r.unscored }}" hint-placeholder-val="{{ false }}">
+                <div style="width:46px; height:6px; border-radius:999px; border:1px dashed #d9d6d0;"></div>
+                <span style="font-size:12px; color:#9c9890;">Not scored yet</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- Empty state -->
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding:clamp(48px,9vw,96px) 24px; border:1px solid #E7E5E0; border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 2px 8px rgba(27,27,26,.05);">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:16px; background:#F2F1EC; color:#55534E;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>
+        <h2 style="margin:22px 0 0; font-family:'Fraunces',Georgia,serif; font-size:24px; font-weight:600; letter-spacing:-0.01em; color:#1B1B1A;">Create your first resume</h2>
+        <p style="margin:9px 0 0; font-size:14px; line-height:1.6; color:#55534E; max-width:380px;">Start from a clean editorial template, then let AI help you tailor it to any role and sharpen every bullet.</p>
+        <button onClick="{{ newResume }}" style="margin-top:24px; display:inline-flex; align-items:center; gap:8px; padding:12px 20px; border:1px solid #0F5132; border-radius:9px; background:#0F5132; color:#fff; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.06); transition:box-shadow .15s ease, transform .1s ease;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          New resume
+        </button>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startEmpty&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;}}">
+const DEFAULT_RESUMES = [
+  { id: 'r1', title: 'Maya Chen — Product Design', updated: '2 hours ago', template: 'Classic', skills: ['Design Systems', 'Figma', 'User Research'], score: 82 },
+  { id: 'r2', title: 'Senior PD — Fintech Applications', updated: 'yesterday', template: 'Modern', skills: ['Prototyping', 'User Research', 'A/B Testing', 'Roadmapping'], score: 68 },
+  { id: 'r3', title: 'Design Systems Lead', updated: '3 days ago', template: 'Classic', skills: ['Design Tokens', 'Figma', 'Accessibility'], score: 91 },
+  { id: 'r4', title: 'Product Designer — Healthcare', updated: 'last week', template: 'Modern', skills: ['UX Research', 'Wireframing', 'Service Design'], score: 47 },
+  { id: 'r5', title: 'UX Generalist · 2023 archive', updated: 'Mar 14', template: 'Classic', skills: ['Interaction Design', 'Visual Design', 'Prototyping'], score: 74 }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      resumes: props && props.startEmpty ? [] : DEFAULT_RESUMES.map(r => ({ ...r, skills: r.skills.slice() })),
+      menu: null
+    };
+    this._n = 100;
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!!prevProps.startEmpty !== !!this.props.startEmpty) {
+      this.setState({
+        resumes: this.props.startEmpty ? [] : DEFAULT_RESUMES.map(r => ({ ...r, skills: r.skills.slice() })),
+        menu: null
+      });
+    }
+  }
+
+  stopProp = (e) => e.stopPropagation();
+  openEditor = () => { window.location.href = 'Resume Editor.dc.html'; };
+  cardKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openEditor(); } };
+  newResume = () => { window.location.href = 'Resume Editor.dc.html'; };
+
+  onMore = (e) => { e.stopPropagation(); const id = e.currentTarget.dataset.id; this.setState(s => ({ menu: s.menu === id ? null : id })); };
+  closeMenu = (e) => { if (e) e.stopPropagation(); this.setState({ menu: null }); };
+
+  onDuplicate = (e) => { e.stopPropagation(); const id = e.currentTarget.dataset.id;
+    this.setState(s => {
+      const idx = s.resumes.findIndex(r => r.id === id);
+      if (idx === -1) return { menu: null };
+      const src = s.resumes[idx];
+      const copy = { ...src, skills: src.skills.slice(), id: 'r' + (++this._n), title: src.title + ' (Copy)', updated: 'just now' };
+      const next = s.resumes.slice();
+      next.splice(idx + 1, 0, copy);
+      return { resumes: next, menu: null };
+    });
+  };
+
+  onDelete = (e) => { e.stopPropagation(); const id = e.currentTarget.dataset.id;
+    this.setState(s => ({ resumes: s.resumes.filter(r => r.id !== id), menu: null }));
+  };
+
+  band(score) {
+    if (score >= 75) return { color: '#15803D', label: 'Strong' };
+    if (score >= 50) return { color: '#B45309', label: 'Good' };
+    return { color: '#B42318', label: 'Needs work' };
+  }
+
+  renderVals() {
+    const list = this.state.resumes;
+    const resumesView = list.map(r => {
+      const scored = typeof r.score === 'number';
+      const b = scored ? this.band(r.score) : null;
+      const more = Math.max(0, r.skills.length - 3);
+      return {
+        id: r.id,
+        title: r.title,
+        meta: 'Updated ' + r.updated + ' · ' + r.template + ' template',
+        chips: r.skills.slice(0, 3),
+        hasMore: more > 0,
+        moreLabel: '+' + more,
+        scored,
+        unscored: !scored,
+        score: r.score,
+        scorePct: scored ? (r.score + '%') : '0%',
+        barColor: b ? b.color : '#9c9890',
+        bandLabel: b ? b.label : '',
+        menuOpen: this.state.menu === r.id
+      };
+    });
+    const n = list.length;
+    return {
+      resumesView,
+      hasResumes: n > 0,
+      isEmpty: n === 0,
+      countLabel: n === 0 ? 'No resumes yet' : (n + (n === 1 ? ' resume' : ' resumes')),
+      newResume: this.newResume,
+      openEditor: this.openEditor,
+      cardKey: this.cardKey,
+      onMore: this.onMore,
+      closeMenu: this.closeMenu,
+      stopProp: this.stopProp,
+      onDuplicate: this.onDuplicate,
+      onDelete: this.onDelete
+    };
+  }
+}
+</script>
+</body>
+</html>

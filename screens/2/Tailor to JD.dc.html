@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#FBFAF8; }
+  input,textarea,button{ font-family:'Inter',system-ui,sans-serif; }
+  textarea{ width:100%; padding:12px 13px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:14px; line-height:1.6; outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  textarea::placeholder{ color:#9c9890; }
+  textarea:focus{ border-color:#0F5132; box-shadow:0 0 0 3px rgba(15,81,50,.12); }
+  *:focus-visible{ outline:2px solid #0F5132; outline-offset:2px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes scaleIn{ from{ opacity:0; transform:translateY(6px) scale(.985);} to{ opacity:1; transform:none;} }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</helmet>
+
+<div data-screen-label="Tailor to JD" style="position:relative; height:100vh; overflow:hidden; font-family:'Inter',system-ui,sans-serif;">
+
+  <!-- Editor backdrop -->
+  <div aria-hidden="true" style="position:absolute; inset:0; pointer-events:none;">
+    <dc-import name="Resume Editor" hint-size="100%,100%"></dc-import>
+  </div>
+
+  <!-- Reopen affordance (when modal closed) -->
+  <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ reopen }}" style="position:fixed; right:24px; bottom:24px; z-index:900; display:inline-flex; align-items:center; gap:8px; padding:11px 16px; border:1px solid #0F5132; border-radius:10px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 8px 24px rgba(15,81,50,.22);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>
+      Tailor to job description
+    </button>
+  </sc-if>
+
+  <!-- Modal -->
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <div onClick="{{ closeAttempt }}" style="position:fixed; inset:0; z-index:1000; background:rgba(27,27,26,.5); display:flex; align-items:center; justify-content:center; padding:24px;">
+      <div role="dialog" aria-modal="true" aria-label="Tailor to job description" onClick="{{ stopProp }}" style="position:relative; width:min(720px,100%); max-height:88vh; background:#fff; border-radius:14px; box-shadow:0 24px 60px rgba(27,27,26,.22); display:flex; flex-direction:column; overflow:hidden;">
+
+        <!-- Header -->
+        <div style="padding:20px 24px 16px; border-bottom:1px solid #E7E5E0; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#0F5132;">AI Assist</span>
+            <div style="flex:1;"></div>
+            <div title="AI usage today" style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid #E7E5E0; border-radius:999px; background:#F2F1EC; font-size:12px; color:#55534E; white-space:nowrap;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#55534E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/></svg>
+              <span><b style="color:#1B1B1A; font-weight:600; font-variant-numeric:tabular-nums;">{{ usedToday }}</b> / 10 today</span>
+            </div>
+            <button onClick="{{ closeAttempt }}" aria-label="Close" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; border-radius:7px; background:transparent; color:#55534E; cursor:pointer;" style-hover="background:#F2F1EC; color:#1B1B1A;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <h2 style="margin:8px 0 0; font-family:'Fraunces',Georgia,serif; font-size:23px; font-weight:600; letter-spacing:-0.01em; color:#1B1B1A;">Tailor to job description</h2>
+          <p style="margin:5px 0 0; font-size:13px; line-height:1.5; color:#55534E;">Paste a job description — we’ll score the match, surface missing keywords, and suggest stronger, role-specific bullets.</p>
+        </div>
+
+        <!-- Body -->
+        <div style="flex:1; overflow-y:auto; padding:20px 24px;">
+
+          <!-- INPUT -->
+          <sc-if value="{{ phaseInput }}" hint-placeholder-val="{{ true }}">
+            <label style="display:block; font-size:12px; font-weight:600; color:#1B1B1A; margin-bottom:7px;">Job description</label>
+            <textarea onChange="{{ onJd }}" style="min-height:230px; resize:vertical;" defaultValue="Senior Product Designer — Design Systems
+
+We’re hiring a Senior Product Designer to lead the design systems practice across our web and mobile products.
+
+Responsibilities
+• Own and evolve our component library, working in Figma with variables and design tokens shared across platforms.
+• Partner closely with engineering to ship accessible, WCAG 2.1 AA components and patterns.
+• Drive 0→1 product explorations and run A/B tested improvements to validate direction.
+• Lead stakeholder management across product, engineering, and brand to align on a single system.
+• Establish design ops rituals — critiques, documentation, and a contribution model.
+
+Requirements
+• 6+ years in product design; 3+ years building and scaling design systems.
+• Strong systems thinking with hands-on Figma variables and design tokens.
+• Experience with user research and usability testing to inform decisions."></textarea>
+            <p style="margin:9px 0 0; font-size:12px; color:#55534E;">Paste the full posting for the best results. Running this uses 1 of your daily AI credits.</p>
+          </sc-if>
+
+          <!-- LOADING -->
+          <sc-if value="{{ phaseLoading }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:48px 16px;">
+              <span style="display:inline-block; width:30px; height:30px; border:3px solid #E7E5E0; border-top-color:#0F5132; border-radius:50%; animation:spin .8s linear infinite;"></span>
+              <p style="margin:18px 0 0; font-size:15px; font-weight:600; color:#1B1B1A;">Analyzing your resume against the role…</p>
+              <p style="margin:5px 0 0; font-size:13px; color:#55534E; max-width:340px;">Comparing keywords, scoring ATS fit, and drafting stronger bullets. This takes a few seconds.</p>
+            </div>
+          </sc-if>
+
+          <!-- RESULTS -->
+          <sc-if value="{{ phaseResults }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0 0 16px; font-size:14px; line-height:1.55; color:#1B1B1A;">{{ matchSentence }}</p>
+
+            <!-- Score meter -->
+            <div style="border:1px solid #E7E5E0; border-radius:12px; padding:18px; background:#FBFAF8;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                <div style="display:flex; align-items:baseline; gap:8px;">
+                  <span style="font-family:'Inter',sans-serif; font-size:46px; font-weight:600; line-height:1; color:#1B1B1A; font-variant-numeric:tabular-nums;">{{ score }}</span>
+                  <span style="font-size:15px; color:#55534E;">/ 100</span>
+                </div>
+                <div style="display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:999px; background:{{ bandBg }}; color:{{ bandColor }}; font-size:13px; font-weight:600;">
+                  <sc-if value="{{ bandHigh }}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></sc-if>
+                  <sc-if value="{{ bandMid }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></sc-if>
+                  <sc-if value="{{ bandLow }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></sc-if>
+                  <span>{{ bandLabel }}</span>
+                </div>
+              </div>
+              <div style="position:relative; height:10px; border-radius:999px; background:#EAE8E2; margin-top:16px; overflow:hidden;">
+                <div style="position:absolute; left:0; top:0; bottom:0; width:{{ scorePct }}; background:{{ bandColor }}; border-radius:999px; transition:width .35s cubic-bezier(0.16,1,0.3,1);"></div>
+              </div>
+              <div style="position:relative; height:14px; margin-top:5px;">
+                <span style="position:absolute; left:50%; transform:translateX(-50%); font-size:10px; color:#9c9890;">50</span>
+                <span style="position:absolute; left:75%; transform:translateX(-50%); font-size:10px; color:#9c9890;">75</span>
+              </div>
+              <p style="margin:6px 0 0; font-size:11.5px; color:#55534E;">ATS fit: under 50 needs work · 50–74 good · 75+ strong. Applying suggestions below raises your score.</p>
+            </div>
+
+            <!-- Missing keywords -->
+            <div style="margin-top:22px;">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+                <h3 style="margin:0; font-size:14px; font-weight:600; color:#1B1B1A;">Missing keywords</h3>
+                <span style="font-size:12px; color:#55534E;">{{ keywordStatus }}</span>
+              </div>
+              <p style="margin:4px 0 11px; font-size:12px; color:#55534E;">From the posting, not yet in your resume. Tap to add to your Skills.</p>
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <sc-for list="{{ keywordsView }}" as="kw" hint-placeholder-count="6">
+                  <button data-i="{{ kw.i }}" onClick="{{ onToggleKeyword }}" style="display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; border:1px solid transparent;">
+                    <sc-if value="{{ kw.added }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:inline-flex; align-items:center; gap:6px; color:#15803D;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>{{ kw.text }}</span>
+                    </sc-if>
+                    <sc-if value="{{ kw.missing }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:inline-flex; align-items:center; gap:6px; color:#B45309;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>{{ kw.text }}</span>
+                    </sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- Suggested bullets -->
+            <div style="margin-top:24px;">
+              <h3 style="margin:0 0 11px; font-size:14px; font-weight:600; color:#1B1B1A;">Suggested rewrites</h3>
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <sc-for list="{{ suggestionsView }}" as="s" hint-placeholder-count="3">
+                  <div style="border:1px solid {{ s.cardBorder }}; border-radius:12px; overflow:hidden; transition:border-color .2s ease;">
+                    <div style="padding:12px 14px; background:#FBFAF8; border-bottom:1px solid #E7E5E0;">
+                      <div style="display:flex; align-items:center; gap:7px; font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#9c9890;">Current</div>
+                      <p style="margin:5px 0 0; font-size:13px; line-height:1.5; color:#55534E;">{{ s.current }}</p>
+                    </div>
+                    <div style="padding:13px 14px;">
+                      <div style="display:flex; align-items:center; gap:7px; color:#0F5132;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
+                        <span style="font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase;">Suggested</span>
+                      </div>
+                      <sc-if value="{{ s.loading }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex; align-items:center; gap:9px; margin-top:8px; color:#55534E; font-size:13px;"><span style="display:inline-block; width:14px; height:14px; border:2px solid #E7E5E0; border-top-color:#0F5132; border-radius:50%; animation:spin .7s linear infinite;"></span><span>Regenerating…</span></div>
+                      </sc-if>
+                      <sc-if value="{{ s.ready }}" hint-placeholder-val="{{ true }}">
+                        <p style="margin:7px 0 0; font-size:14px; line-height:1.55; color:#1B1B1A;">{{ s.suggested }}</p>
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px;">
+                          <span style="font-size:11px; color:#9c9890;">Adds:</span>
+                          <sc-for list="{{ s.adds }}" as="a" hint-placeholder-count="2">
+                            <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:5px; background:#F2F1EC; border:1px solid #E7E5E0; font-size:11.5px; color:#55534E;">{{ a }}</span>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:13px;">
+                          <sc-if value="{{ s.pending }}" hint-placeholder-val="{{ true }}">
+                            <button data-id="{{ s.id }}" onClick="{{ onAccept }}" style="display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border:1px solid #0F5132; border-radius:7px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Accept</button>
+                            <button data-id="{{ s.id }}" onClick="{{ onRegen }}" style="display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border:1px solid #E7E5E0; border-radius:7px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>Regenerate</button>
+                          </sc-if>
+                          <sc-if value="{{ s.accepted }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:7px; background:rgba(21,128,61,.10); color:#15803D; font-size:13px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Accepted</span>
+                            <button data-id="{{ s.id }}" onClick="{{ onUndo }}" style="display:inline-flex; align-items:center; gap:5px; padding:7px 10px; border:none; border-radius:7px; background:transparent; color:#55534E; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC; color:#1B1B1A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Undo</button>
+                          </sc-if>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 24px; border-top:1px solid #E7E5E0; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-shrink:0;">
+          <span style="font-size:12px; color:#55534E; min-width:0;">{{ footerStatus }}</span>
+          <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+            <button onClick="{{ closeAttempt }}" style="padding:9px 15px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC;">Cancel</button>
+            <sc-if value="{{ phaseInput }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ analyze }}" disabled="{{ analyzeDisabled }}" style="display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border:1px solid #0F5132; border-radius:8px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer; opacity:{{ analyzeOpacity }};" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>Analyze match</button>
+            </sc-if>
+            <sc-if value="{{ phaseLoading }}" hint-placeholder-val="{{ false }}">
+              <button disabled style="display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border:1px solid #0F5132; border-radius:8px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; opacity:.6; cursor:not-allowed;"><span style="display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite;"></span>Analyzing…</button>
+            </sc-if>
+            <sc-if value="{{ phaseResults }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ apply }}" disabled="{{ applyDisabled }}" style="display:inline-flex; align-items:center; gap:8px; padding:9px 18px; border:1px solid #0F5132; border-radius:8px; background:#0F5132; color:#fff; font-size:13px; font-weight:600; cursor:pointer; opacity:{{ applyOpacity }};" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.98);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Apply changes</button>
+            </sc-if>
+          </div>
+        </div>
+
+        <!-- Discard confirm -->
+        <sc-if value="{{ confirm }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; inset:0; z-index:5; background:rgba(27,27,26,.45); display:flex; align-items:center; justify-content:center; padding:24px;">
+            <div style="width:min(380px,100%); background:#fff; border-radius:12px; box-shadow:0 16px 40px rgba(27,27,26,.2); padding:22px;">
+              <h3 style="margin:0; font-family:'Fraunces',Georgia,serif; font-size:18px; font-weight:600; color:#1B1B1A;">Discard suggestions?</h3>
+              <p style="margin:8px 0 18px; font-size:13px; line-height:1.55; color:#55534E;">You have AI suggestions that haven’t been applied. Closing now will discard them.</p>
+              <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button onClick="{{ keepEditing }}" style="padding:9px 15px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:13px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC;">Keep editing</button>
+                <button onClick="{{ doClose }}" style="padding:9px 15px; border:1px solid #B42318; border-radius:8px; background:#B42318; color:#fff; font-size:13px; font-weight:600; cursor:pointer;" style-hover="background:#9d1e15;">Discard</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const S1_ALT = 'Led the design-tokens architecture and Figma-variables migration behind Meridian\u2019s first design system (120+ components), scaling adoption to 4 teams and reducing handoff time 40%.';
+const S2_ALT = 'Owned a 0\u21921 analytics-workspace redesign end-to-end, aligning stakeholders across product, engineering, and brand to lift weekly active usage 34% and cut time-to-insight to under 90 sec.';
+const S3_ALT = 'Ran A/B tested iterations on a self-serve onboarding flow (activation 41%\u219268%) and codified the pattern through design-ops rituals adopted by three product lines.';
+
+class Component extends DCLogic {
+  state = {
+    open: true,
+    closed: false,
+    phase: 'input',
+    jd: 'prefilled',
+    usedToday: 7,
+    baseScore: 72,
+    confirm: false,
+    keywords: [
+      { text: 'Design tokens', added: false },
+      { text: 'Figma variables', added: false },
+      { text: '0\u21921 product', added: false },
+      { text: 'Design ops', added: false },
+      { text: 'Stakeholder management', added: false },
+      { text: 'A/B testing', added: false }
+    ],
+    suggestions: [
+      { id: 's1', status: 'pending', loading: false,
+        current: 'Built and governed Meridian\u2019s first design system (120+ components), adopted by 4 product teams and reducing design-to-dev handoff time by 40%.',
+        suggested: 'Built and governed Meridian\u2019s first design system on Figma variables and design tokens (120+ components), adopted by 4 teams and cutting design-to-dev handoff time 40%.',
+        adds: ['Figma variables', 'Design tokens'], alt: S1_ALT },
+      { id: 's2', status: 'pending', loading: false,
+        current: 'Led the end-to-end redesign of the core analytics workspace, lifting weekly active usage 34% and cutting time-to-insight from 6 minutes to under 90 seconds.',
+        suggested: 'Drove a 0\u21921 redesign of the analytics workspace through close stakeholder management across product and engineering, lifting weekly active usage 34% and cutting time-to-insight from 6 min to under 90 sec.',
+        adds: ['0\u21921 product', 'Stakeholder management'], alt: S2_ALT },
+      { id: 's3', status: 'pending', loading: false,
+        current: 'Designed a self-serve onboarding flow that raised activation from 41% to 68% and became the template for three later product lines.',
+        suggested: 'Designed and A/B tested a self-serve onboarding flow that raised activation from 41% to 68%, with design-ops documentation that templated it across three product lines.',
+        adds: ['A/B testing', 'Design ops'], alt: S3_ALT }
+    ]
+  };
+
+  _t = null;
+  stopProp = (e) => e.stopPropagation();
+  onJd = (e) => this.setState({ jd: e.target.value });
+
+  analyze = () => {
+    if (!this.state.jd || !this.state.jd.trim()) return;
+    this.setState({ phase: 'loading' });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState(s => ({ phase: 'results', usedToday: s.usedToday + 1 })), 1500);
+  };
+
+  hasPending() {
+    return this.state.phase === 'results' && (this.state.suggestions.some(s => s.status === 'accepted') || this.state.keywords.some(k => k.added) || true);
+  }
+  closeAttempt = () => {
+    if (this.state.phase === 'results') this.setState({ confirm: true });
+    else this.doClose();
+  };
+  doClose = () => this.setState({ open: false, closed: true, confirm: false });
+  keepEditing = () => this.setState({ confirm: false });
+  reopen = () => this.setState({ open: true, closed: false });
+  apply = () => this.setState({ open: false, closed: true });
+
+  onToggleKeyword = (e) => { const i = +e.currentTarget.dataset.i;
+    this.setState(s => ({ keywords: s.keywords.map((k, j) => j !== i ? k : { ...k, added: !k.added }) })); };
+
+  setKeywordsAdded(list, val) {
+    this.setState(s => ({ keywords: s.keywords.map(k => list.indexOf(k.text) === -1 ? k : { ...k, added: val }) }));
+  }
+  onAccept = (e) => { const id = e.currentTarget.dataset.id;
+    const sug = this.state.suggestions.find(s => s.id === id);
+    this.setState(s => ({ suggestions: s.suggestions.map(x => x.id !== id ? x : { ...x, status: 'accepted' }) }));
+    if (sug) this.setKeywordsAdded(sug.adds, true);
+  };
+  onUndo = (e) => { const id = e.currentTarget.dataset.id;
+    const sug = this.state.suggestions.find(s => s.id === id);
+    this.setState(s => ({ suggestions: s.suggestions.map(x => x.id !== id ? x : { ...x, status: 'pending' }) }));
+    if (sug) this.setKeywordsAdded(sug.adds, false);
+  };
+  onRegen = (e) => { const id = e.currentTarget.dataset.id;
+    this.setState(s => ({ suggestions: s.suggestions.map(x => x.id !== id ? x : { ...x, loading: true }) }));
+    clearTimeout(this['_r' + id]);
+    this['_r' + id] = setTimeout(() => this.setState(s => ({ suggestions: s.suggestions.map(x => {
+      if (x.id !== id) return x;
+      const swap = x.suggested; return { ...x, loading: false, status: 'pending', suggested: x.alt, alt: swap };
+    }) })), 950);
+  };
+
+  renderVals() {
+    const st = this.state;
+    const accepted = st.suggestions.filter(s => s.status === 'accepted').length;
+    const added = st.keywords.filter(k => k.added).length;
+    const score = Math.min(96, st.baseScore + accepted * 4 + added * 1);
+    const high = score >= 75, mid = score >= 50 && score < 75, low = score < 50;
+    const bandLabel = high ? 'Strong match' : (mid ? 'Good match' : 'Needs work');
+    const bandColor = high ? '#15803D' : (mid ? '#B45309' : '#B42318');
+    const bandBg = high ? 'rgba(21,128,61,.10)' : (mid ? 'rgba(180,83,9,.10)' : 'rgba(180,35,24,.10)');
+    const matchSentence = high
+      ? 'Your resume is a strong match for this role. The refinements below will sharpen it further.'
+      : (mid ? 'Your resume is a good match — a few targeted changes will make it stronger.'
+             : 'Your resume needs work to match this role. Start with the suggestions below.');
+
+    const missing = st.keywords.filter(k => !k.added).length;
+    const keywordStatus = missing === 0 ? 'All added' : (added + ' of ' + st.keywords.length + ' added');
+
+    const keywordsView = st.keywords.map((k, i) => ({ ...k, i, missing: !k.added }));
+    const suggestionsView = st.suggestions.map(s => ({
+      ...s,
+      ready: !s.loading,
+      pending: s.status === 'pending',
+      accepted: s.status === 'accepted',
+      cardBorder: s.status === 'accepted' ? '#0F5132' : '#E7E5E0'
+    }));
+
+    const applyDisabled = accepted === 0 && added === 0;
+    let footerStatus;
+    if (st.phase === 'input') footerStatus = 'Running this uses 1 daily AI credit.';
+    else if (st.phase === 'loading') footerStatus = 'Analyzing…';
+    else footerStatus = applyDisabled ? 'Accept rewrites or add keywords to apply.'
+      : (accepted + (accepted === 1 ? ' rewrite' : ' rewrites') + ' · ' + added + (added === 1 ? ' keyword' : ' keywords') + ' ready to apply');
+
+    return {
+      open: st.open, closed: st.closed, confirm: st.confirm,
+      phaseInput: st.phase === 'input', phaseLoading: st.phase === 'loading', phaseResults: st.phase === 'results',
+      usedToday: st.usedToday,
+      score, scorePct: score + '%', bandLabel, bandColor, bandBg,
+      bandHigh: high, bandMid: mid, bandLow: low, matchSentence,
+      keywordsView, keywordStatus,
+      suggestionsView,
+      analyzeDisabled: !st.jd || !st.jd.trim(),
+      analyzeOpacity: (!st.jd || !st.jd.trim()) ? '.5' : '1',
+      applyDisabled, applyOpacity: applyDisabled ? '.5' : '1',
+      footerStatus,
+      stopProp: this.stopProp, onJd: this.onJd, analyze: this.analyze,
+      closeAttempt: this.closeAttempt, doClose: this.doClose, keepEditing: this.keepEditing, reopen: this.reopen, apply: this.apply,
+      onToggleKeyword: this.onToggleKeyword, onAccept: this.onAccept, onUndo: this.onUndo, onRegen: this.onRegen
+    };
+  }
+}
+</script>
+</body>
+</html>

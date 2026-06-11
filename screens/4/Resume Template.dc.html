@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#F2F1EC; }
+  #doc-backdrop{ font-family:'Inter',system-ui,sans-serif; }
+  @media print{
+    @page{ size:Letter; margin:0; }
+    html,body{ background:#fff !important; }
+    [data-noprint]{ display:none !important; }
+    #doc-backdrop{ padding:0 !important; background:#fff !important; display:block !important; }
+    #letter-page{ box-shadow:none !important; border:none !important; width:100% !important; min-height:auto !important; margin:0 !important; }
+  }
+</style>
+</helmet>
+
+<div id="doc-backdrop" data-screen-label="Resume Template" style="min-height:100vh; background:#F2F1EC; display:flex; flex-direction:column; align-items:center; padding:32px 20px 64px; gap:18px;">
+
+  <!-- Print bar -->
+  <div data-noprint style="width:100%; max-width:816px; display:flex; align-items:center; justify-content:space-between; gap:14px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#55534E;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55534E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span>Letter · 8.5″ × 11″ · ATS-safe</span>
+    </div>
+    <button onClick="{{ print }}" style="display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border:1px solid #0F5132; border-radius:8px; background:#0F5132; color:#fff; font-family:'Inter',system-ui,sans-serif; font-size:13px; font-weight:600; cursor:pointer;" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V2h12v7"/><path d="M6 14h12v8H6z"/></svg>
+      Print / Save PDF
+    </button>
+  </div>
+
+  <!-- LETTER PAGE -->
+  <article id="letter-page" style="{{ pageStyle }}">
+
+    <!-- Header -->
+    <header style="{{ headerStyle }}">
+      <h1 style="{{ nameStyle }}">Maya Chen</h1>
+      <div style="{{ titleStyle }}">Senior Product Designer</div>
+      <div style="{{ contactStyle }}">
+        <span>San Francisco, CA</span><span style="color:#aaa;">·</span><span>(415) 555-0148</span><span style="color:#aaa;">·</span><span>maya.chen<span>&#64;</span>email.com</span>
+      </div>
+      <div style="{{ contactStyle }}">
+        <span>linkedin.com/in/mayachen</span><span style="color:#aaa;">·</span><span>mayachen.design</span><span style="color:#aaa;">·</span><span>github.com/mayachen</span>
+      </div>
+    </header>
+
+    <!-- Summary -->
+    <section style="margin-top:12px;">
+      <h2 style="{{ hStyle }}">Summary</h2>
+      <p style="margin:7px 0 0; font-size:13px; line-height:1.48;">Senior product designer with 8+ years shaping end-to-end experiences for B2B SaaS and consumer fintech. Leads design systems, mentors cross-functional teams, and turns ambiguous problems into measurable outcomes — pairing rigorous research with a high craft bar.</p>
+    </section>
+
+    <!-- Experience -->
+    <section style="margin-top:12px;">
+      <h2 style="{{ hStyle }}">Experience</h2>
+
+      <div style="margin-top:11px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+          <span style="font-weight:700; font-size:14px;">Senior Product Designer</span>
+          <span style="font-size:12px; color:#555; white-space:nowrap;">Jan 2022 – Present</span>
+        </div>
+        <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">Meridian · San Francisco, CA</div>
+        <ul style="margin:7px 0 0; padding-left:18px;">
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Led the end-to-end redesign of the core analytics workspace, lifting weekly active usage 34% and cutting time-to-insight from 6 minutes to under 90 seconds.</li>
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Built and governed Meridian’s first design system on Figma variables and design tokens (120+ components), adopted by 4 product teams and reducing design-to-dev handoff time 40%.</li>
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Ran a quarterly research program of 60+ customer interviews that reprioritized the 2024 roadmap around three high-value workflows.</li>
+        </ul>
+      </div>
+
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+          <span style="font-weight:700; font-size:14px;">Product Designer</span>
+          <span style="font-size:12px; color:#555; white-space:nowrap;">Jun 2019 – Dec 2021</span>
+        </div>
+        <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">Flux Software · Oakland, CA</div>
+        <ul style="margin:7px 0 0; padding-left:18px;">
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Designed a self-serve onboarding flow that raised activation from 41% to 68% and became the template for three later product lines.</li>
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Partnered with engineering to ship an accessible component library meeting WCAG 2.1 AA across the flagship app.</li>
+        </ul>
+      </div>
+
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+          <span style="font-weight:700; font-size:14px;">UX Designer</span>
+          <span style="font-size:12px; color:#555; white-space:nowrap;">Aug 2017 – May 2019</span>
+        </div>
+        <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">Brightseed · Remote</div>
+        <ul style="margin:7px 0 0; padding-left:18px;">
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Shipped the company’s first mobile experience, growing mobile revenue to 28% of total within two quarters.</li>
+          <li style="font-size:13px; line-height:1.4; margin-bottom:3px;">Established a usability-testing cadence that surfaced 40+ prioritized issues ahead of a major launch.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Education -->
+    <section style="margin-top:12px;">
+      <h2 style="{{ hStyle }}">Education</h2>
+      <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+        <span style="font-weight:700; font-size:14px;">California College of the Arts</span>
+        <span style="font-size:12px; color:#555; white-space:nowrap;">2017</span>
+      </div>
+      <div style="font-size:13px; font-style:italic; color:#444; margin-top:1px;">BFA, Interaction Design</div>
+    </section>
+
+    <!-- Skills -->
+    <section style="margin-top:12px;">
+      <h2 style="{{ hStyle }}">Skills</h2>
+      <p style="margin:7px 0 0; font-size:13px; line-height:1.55;">Product Strategy · Design Systems · User Research · Prototyping · Figma · Interaction Design · Accessibility (WCAG) · Design Ops · Usability Testing · Information Architecture</p>
+    </section>
+
+    <!-- Projects -->
+    <section style="margin-top:12px;">
+      <h2 style="{{ hStyle }}">Projects</h2>
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+          <span style="font-weight:700; font-size:14px;">Atlas Design System</span>
+          <span style="font-size:12px; color:#555; white-space:nowrap;">github.com/mayachen/atlas</span>
+        </div>
+        <div style="font-size:13px; line-height:1.5; margin-top:2px;">Open-source component library and documentation site used by 2,000+ designers. Built with Figma, Storybook, and React.</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px;">
+          <span style="font-weight:700; font-size:14px;">Field Notes</span>
+          <span style="font-size:12px; color:#555; white-space:nowrap;">fieldnotes.app</span>
+        </div>
+        <div style="font-size:13px; line-height:1.5; margin-top:2px;">A research repository for synthesizing customer interviews; finalist, Designer Fund Bridge. Built with Next.js and Tailwind CSS.</div>
+      </div>
+    </section>
+
+  </article>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 880, &quot;height&quot;: 1180}, &quot;font&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Serif&quot;, &quot;Sans&quot;], &quot;default&quot;: &quot;Serif&quot;, &quot;tsType&quot;: &quot;'Serif' | 'Sans'&quot;}}">
+class Component extends DCLogic {
+  print = () => window.print();
+
+  renderVals() {
+    const serif = (this.props.font ?? 'Serif') === 'Serif';
+    const align = serif ? 'center' : 'left';
+
+    const pageStyle = {
+      width: '816px', maxWidth: '100%', minHeight: '1056px',
+      background: '#fff', border: '1px solid #E7E5E0',
+      boxShadow: '0 4px 16px rgba(27,27,26,.10)',
+      padding: '40px 56px',
+      fontFamily: serif ? 'Georgia, "Times New Roman", serif' : 'Arial, Helvetica, sans-serif',
+      color: '#1a1a1a', lineHeight: 1.45
+    };
+    const headerStyle = { paddingBottom: '12px', borderBottom: serif ? '1px solid #ccc' : '2px solid #111' };
+    const nameStyle = {
+      margin: '0', textAlign: align,
+      fontSize: serif ? '32px' : '28px',
+      fontWeight: 700,
+      letterSpacing: serif ? '0.01em' : '-0.01em',
+      color: '#1a1a1a'
+    };
+    const titleStyle = { marginTop: '4px', textAlign: align, fontSize: '15px', letterSpacing: '0.02em', color: '#444' };
+    const contactStyle = {
+      marginTop: '7px', textAlign: align,
+      fontSize: '12px', color: '#555',
+      display: 'flex', flexWrap: 'wrap', gap: '7px',
+      justifyContent: serif ? 'center' : 'flex-start'
+    };
+    const hStyle = serif
+      ? { fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#1a1a1a', borderBottom: '1px solid #bbb', padding: '0 0 4px', margin: '0' }
+      : { fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: '#111', borderBottom: '2px solid #111', padding: '0 0 3px', margin: '0' };
+
+    return { pageStyle, headerStyle, nameStyle, titleStyle, contactStyle, hStyle, print: this.print };
+  }
+}
+</script>
+</body>
+</html>

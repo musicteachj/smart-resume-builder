@@ -1,0 +1,24 @@
+# Web framework
+Django>=5.2,<6.0
+djangorestframework>=3.16
+djangorestframework-simplejwt>=5.5
+drf-spectacular>=0.28
+django-cors-headers>=4.7
+
+# Database
+psycopg[binary]>=3.2
+dj-database-url>=2.3
+
+# Config / env
+python-dotenv>=1.0
+
+# Static serving (prod container)
+whitenoise>=6.8
+gunicorn>=23.0
+
+# AI (Phase 7)
+anthropic>=0.40
+
+# Testing
+pytest>=8.3
+pytest-django>=4.9

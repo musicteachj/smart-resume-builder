@@ -1,31 +1,77 @@
 # Smart Resume Builder
 
-Smart Resume Builder is an AI-assisted resume creation platform that pairs a modern React editor with a secure Node/Express backend. This repository is structured as a pnpm-powered monorepo so we can share types, schemas, and utilities across the stack while keeping deployments streamlined.
+An AI-powered resume builder. Create multiple resumes in a split-screen editor with live preview,
+sharpen bullets and tailor your resume to any job description with Claude, and export a clean,
+ATS-safe PDF.
+
+**Live:** https://resume.jameslittlefield.net *(after deploy)*
+
+## Features
+
+- **Split-screen editor** — structured form on the left, live document preview on the right, autosave
+- **AI assist (Claude)** — improve bullets, generate a professional summary, and tailor to a job
+  description with an ATS match score and missing-keyword suggestions
+- **PDF export** — one click, pixel-identical to the preview
+- **Multiple resumes & templates** — Classic (serif) ATS-safe template, per-user dashboard
+- **Accounts** — email/password (JWT); Google sign-in planned
+- **Cost protection** — per-user AI usage tracking with daily/monthly limits
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Hook Form + Zod |
+| Backend | Django 5, Django REST Framework, SimpleJWT, drf-spectacular (OpenAPI) |
+| Database | PostgreSQL 15 (Docker locally, AWS RDS in production) |
+| AI | Anthropic Claude (Python SDK) |
+| Infra | Docker, AWS ECS Fargate + ECR + ALB + Secrets Manager, GitHub Actions CI/CD |
 
 ## Repository layout
 
-- `apps/client` – React 18 + Vite frontend (authentication, dashboard, editor, preview)
-- `apps/server` – Node.js + Express backend (API, auth, PDF generation, AI integrations)
-- `packages/shared` – Shared TypeScript types, schemas, and UI primitives
-- `prisma` – Prisma schema, migrations, and database utilities
-- `.github/workflows` – CI/CD automation (configured in later phases)
+```
+client/   React + Vite + Tailwind frontend
+server/   Django + DRF API
+docs/     DESIGN.md (design system), DEPLOYMENT.md (AWS runbook)
+screens/  High-fidelity design mockups (visual reference)
+PLAN.md   Implementation plan
+CHANGELOG.md  Phase-by-phase change history
+```
 
-## Getting started
+## Local development
 
-1. Install [pnpm](https://pnpm.io/) if you have not already.
-2. Install dependencies: `pnpm install`
-3. Run workspace tasks via the root scripts (see below)
+Prereqs: Node 18+, Python 3.12, Docker.
 
-> The detailed build plan lives in `RESUME_BUILDER_IMPLEMENTATION_GUIDE 1.md`. Work through each phase sequentially and commit after completing a phase.
+```bash
+# 1. Install everything (root + client deps, server venv)
+npm run install:all
 
-## Workspace scripts
+# 2. Environment
+cp .env.example .env   # then fill in values as needed
 
-- `pnpm dev` – (placeholder) Runs client and server once those packages are implemented
-- `pnpm build` – Runs `build` in every workspace package
-- `pnpm lint` – Runs `lint` in every workspace package
-- `pnpm test` – Runs `test` in every workspace package
-- `pnpm format` – Runs `format` in every workspace package
-- `pnpm typecheck` – Runs `typecheck` in every workspace package
+# 3. Start Postgres
+docker compose up -d
 
-Each package will define its own scripts in later phases; these root commands orchestrate them via pnpm workspaces.
+# 4. Migrate
+server/.venv/bin/python server/manage.py migrate
 
+# 5. Run client (5173) + server (8000) together
+npm run dev
+```
+
+- App: http://localhost:5173
+- API: http://localhost:8000 (OpenAPI docs at `/api/schema/swagger-ui/` once Phase 2 lands)
+
+## Scripts (root)
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Client + server concurrently |
+| `npm run build` | Production client build |
+| `npm run test` | Client (Vitest) + server (pytest) tests |
+| `npm run lint` / `npm run typecheck` | Client lint / TS check |
+
+## Design
+
+The UI follows the **"Editorial Ink"** design system — Fraunces + Inter, a reserved forest-green
+accent on warm paper, hairline borders, engineered restraint. See [`docs/DESIGN.md`](docs/DESIGN.md)
+(source of truth) and `screens/` (visual reference mockups).

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#FBFAF8; }
+  input,button{ font-family:'Inter',system-ui,sans-serif; }
+  input[type=email],input[type=password],input[type=text]{
+    width:100%; padding:11px 13px; border:1px solid #E7E5E0; border-radius:8px;
+    background:#fff; color:#1B1B1A; font-size:14px; line-height:1.4; outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input::placeholder{ color:#9c9890; }
+  input:focus{ border-color:#0F5132; box-shadow:0 0 0 3px rgba(15,81,50,.12); }
+  input[data-invalid="true"]{ border-color:#B42318; }
+  input[data-invalid="true"]:focus{ border-color:#B42318; box-shadow:0 0 0 3px rgba(180,35,24,.12); }
+  *:focus-visible{ outline:2px solid #0F5132; outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</helmet>
+
+<div data-screen-label="Landing & Auth" style="min-height:100vh; background:#FBFAF8; color:#1B1B1A; font-family:'Inter',system-ui,sans-serif; font-size:14px; display:flex; flex-direction:column;">
+
+  <!-- Header -->
+  <header style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px clamp(20px,5vw,48px);">
+    <button onClick="{{ goLanding }}" style="display:inline-flex; align-items:center; gap:10px; border:none; background:transparent; cursor:pointer; padding:0;">
+      <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; background:#1B1B1A; color:#fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+      <span style="font-size:15px; font-weight:600; letter-spacing:-0.01em; color:#1B1B1A;">Resume Builder</span>
+    </button>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ goLogin }}" style="padding:8px 14px; border:1px solid transparent; border-radius:8px; background:transparent; color:#1B1B1A; font-size:14px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC;">Sign in</button>
+        <button onClick="{{ goRegister }}" style="padding:8px 15px; border:1px solid #E7E5E0; border-radius:8px; background:#fff; color:#1B1B1A; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap;" style-hover="border-color:#0F5132; color:#0F5132;">Get started</button>
+      </sc-if>
+      <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ goLanding }}" style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid transparent; border-radius:8px; background:transparent; color:#55534E; font-size:14px; font-weight:500; cursor:pointer;" style-hover="background:#F2F1EC; color:#1B1B1A;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Back</button>
+      </sc-if>
+    </div>
+  </header>
+
+  <!-- ============ LANDING ============ -->
+  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+    <main style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:clamp(40px,7vw,88px) 24px;">
+      <div style="max-width:600px; display:flex; flex-direction:column; align-items:center;">
+
+        <span style="display:inline-flex; align-items:center; gap:7px; padding:6px 13px; border:1px solid #E7E5E0; border-radius:999px; background:#fff; font-size:12px; font-weight:600; letter-spacing:0.06em; color:#55534E; white-space:nowrap;">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:999px; background:#0F5132;"></span>
+          AI-assisted, recruiter-ready
+        </span>
+
+        <h1 style="margin:24px 0 0; font-family:'Fraunces',Georgia,serif; font-size:clamp(40px,6.5vw,62px); font-weight:600; line-height:1.04; letter-spacing:-0.025em; color:#1B1B1A; text-wrap:balance;">The resume that writes itself well.</h1>
+
+        <p style="margin:20px 0 0; font-size:clamp(16px,2vw,18px); line-height:1.6; color:#55534E; max-width:480px; text-wrap:pretty;">Build a clean, ATS-safe resume in minutes. Sharpen every bullet, tailor to any role, and export a polished PDF — without fighting a template.</p>
+
+        <ul style="list-style:none; margin:32px 0 0; padding:0; display:flex; flex-direction:column; gap:14px; text-align:left; width:100%; max-width:430px;">
+          <sc-for list="{{ benefits }}" as="b" hint-placeholder-count="3">
+            <li style="display:flex; align-items:flex-start; gap:12px;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:999px; background:rgba(15,81,50,.10); color:#0F5132; flex-shrink:0; margin-top:1px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <span style="font-size:15px; line-height:1.5; color:#1B1B1A;"><b style="font-weight:600;">{{ b.title }}</b> {{ b.body }}</span>
+            </li>
+          </sc-for>
+        </ul>
+
+        <button onClick="{{ goRegister }}" style="margin-top:36px; display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border:1px solid #0F5132; border-radius:10px; background:#0F5132; color:#fff; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.06); transition:box-shadow .15s ease, transform .1s ease;" style-hover="box-shadow:0 10px 28px rgba(15,81,50,.24);" style-active="transform:scale(0.98);">
+          Build my resume
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+        <p style="margin:14px 0 0; font-size:13px; color:#9c9890;">Free to start · No credit card required</p>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- ============ AUTH ============ -->
+  <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+    <main style="flex:1; display:flex; align-items:flex-start; justify-content:center; padding:clamp(24px,5vw,56px) 24px 64px;">
+      <div style="width:100%; max-width:412px;">
+
+        <div style="text-align:center; margin-bottom:26px;">
+          <h1 style="margin:0; font-family:'Fraunces',Georgia,serif; font-size:30px; font-weight:600; letter-spacing:-0.015em; color:#1B1B1A;">{{ authTitle }}</h1>
+          <p style="margin:8px 0 0; font-size:14px; color:#55534E;">{{ authSubtitle }}</p>
+        </div>
+
+        <form onSubmit="{{ onSubmit }}" novalidate style="background:#fff; border:1px solid #E7E5E0; border-radius:14px; padding:26px; box-shadow:0 1px 2px rgba(27,27,26,.04), 0 4px 16px rgba(27,27,26,.05); display:flex; flex-direction:column; gap:17px;">
+
+          <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label for="auth-name" style="font-size:12px; font-weight:600; color:#1B1B1A;">Full name</label>
+              <input id="auth-name" type="text" autocomplete="name" placeholder="Maya Chen" value="{{ name }}" onChange="{{ onName }}" />
+            </div>
+          </sc-if>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label for="auth-email" style="font-size:12px; font-weight:600; color:#1B1B1A;">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@email.com" value="{{ email }}" onChange="{{ onEmail }}" data-invalid="{{ emailInvalid }}" aria-invalid="{{ emailInvalid }}" aria-describedby="auth-email-msg" />
+            <sc-if value="{{ emailError }}" hint-placeholder-val="{{ false }}">
+              <span id="auth-email-msg" style="display:flex; align-items:center; gap:5px; font-size:12px; color:#B42318;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>{{ emailError }}</span>
+            </sc-if>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
+              <label for="auth-password" style="font-size:12px; font-weight:600; color:#1B1B1A;">Password</label>
+              <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+                <button type="button" onClick="{{ noop }}" style="border:none; background:transparent; color:#0F5132; font-size:12px; font-weight:600; cursor:pointer; padding:0;" style-hover="text-decoration:underline;">Forgot?</button>
+              </sc-if>
+            </div>
+            <div style="position:relative;">
+              <input id="auth-password" type="{{ pwType }}" autocomplete="{{ pwAutocomplete }}" placeholder="{{ pwPlaceholder }}" value="{{ password }}" onChange="{{ onPassword }}" data-invalid="{{ pwInvalid }}" aria-invalid="{{ pwInvalid }}" aria-describedby="auth-pw-msg" style="padding-right:42px;" />
+              <button type="button" onClick="{{ togglePw }}" aria-label="{{ pwToggleLabel }}" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; border-radius:6px; background:transparent; color:#55534E; cursor:pointer;" style-hover="background:#F2F1EC;">
+                <sc-if value="{{ pwVisible }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg></sc-if>
+                <sc-if value="{{ pwHidden }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></sc-if>
+              </button>
+            </div>
+            <sc-if value="{{ pwError }}" hint-placeholder-val="{{ false }}">
+              <span id="auth-pw-msg" style="display:flex; align-items:center; gap:5px; font-size:12px; color:#B42318;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>{{ pwError }}</span>
+            </sc-if>
+            <sc-if value="{{ pwHelper }}" hint-placeholder-val="{{ false }}">
+              <span id="auth-pw-msg" style="font-size:12px; color:#55534E;">{{ pwHelper }}</span>
+            </sc-if>
+          </div>
+
+          <button type="submit" disabled="{{ submitting }}" style="margin-top:2px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 18px; border:1px solid #0F5132; border-radius:9px; background:#0F5132; color:#fff; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(27,27,26,.06); transition:box-shadow .15s ease, transform .1s ease; opacity:{{ submitOpacity }};" style-hover="box-shadow:0 8px 24px rgba(15,81,50,.22);" style-active="transform:scale(0.99);">
+            <sc-if value="{{ submitting }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite;"></span></sc-if>
+            {{ submitLabel }}
+          </button>
+        </form>
+
+        <p style="text-align:center; margin:20px 0 0; font-size:14px; color:#55534E;">
+          {{ switchPrompt }}
+          <button onClick="{{ toggleMode }}" style="border:none; background:transparent; color:#0F5132; font-size:14px; font-weight:600; cursor:pointer; padding:0;" style-hover="text-decoration:underline;">{{ switchAction }}</button>
+        </p>
+
+        <p style="text-align:center; margin:18px 0 0; font-size:12px; line-height:1.5; color:#9c9890;">By continuing you agree to our Terms and Privacy Policy.</p>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- Footer -->
+  <footer style="border-top:1px solid #E7E5E0; padding:20px clamp(20px,5vw,48px); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <span style="font-size:13px; color:#9c9890;">© 2026 Resume Builder</span>
+    <nav style="display:flex; align-items:center; gap:20px;">
+      <button onClick="{{ noop }}" style="border:none; background:transparent; font-size:13px; color:#55534E; cursor:pointer; padding:0;" style-hover="color:#1B1B1A;">Privacy</button>
+      <button onClick="{{ noop }}" style="border:none; background:transparent; font-size:13px; color:#55534E; cursor:pointer; padding:0;" style-hover="color:#1B1B1A;">Terms</button>
+      <button onClick="{{ noop }}" style="border:none; background:transparent; font-size:13px; color:#55534E; cursor:pointer; padding:0;" style-hover="color:#1B1B1A;">Contact</button>
+    </nav>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    view: 'landing',     // 'landing' | 'auth'
+    mode: 'register',    // 'login' | 'register'
+    name: '', email: '', password: '',
+    pwVisible: false,
+    touched: false,      // submit attempted
+    submitting: false
+  };
+
+  noop = (e) => { if (e) e.preventDefault(); };
+  goLanding = () => this.setState({ view: 'landing', touched: false });
+  goLogin = () => this.setState({ view: 'auth', mode: 'login', touched: false });
+  goRegister = () => this.setState({ view: 'auth', mode: 'register', touched: false });
+  toggleMode = () => this.setState(s => ({ mode: s.mode === 'login' ? 'register' : 'login', touched: false }));
+
+  onName = (e) => this.setState({ name: e.target.value });
+  onEmail = (e) => this.setState({ email: e.target.value });
+  onPassword = (e) => this.setState({ password: e.target.value });
+  togglePw = () => this.setState(s => ({ pwVisible: !s.pwVisible }));
+
+  emailErr() {
+    const v = this.state.email.trim();
+    if (!v) return 'Enter your email address.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address.';
+    return '';
+  }
+  pwErr() {
+    const v = this.state.password;
+    if (!v) return 'Enter your password.';
+    if (this.state.mode === 'register' && v.length < 8) return 'Use at least 8 characters.';
+    return '';
+  }
+
+  onSubmit = (e) => {
+    e.preventDefault();
+    this.setState({ touched: true });
+    if (this.emailErr() || this.pwErr()) return;
+    this.setState({ submitting: true });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => { window.location.href = 'Dashboard.dc.html'; }, 900);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const isLogin = s.mode === 'login';
+    const isRegister = s.mode === 'register';
+    const eErr = s.touched ? this.emailErr() : '';
+    const pErr = s.touched ? this.pwErr() : '';
+
+    return {
+      isLanding: s.view === 'landing',
+      isAuth: s.view === 'auth',
+      isLogin, isRegister,
+      benefits: [
+        { title: 'AI that sharpens, not pads.', body: 'Rewrite any bullet for impact and metrics in one click.' },
+        { title: 'Tailored to the job.', body: 'Match your resume to a description and see your ATS score.' },
+        { title: 'Always export-ready.', body: 'Clean, parser-safe PDFs that look right every time.' }
+      ],
+      name: s.name, email: s.email, password: s.password,
+
+      authTitle: isLogin ? 'Welcome back' : 'Create your account',
+      authSubtitle: isLogin ? 'Sign in to keep building your resume.' : 'Start building a recruiter-ready resume — free.',
+
+      emailInvalid: !!eErr, emailError: eErr,
+      pwInvalid: !!pErr, pwError: pErr,
+      pwHelper: (!pErr && isRegister) ? 'At least 8 characters.' : '',
+
+      pwVisible: s.pwVisible, pwHidden: !s.pwVisible,
+      pwType: s.pwVisible ? 'text' : 'password',
+      pwToggleLabel: s.pwVisible ? 'Hide password' : 'Show password',
+      pwPlaceholder: isLogin ? 'Your password' : 'Create a password',
+      pwAutocomplete: isLogin ? 'current-password' : 'new-password',
+
+      submitting: s.submitting,
+      submitOpacity: s.submitting ? '.7' : '1',
+      submitLabel: s.submitting ? (isLogin ? 'Signing in…' : 'Creating account…') : (isLogin ? 'Sign in' : 'Create account'),
+
+      switchPrompt: isLogin ? 'New here?' : 'Already have an account?',
+      switchAction: isLogin ? 'Create an account' : 'Sign in',
+
+      goLanding: this.goLanding, goLogin: this.goLogin, goRegister: this.goRegister, toggleMode: this.toggleMode,
+      onName: this.onName, onEmail: this.onEmail, onPassword: this.onPassword,
+      togglePw: this.togglePw, onSubmit: this.onSubmit, noop: this.noop
+    };
+  }
+}
+</script>
+</body>
+</html>
