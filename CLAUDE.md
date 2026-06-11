@@ -94,8 +94,11 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 ## Phase status
 
 - ✅ Phase 1 — scaffold (root files, client toolchain + tokens, Django skeleton, /health, docker Postgres)
-- ⬜ Phase 2 — backend core: custom User (email login), SimpleJWT endpoints, OpenAPI, CORS.
-  ⚠️ Default Django auth migrations were applied to the local DB in Phase 1; when adding the custom
-  User model, reset the local DB first: `docker compose down -v && docker compose up -d && migrate`.
-- ⬜ Phase 3 resumes API · 4 client foundation · 5 editor · 6 PDF · 7 AI · 8 tests · 9 container ·
-  10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 2 — backend core: custom User (`accounts.User`, email login), SimpleJWT auth API under
+  `/api/auth/` (register/login/refresh/me), OpenAPI + Swagger UI, pytest auth suite. DB was reset for
+  the custom User. WhiteNoise is now production-only.
+- ⬜ Phase 3 — resumes API: Resume model (JSONB content), serializers (nested `content` type for Orval),
+  CRUD + duplicate viewset under `/api/`. ⚠️ Add `apps.resumes` to INSTALLED_APPS; give `content` an
+  explicit nested serializer (not a raw JSONField) so the generated TS type is rich.
+- ⬜ Phase 4 client foundation · 5 editor · 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy ·
+  11 Google OAuth · 12 stretch

@@ -2,7 +2,8 @@
 
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
 def health(_request):
@@ -13,5 +14,13 @@ def health(_request):
 urlpatterns = [
     path("health", health),
     path("admin/", admin.site.urls),
-    # API routes (auth, resumes, ai) land in Phase 2+ under /api/
+    # API
+    path("api/auth/", include("apps.accounts.urls")),
+    # OpenAPI schema + docs (Orval consumes /api/schema/)
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
 ]
