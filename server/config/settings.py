@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     "corsheaders",
     # Local apps (live under apps/)
     "apps.accounts",
-    # resumes, ai — added in later phases
+    "apps.resumes",
+    # ai — added in a later phase
 ]
 
 AUTH_USER_MODEL = "accounts.User"
