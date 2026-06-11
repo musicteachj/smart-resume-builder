@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Resume
-from .serializers import ResumeSerializer
+from .serializers import ResumeListSerializer, ResumeSerializer
 
 
 @extend_schema_view(
@@ -22,6 +22,12 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
     serializer_class = ResumeSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        # Dashboard list uses a trimmed serializer (no heavy content blob).
+        if self.action == "list":
+            return ResumeListSerializer
+        return ResumeSerializer
 
     def get_queryset(self):
         # drf-spectacular introspects with an unauthenticated "fake" view.

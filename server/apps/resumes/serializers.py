@@ -90,7 +90,7 @@ class ResumeContentSerializer(serializers.Serializer):
 
 
 class ResumeSerializer(serializers.ModelSerializer):
-    """Read + write representation of a resume."""
+    """Full read + write representation of a resume (retrieve/create/update)."""
 
     content = ResumeContentSerializer()
 
@@ -98,3 +98,20 @@ class ResumeSerializer(serializers.ModelSerializer):
         model = Resume
         fields = ["id", "title", "template", "content", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ResumeListSerializer(serializers.ModelSerializer):
+    """Lightweight representation for the dashboard list — omits the heavy
+    `content` blob, exposing only what resume cards render (incl. skills for
+    the chips)."""
+
+    skills = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Resume
+        fields = ["id", "title", "template", "skills", "created_at", "updated_at"]
+        read_only_fields = fields
+
+    def get_skills(self, obj) -> list[str]:
+        skills = (obj.content or {}).get("skills", [])
+        return skills if isinstance(skills, list) else []

@@ -23,6 +23,8 @@ Phase 3 — resumes API.
   `YYYY-MM` month validation for dates
 - `ResumeViewSet` under `/api/resumes/`: user-scoped CRUD + `duplicate` action, with strict ownership
   isolation (another user's resume returns 404)
+- Trimmed list serializer (`ResumeList`) for the dashboard — returns skills + metadata but omits the heavy
+  `content` blob (full `content` only on retrieve/create/update)
 - OpenAPI operationIds (`list_resumes`/`create_resume`/`get_resume`/`update_resume`/`patch_resume`/
   `delete_resume`/`duplicate_resume`)
 - pytest resume suite (10 tests: CRUD, owner assignment, duplicate, ownership isolation, content

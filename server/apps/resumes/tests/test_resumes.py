@@ -33,6 +33,9 @@ def test_create_and_list(auth_client, content):
     listing = auth_client.get(LIST).json()
     assert len(listing) == 1
     assert listing[0]["id"] == rid
+    # Dashboard list is trimmed: skills for the chips, but not the heavy content blob.
+    assert "content" not in listing[0]
+    assert listing[0]["skills"] == ["Figma", "Design Systems"]
 
 
 @pytest.mark.django_db
@@ -72,6 +75,9 @@ def test_duplicate(auth_client, user, content):
     assert res.json()["title"] == "Base (Copy)"
     assert res.json()["id"] != rid
     assert Resume.objects.filter(user=user).count() == 2
+    # The copy carries over the original's content verbatim.
+    original = auth_client.get(detail(rid)).json()
+    assert res.json()["content"] == original["content"]
 
 
 @pytest.mark.django_db
