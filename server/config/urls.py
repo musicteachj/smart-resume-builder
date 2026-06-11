@@ -16,6 +16,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API
     path("api/auth/", include("apps.accounts.urls")),
+    path("api/", include("apps.resumes.urls")),
     # OpenAPI schema + docs (Orval consumes /api/schema/)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

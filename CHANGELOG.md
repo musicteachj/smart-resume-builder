@@ -9,7 +9,31 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 3 — resumes API (model, serializers, CRUD viewset) next._
+_Phase 4 — client foundation (routing, auth flow, Orval-generated API client, dashboard) next._
+
+## [0.3.0] - 2026-06-11
+
+Phase 3 — resumes API.
+
+### Added
+- `Resume` model: UUID pk, `user` FK (cascade), `title`, `template` slug (default `classic`), JSONB
+  `content`, timestamps, `user` index; Django admin registration
+- Nested `content` serializers (PersonalInfo / WorkExperience / Education / Project / ResumeContent) —
+  validates the resume structure server-side and produces a rich generated TS type via Orval; includes
+  `YYYY-MM` month validation for dates
+- `ResumeViewSet` under `/api/resumes/`: user-scoped CRUD + `duplicate` action, with strict ownership
+  isolation (another user's resume returns 404)
+- Trimmed list serializer (`ResumeList`) for the dashboard — returns skills + metadata but omits the heavy
+  `content` blob (full `content` only on retrieve/create/update)
+- OpenAPI operationIds (`list_resumes`/`create_resume`/`get_resume`/`update_resume`/`patch_resume`/
+  `delete_resume`/`duplicate_resume`)
+- pytest resume suite (10 tests: CRUD, owner assignment, duplicate, ownership isolation, content
+  validation, oversized-content rejection)
+
+### Security
+- Resume queries are strictly scoped to the authenticated user (IDOR-safe: others' resumes → 404); `user`
+  is server-assigned, never client-settable; UUID primary keys are non-enumerable
+- Caps on `content` list sections (workExperience ≤20, education ≤10, projects ≤20) to bound payload size
 
 ## [0.2.0] - 2026-06-11
 
@@ -59,6 +83,7 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/musicteachj/smart-resume-builder/releases/tag/v0.1.0

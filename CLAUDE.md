@@ -97,8 +97,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 - ✅ Phase 2 — backend core: custom User (`accounts.User`, email login), SimpleJWT auth API under
   `/api/auth/` (register/login/refresh/me), OpenAPI + Swagger UI, pytest auth suite. DB was reset for
   the custom User. WhiteNoise is now production-only.
-- ⬜ Phase 3 — resumes API: Resume model (JSONB content), serializers (nested `content` type for Orval),
-  CRUD + duplicate viewset under `/api/`. ⚠️ Add `apps.resumes` to INSTALLED_APPS; give `content` an
-  explicit nested serializer (not a raw JSONField) so the generated TS type is rich.
-- ⬜ Phase 4 client foundation · 5 editor · 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy ·
-  11 Google OAuth · 12 stretch
+- ✅ Phase 3 — resumes API: `Resume` model (UUID pk, JSONB content), nested content serializers
+  (validates + rich Orval type), user-scoped `ResumeViewSet` (CRUD + duplicate, ownership isolation)
+  under `/api/resumes/`, pytest suite.
+- ⬜ Phase 4 — client foundation: React Router, auth flow (login/register, JWT storage + guards),
+  **run Orval** against `/api/schema/` → `client/src/api/generated/` (Zod off, axios mutator with JWT),
+  TanStack Query setup, dashboard (list/create/duplicate/delete). Build against `screens/3` + `screens/5`.
+- ⬜ Phase 5 editor · 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
