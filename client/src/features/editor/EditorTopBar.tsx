@@ -9,7 +9,13 @@ import { TemplateSwitcher } from "./components/TemplateSwitcher";
 import type { EditorValues } from "./editorSchema";
 import type { SaveStatus } from "./useAutosave";
 
-export function EditorTopBar({ status }: { status: SaveStatus }) {
+export function EditorTopBar({
+  status,
+  onExport,
+}: {
+  status: SaveStatus;
+  onExport: () => void;
+}) {
   const navigate = useNavigate();
   const { register, watch, setValue } = useFormContext<EditorValues>();
   const template = watch("template");
@@ -41,7 +47,7 @@ export function EditorTopBar({ status }: { status: SaveStatus }) {
         <Button variant="secondary" size="sm" disabled title="AI assist — coming in Phase 7" className="gap-1.5">
           <Sparkles className="h-4 w-4" /> AI
         </Button>
-        <Button size="sm" disabled title="PDF export — coming in Phase 6" className="gap-1.5">
+        <Button size="sm" onClick={onExport} className="gap-1.5">
           <Download className="h-4 w-4" /> Export PDF
         </Button>
       </div>
