@@ -10,9 +10,9 @@ export interface Project {
   /** @maxLength 64 */
   id: string;
   /** @maxLength 120 */
-  name: string;
+  name?: string;
   /** @maxLength 500 */
-  description: string;
+  description?: string;
   /**
      * @maxItems 20
      * @items.maxLength 50

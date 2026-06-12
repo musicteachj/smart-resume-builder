@@ -101,6 +101,9 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   `dangerouslySetInnerHTML`, and add a CSP at deploy.
 - Login/register have no rate-limiting yet — add a DRF throttle (anti-brute-force) in a later phase.
 - Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
+- Resume URL fields (linkedin/github/website) currently render as **plain text** in `ResumeDocument` (safe).
+  **If they ever become clickable `<a href>`** (document or PDF), validate the scheme (allow only http/https;
+  reject `javascript:`/`data:`) to prevent stored XSS via a malicious URL.
 
 ## Phase status
 
@@ -115,10 +118,12 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   auth flow (Zustand store + localStorage, axios JWT/refresh interceptors), router + guards, Editorial Ink
   UI primitives (incl. Radix DropdownMenu/Dialog), landing + login + register + dashboard. Backend auth
   endpoints now have typed request/response schemas; `ai_usage` typed.
-- ⬜ Phase 5 — split-screen editor: form (RHF + Zod) ↔ live preview at `/resumes/:id` (replaces the
-  placeholder), autosave (debounced `usePatchResume`), the shared ATS-safe resume template component
-  (Georgia/Arial, used by preview + PDF). Build against `screens/1` + `screens/4`.
-- ⬜ Phase 6 PDF · 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 5 — split-screen editor at `/resumes/:id`: RHF + Zod form ↔ live `ResumeDocument` preview,
+  debounced autosave (`useAutosave`), shared ATS-safe template (Classic Georgia / Modern Arial), top bar
+  with save indicator + template switcher. Content validation is draft-friendly. Added `personalInfo.headline`.
+- ⬜ Phase 6 — PDF export: client-side `react-to-print` on the `ResumeDocument` (preview === PDF); wire the
+  Export PDF button; print-optimized CSS (Letter page). The template component already exists — reuse it.
+- ⬜ Phase 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
 `client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk

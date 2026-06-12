@@ -10,17 +10,17 @@ export interface WorkExperience {
   /** @maxLength 64 */
   id: string;
   /** @maxLength 120 */
-  company: string;
+  company?: string;
   /** @maxLength 120 */
-  position: string;
+  position?: string;
   /** @maxLength 120 */
   location?: string;
-  startDate: string;
+  startDate?: string;
   /** @nullable */
   endDate?: string | null;
   /**
      * @maxItems 12
      * @items.maxLength 500
      */
-  bullets: string[];
+  bullets?: string[];
 }

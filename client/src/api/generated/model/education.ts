@@ -10,12 +10,12 @@ export interface Education {
   /** @maxLength 64 */
   id: string;
   /** @maxLength 120 */
-  school: string;
+  school?: string;
   /** @maxLength 120 */
-  degree: string;
+  degree?: string;
   /** @maxLength 120 */
-  field: string;
-  graduationDate: string;
+  field?: string;
+  graduationDate?: string;
   /** @maxLength 10 */
   gpa?: string;
 }

@@ -8,8 +8,10 @@
 
 export interface PersonalInfo {
   /** @maxLength 100 */
-  name: string;
-  email: string;
+  name?: string;
+  /** @maxLength 120 */
+  headline?: string;
+  email?: string;
   /** @maxLength 40 */
   phone?: string;
   /** @maxLength 100 */

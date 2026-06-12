@@ -114,6 +114,23 @@ def test_rejects_missing_required_content(auth_client):
 
 
 @pytest.mark.django_db
+def test_accepts_partial_draft_content(auth_client):
+    """Autosave-friendly: blank fields and half-empty items save fine."""
+    draft = {
+        "personalInfo": {"name": "", "email": ""},
+        "workExperience": [
+            {"id": "w1", "company": "", "position": "", "startDate": "", "endDate": "", "bullets": []}
+        ],
+        "education": [],
+        "skills": [],
+    }
+    res = auth_client.post(
+        LIST, {"title": "Draft", "template": "classic", "content": draft}, format="json"
+    )
+    assert res.status_code == 201
+
+
+@pytest.mark.django_db
 def test_rejects_oversized_content_lists(auth_client):
     """Section list caps prevent unbounded content payloads."""
     huge = make_content()
