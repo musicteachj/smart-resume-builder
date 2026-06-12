@@ -1,7 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft } from "lucide-react";
+import { useRef } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Link, useParams } from "react-router-dom";
+import { useReactToPrint } from "react-to-print";
 
 import type { Resume } from "@/api/generated/model";
 import { useGetResume } from "@/api/generated/resumes/resumes";
@@ -55,11 +57,19 @@ function EditorForm({ resume }: { resume: Resume }) {
   const status = useAutosave(resume.id, methods);
   const content = useWatch({ control: methods.control, name: "content" });
   const template = useWatch({ control: methods.control, name: "template" });
+  const title = useWatch({ control: methods.control, name: "title" });
+
+  const printRef = useRef<HTMLDivElement>(null);
+  const handleExport = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: title.replace(/[^\w\- ]+/g, "").trim() || "resume",
+    pageStyle: "@page { size: letter; margin: 0.5in; }",
+  });
 
   return (
     <FormProvider {...methods}>
       <div className="flex h-dvh flex-col bg-background">
-        <EditorTopBar status={status} />
+        <EditorTopBar status={status} onExport={() => handleExport()} />
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
           {/* Form */}
           <div className="min-h-0 space-y-3 overflow-y-auto border-border p-5 lg:border-r">
@@ -86,7 +96,9 @@ function EditorForm({ resume }: { resume: Resume }) {
           {/* Live preview */}
           <div className="min-h-0 overflow-y-auto bg-surface-variant p-6">
             <div className="mx-auto max-w-[816px] shadow-medium">
-              <ResumeDocument content={content} template={template} />
+              <div ref={printRef}>
+                <ResumeDocument content={content} template={template} />
+              </div>
             </div>
           </div>
         </div>

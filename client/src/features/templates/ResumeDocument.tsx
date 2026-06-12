@@ -47,11 +47,10 @@ export function ResumeDocument({ content, template = "classic", className }: Res
   return (
     <article
       className={cn(
-        "bg-white text-[#1a1a1a]",
+        "bg-white p-[clamp(28px,4vw,52px)] text-[#1a1a1a] print:p-0",
         isModern ? "font-document-sans" : "font-document",
         className,
       )}
-      style={{ padding: "clamp(28px,4vw,52px)" }}
     >
       {/* Header */}
       <header className={cn("border-b border-[#d9d6d0] pb-4", isModern ? "text-left" : "text-center")}>

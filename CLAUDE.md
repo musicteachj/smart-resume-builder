@@ -121,9 +121,12 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 - ✅ Phase 5 — split-screen editor at `/resumes/:id`: RHF + Zod form ↔ live `ResumeDocument` preview,
   debounced autosave (`useAutosave`), shared ATS-safe template (Classic Georgia / Modern Arial), top bar
   with save indicator + template switcher. Content validation is draft-friendly. Added `personalInfo.headline`.
-- ⬜ Phase 6 — PDF export: client-side `react-to-print` on the `ResumeDocument` (preview === PDF); wire the
-  Export PDF button; print-optimized CSS (Letter page). The template component already exists — reuse it.
-- ⬜ Phase 7 AI · 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 6 — PDF export: `react-to-print` v3 on the `ResumeDocument` (preview === PDF), Letter @page +
+  0.5in margins, Export PDF button wired, `print:p-0` on the document.
+- ⬜ Phase 7 — AI features (`apps/ai`): Claude service + rate-limit gate + `AIUsageLog`; build easy→hard
+  (improve-bullet → generate-summary → tailor-to-JD with ATS score + keywords). Consult the `claude-api`
+  skill first; use tool-use/structured output for the JD JSON. Wire the editor AI menu + usage pill.
+- ⬜ Phase 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
 `client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk

@@ -9,7 +9,20 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 6 — client-side PDF export (`react-to-print`) next._
+_Phase 7 — AI features (Claude): improve-bullet → generate-summary → tailor-to-JD, with the usage limit gate._
+
+## [0.6.0] - 2026-06-12
+
+Phase 6 — PDF export.
+
+### Added
+- **Client-side PDF export** (`react-to-print`): the editor's Export PDF button prints the live
+  `ResumeDocument` (so the PDF is exactly the preview) to the browser's print / Save-as-PDF dialog —
+  Letter page, 0.5in margins, filename derived from the resume title
+
+### Changed
+- `ResumeDocument` padding moved to a utility class with `print:p-0` so the printed page relies on the
+  `@page` margins rather than the on-screen padding
 
 ## [0.5.0] - 2026-06-12
 
@@ -127,7 +140,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.2.0...v0.3.0
