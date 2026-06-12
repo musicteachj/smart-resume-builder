@@ -9,7 +9,29 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 5 — split-screen resume editor (form + live preview, autosave) next._
+_Phase 6 — client-side PDF export (`react-to-print`) next._
+
+## [0.5.0] - 2026-06-12
+
+Phase 5 — split-screen resume editor.
+
+### Added
+- **Editor** at `/resumes/:id` (full-screen, own top bar): structured form (React Hook Form + Zod) on the
+  left ↔ **live document preview** on the right, with **debounced autosave** (validates, then PATCHes).
+  Autosave keeps the query cache coherent (writes saved data back to the `getResume` cache + invalidates the
+  dashboard list) and **flushes on unmount**, so navigating away and back always shows your latest edits
+- **Shared `ResumeDocument` template** (Classic = Georgia / Modern = Arial, ATS-safe, Letter width) — the
+  single source for both the live preview and the Phase 6 PDF
+- Collapsible form sections: Personal Info (incl. professional title), Summary, Work Experience (with a
+  bullet editor), Education, Skills + Projects (tag inputs); reusable TagInput / BulletEditor / Textarea
+- Editor top bar: inline-editable title, **save indicator** (Saved / Saving… / Unsaved / Couldn't save),
+  template switcher, and AI + Export PDF placeholders (Phases 6–7)
+- `personalInfo.headline` field added to the resume content
+
+### Changed
+- Resume content validation is now **draft-friendly**: blank fields are allowed while editing so autosave
+  never fails on partial input; formats (email, URL, `YYYY-MM`) are still enforced when a value is present,
+  and the structure + list caps still hold
 
 ## [0.4.0] - 2026-06-11
 
@@ -105,7 +127,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.1.0...v0.2.0

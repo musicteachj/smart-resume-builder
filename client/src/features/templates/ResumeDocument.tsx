@@ -1,0 +1,157 @@
+import type { ResumeContent } from "@/api/generated/model";
+import { cn } from "@/lib/utils";
+
+/**
+ * The resume document itself — an ATS-safe rendering of the content. This is the
+ * SINGLE source for both the editor's live preview and the Phase 6 PDF export
+ * ("preview === PDF"). It uses document fonts (Georgia / Arial), never the app's
+ * Fraunces/Inter, and no app accent color.
+ */
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatMonth(value?: string | null): string {
+  if (!value) return "";
+  const m = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!m) return value;
+  const month = MONTHS[Number(m[2]) - 1];
+  return month ? `${month} ${m[1]}` : m[1];
+}
+
+function dateRange(start?: string, end?: string | null): string {
+  const s = formatMonth(start);
+  if (!s) return "";
+  return `${s} – ${end ? formatMonth(end) : "Present"}`;
+}
+
+function joinTruthy(parts: (string | undefined)[], sep: string): string {
+  return parts.filter((p) => p && p.trim()).join(sep);
+}
+
+interface ResumeDocumentProps {
+  content: ResumeContent;
+  template?: string;
+  className?: string;
+}
+
+export function ResumeDocument({ content, template = "classic", className }: ResumeDocumentProps) {
+  const isModern = template === "modern";
+  const { personalInfo: pi, summary, workExperience, education, skills, projects } = content;
+
+  const contactLine = joinTruthy([pi.email, pi.phone, pi.location], "  ·  ");
+  const linksLine = joinTruthy([pi.linkedin, pi.github, pi.website], "  ·  ");
+
+  return (
+    <article
+      className={cn(
+        "bg-white text-[#1a1a1a]",
+        isModern ? "font-document-sans" : "font-document",
+        className,
+      )}
+      style={{ padding: "clamp(28px,4vw,52px)" }}
+    >
+      {/* Header */}
+      <header className={cn("border-b border-[#d9d6d0] pb-4", isModern ? "text-left" : "text-center")}>
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight">
+          {pi.name || "Your Name"}
+        </h1>
+        {pi.headline && <p className="mt-0.5 text-[13px] text-[#555]">{pi.headline}</p>}
+        {contactLine && <p className="mt-2 text-[11px] text-[#444]">{contactLine}</p>}
+        {linksLine && <p className="mt-1 text-[11px] text-[#444]">{linksLine}</p>}
+      </header>
+
+      {summary && (
+        <Section title="Summary">
+          <p className="text-[12.5px] leading-relaxed text-[#222]">{summary}</p>
+        </Section>
+      )}
+
+      {workExperience.length > 0 && (
+        <Section title="Experience">
+          <div className="space-y-3">
+            {workExperience.map((w) => (
+              <div key={w.id}>
+                <div className="flex items-baseline justify-between gap-4">
+                  <h3 className="text-[13px] font-bold">{w.position || "Position"}</h3>
+                  <span className="shrink-0 text-[11px] text-[#555]">
+                    {dateRange(w.startDate, w.endDate)}
+                  </span>
+                </div>
+                {joinTruthy([w.company, w.location], " · ") && (
+                  <p className="text-[12px] italic text-[#444]">
+                    {joinTruthy([w.company, w.location], " · ")}
+                  </p>
+                )}
+                {w.bullets && w.bullets.filter(Boolean).length > 0 && (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] leading-snug text-[#222]">
+                    {w.bullets.filter(Boolean).map((b, i) => (
+                      <li key={i}>{b}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {education.length > 0 && (
+        <Section title="Education">
+          <div className="space-y-2">
+            {education.map((e) => (
+              <div key={e.id}>
+                <div className="flex items-baseline justify-between gap-4">
+                  <h3 className="text-[13px] font-bold">{e.school || "School"}</h3>
+                  <span className="shrink-0 text-[11px] text-[#555]">
+                    {formatMonth(e.graduationDate)}
+                  </span>
+                </div>
+                <p className="text-[12px] italic text-[#444]">
+                  {joinTruthy([joinTruthy([e.degree, e.field], ", "), e.gpa && `GPA ${e.gpa}`], " · ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {skills.length > 0 && (
+        <Section title="Skills">
+          <p className="text-[12px] leading-relaxed text-[#222]">{skills.join("  ·  ")}</p>
+        </Section>
+      )}
+
+      {projects && projects.length > 0 && (
+        <Section title="Projects">
+          <div className="space-y-2">
+            {projects.map((p) => (
+              <div key={p.id}>
+                <h3 className="text-[13px] font-bold">{p.name || "Project"}</h3>
+                {p.description && (
+                  <p className="text-[12px] leading-snug text-[#222]">{p.description}</p>
+                )}
+                {p.technologies && p.technologies.length > 0 && (
+                  <p className="text-[11px] text-[#555]">{p.technologies.join(" · ")}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </article>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-5">
+      <h2 className="mb-2 border-b border-[#d9d6d0] pb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#333]">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}

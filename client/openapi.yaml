@@ -358,11 +358,7 @@ components:
           type: string
           maxLength: 10
       required:
-      - degree
-      - field
-      - graduationDate
       - id
-      - school
     EmailTokenObtainPair:
       type: object
       description: |-
@@ -409,6 +405,9 @@ components:
         name:
           type: string
           maxLength: 100
+        headline:
+          type: string
+          maxLength: 120
         email:
           type: string
           format: email
@@ -427,9 +426,6 @@ components:
         website:
           type: string
           format: uri
-      required:
-      - email
-      - name
     Project:
       type: object
       properties:
@@ -452,9 +448,7 @@ components:
           type: string
           format: uri
       required:
-      - description
       - id
-      - name
     Register:
       type: object
       properties:
@@ -650,11 +644,7 @@ components:
             maxLength: 500
           maxItems: 12
       required:
-      - bullets
-      - company
       - id
-      - position
-      - startDate
   securitySchemes:
     jwtAuth:
       type: http

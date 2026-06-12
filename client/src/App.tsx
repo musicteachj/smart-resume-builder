@@ -4,7 +4,7 @@ import { AuthedLayout } from "@/components/layout/AuthedLayout";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
-import { EditorPlaceholderPage } from "@/features/editor/EditorPlaceholderPage";
+import { EditorPage } from "@/features/editor/EditorPage";
 import { LandingPage } from "@/features/marketing/LandingPage";
 import { ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
 
@@ -21,8 +21,9 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AuthedLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/resumes/:id" element={<EditorPlaceholderPage />} />
         </Route>
+        {/* Editor is full-screen with its own top bar (no app header). */}
+        <Route path="/resumes/:id" element={<EditorPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
