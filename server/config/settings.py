@@ -153,7 +153,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files — WhiteNoise serves the built SPA in production
+# Static files — WhiteNoise serves Django/admin/DRF static (collectstatic → STATIC_ROOT).
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -162,6 +162,15 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Single-container SPA serving (production image only): the built React app is copied
+# to server/spa. WhiteNoise serves its hashed assets at the root; a catch-all view in
+# config.urls returns index.html for client-side routes. Absent in dev — Vite serves
+# the SPA and proxies /api to Django.
+SPA_ROOT = BASE_DIR / "spa"
+if SPA_ROOT.exists():
+    WHITENOISE_ROOT = str(SPA_ROOT)
+    WHITENOISE_INDEX_FILE = False  # Django's catch-all owns HTML routing
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
