@@ -1,0 +1,26 @@
+.git
+.github
+.claude
+
+# Secrets — never bake env files into the image
+.env
+**/.env
+
+# Dependencies / virtualenvs
+**/node_modules
+**/.venv
+
+# Build / generated artifacts (rebuilt inside the image)
+client/dist
+server/spa
+server/staticfiles
+
+# Python / test caches
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+
+# Not needed at runtime
+screens
+docs
+**/*.md

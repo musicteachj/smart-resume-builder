@@ -16,5 +16,25 @@ services:
       timeout: 5s
       retries: 5
 
+  # Production-style single container (API + built SPA). Opt-in:
+  #   docker compose --profile prod up --build app
+  # Default `docker compose up -d` runs only the db (dev uses `npm run dev`).
+  app:
+    profiles: ["prod"]
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: local-prod-test-key-not-for-real-use-0123456789
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: postgres://resume_user:resume_pass@db:5432/resume_builder
+      CLIENT_URL: http://localhost:8000
+      # ANTHROPIC_API_KEY: sk-ant-...   # optional — set to exercise AI in the container
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:

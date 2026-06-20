@@ -106,6 +106,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   `.env` in the image could otherwise shadow the Secrets Manager value — keep it out of the build context.)
 - Minor: AI `502` responses surface the upstream error string to the client (handy in dev). It can't leak the
   key, but consider mapping to a generic message in production.
+- **Phase 10 deploy gotchas:** (1) with `DEBUG=False`, the ALB health check hits the container with the task IP
+  as `Host`, which Django rejects (400) unless allowed — set `ALLOWED_HOSTS` to include it (or exempt `/health`).
+  (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for >1 task run
+  migrations as a separate one-off/release task to avoid a concurrent-migration race.
 - Resume URL fields (linkedin/github/website) currently render as **plain text** in `ResumeDocument` (safe).
   **If they ever become clickable `<a href>`** (document or PDF), validate the scheme (allow only http/https;
   reject `javascript:`/`data:`) to prevent stored XSS via a malicious URL.
@@ -135,7 +139,14 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 - ✅ Phase 8 — client test suite: Vitest + React Testing Library (jsdom), unit tests (format, editorSchema,
   ScoreMeter, aiError) + component tests (guards, LoginPage, ImproveBulletButton, mocked generated hooks).
   `npm run test` runs client (21) + server (28). Test files live alongside source as `*.test.ts(x)`.
-- ⬜ Phase 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 9 — containerize: multi-stage `Dockerfile` (Node builds SPA → Python/gunicorn serves API + SPA),
+  Django serves the built SPA (WhiteNoise assets + catch-all `index.html` in `config.urls`), `docker-entrypoint.sh`
+  migrates then runs gunicorn, `.dockerignore` (excludes `.env`), `docker compose --profile prod up app` to run
+  locally. ~384MB image, verified end-to-end against local Postgres.
+- ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
+  + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
+  (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.
+- ⬜ Phase 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
 `client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk
