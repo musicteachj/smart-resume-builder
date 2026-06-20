@@ -132,7 +132,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   tailor-jd), Haiku for simple + Sonnet for tailor (settings `AI_MODEL_SIMPLE`/`AI_MODEL_TAILOR`), tailor uses
   tool-use structured JSON, per-user usage gate + `AIUsageLog`, editor AI menu + per-bullet improve + tailor
   modal, pytest (Claude mocked). Live calls need `ANTHROPIC_API_KEY` in `.env` (absent → graceful 502).
-- ⬜ Phase 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
+- ✅ Phase 8 — client test suite: Vitest + React Testing Library (jsdom), unit tests (format, editorSchema,
+  ScoreMeter, aiError) + component tests (guards, LoginPage, ImproveBulletButton, mocked generated hooks).
+  `npm run test` runs client (21) + server (28). Test files live alongside source as `*.test.ts(x)`.
+- ⬜ Phase 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
 `client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk
