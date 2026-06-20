@@ -4,6 +4,84 @@ info:
   version: 0.1.0
   description: AI-powered resume builder — resumes, auth, and Claude-assisted content.
 paths:
+  /api/ai/generate-summary:
+    post:
+      operationId: generate_summary
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateSummaryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GenerateSummaryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GenerateSummaryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateSummaryResponse'
+          description: ''
+  /api/ai/improve-bullet:
+    post:
+      operationId: improve_bullet
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImproveBulletRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImproveBulletRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImproveBulletRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImproveBulletResponse'
+          description: ''
+  /api/ai/tailor-jd:
+    post:
+      operationId: tailor_jd
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TailorJDRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TailorJDRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TailorJDRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TailorJDResponse'
+          description: ''
   /api/auth/login:
     post:
       operationId: login
@@ -374,6 +452,44 @@ components:
       required:
       - email
       - password
+    GenerateSummaryRequest:
+      type: object
+      properties:
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+      required:
+      - content
+    GenerateSummaryResponse:
+      type: object
+      properties:
+        summary:
+          type: string
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - summary
+    ImproveBulletRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+        role:
+          type: string
+          maxLength: 120
+      required:
+      - text
+    ImproveBulletResponse:
+      type: object
+      properties:
+        suggestion:
+          type: string
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - suggestion
     PatchedResume:
       type: object
       description: Full read + write representation of a resume (retrieve/create/update).
@@ -565,6 +681,55 @@ components:
       - template
       - title
       - updated_at
+    TailorJDRequest:
+      type: object
+      properties:
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+        job_description:
+          type: string
+          maxLength: 8000
+      required:
+      - content
+      - job_description
+    TailorJDResponse:
+      type: object
+      properties:
+        match_score:
+          type: integer
+        missing_keywords:
+          type: array
+          items:
+            type: string
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TailorSuggestion'
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - match_score
+      - missing_keywords
+      - suggestions
+    TailorSuggestion:
+      type: object
+      properties:
+        bullet_id:
+          type: string
+        current:
+          type: string
+        suggested:
+          type: string
+        adds:
+          type: array
+          items:
+            type: string
+      required:
+      - adds
+      - bullet_id
+      - current
+      - suggested
     TokenRefresh:
       type: object
       properties:

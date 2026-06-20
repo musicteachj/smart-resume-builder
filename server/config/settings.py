@@ -15,8 +15,14 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
 
-# Load repo-root .env in local dev (no-op if absent; real env vars win)
+# Local dev env files (no-op if absent; real environment variables always win, so
+# production secrets from Secrets Manager are never overridden). Repo-root .env holds
+# shared defaults; server/.env holds server-local secrets (e.g. ANTHROPIC_API_KEY).
 load_dotenv(REPO_ROOT / ".env")
+# override=True so a real value in server/.env wins over an empty/stale shell var
+# (common: an exported but blank ANTHROPIC_API_KEY). No-op in prod — there's no
+# .env file in the image, so Secrets Manager env vars are never overridden.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 
@@ -54,7 +60,7 @@ INSTALLED_APPS = [
     # Local apps (live under apps/)
     "apps.accounts",
     "apps.resumes",
-    # ai — added in a later phase
+    "apps.ai",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -170,3 +176,9 @@ ADMIN_EMAILS = [
 
 AI_DAILY_LIMIT = 10
 AI_MONTHLY_LIMIT = 50
+
+# AI (Claude) — Opus/Fable are deliberately NOT used. Haiku for the simple
+# rewrites, Sonnet for the reasoning-heavy tailor-to-JD. Env-overridable.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-4-5")
+AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-4-6")

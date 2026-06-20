@@ -9,7 +9,30 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 7 — AI features (Claude): improve-bullet → generate-summary → tailor-to-JD, with the usage limit gate._
+_Phase 8 — tests (pytest depth + Vitest/RTL) next._
+
+## [0.7.0] - 2026-06-13
+
+Phase 7 — AI features (Claude).
+
+### Added
+- **`apps/ai`** — Claude-powered endpoints under `/api/ai/`: `improve-bullet`, `generate-summary`, `tailor-jd`.
+  Model split (env-overridable `AI_MODEL_SIMPLE`/`AI_MODEL_TAILOR`): **Haiku 4.5** for the simple rewrites,
+  **Sonnet 4.6** for tailor-to-JD. Opus/Fable are not used.
+- **Tailor-to-JD** returns structured JSON via Claude tool-use: 0–100 match score, missing keywords, and
+  per-bullet rewrites (each noting which keywords it "adds").
+- **Usage gate / cost protection** — per-user daily (10) + monthly (50) counters with automatic reset;
+  admins and `DEBUG` bypass; over-limit returns `429`; every call recorded in `AIUsageLog` (success/failure).
+  Failed calls don't consume quota. AI not configured → graceful `502`.
+- **Editor UI** — per-bullet "Improve with AI" (before/after, Accept/Regenerate); AI menu → Generate summary
+  (before/after) + Tailor-to-JD modal (banded score meter with text labels, missing-keyword chips that add to
+  Skills, suggestion cards that apply to bullets); usage shown in the menu + header pill; friendly 429/502.
+- Orval-generated AI hooks (`useImproveBullet`/`useGenerateSummary`/`useTailorJd`) + types.
+- pytest AI suite (9 tests, Anthropic client mocked — no key needed to build/verify).
+
+### Security
+- AI endpoints are auth-required and user-scoped; the API key and system prompts stay server-side (never sent
+  to the browser); cost is bounded by the per-user gate plus an external workspace spend cap.
 
 ## [0.6.0] - 2026-06-12
 
@@ -140,7 +163,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.3.0...v0.4.0

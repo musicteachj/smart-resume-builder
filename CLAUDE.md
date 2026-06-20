@@ -101,6 +101,11 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   `dangerouslySetInnerHTML`, and add a CSP at deploy.
 - Login/register have no rate-limiting yet — add a DRF throttle (anti-brute-force) in a later phase.
 - Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
+- **Phase 9 must-do:** add a `.dockerignore` excluding `.env` and `**/.env` so the dev `ANTHROPIC_API_KEY`
+  is never baked into the production image. (Settings loads `server/.env` with `override=True`, so a stray
+  `.env` in the image could otherwise shadow the Secrets Manager value — keep it out of the build context.)
+- Minor: AI `502` responses surface the upstream error string to the client (handy in dev). It can't leak the
+  key, but consider mapping to a generic message in production.
 - Resume URL fields (linkedin/github/website) currently render as **plain text** in `ResumeDocument` (safe).
   **If they ever become clickable `<a href>`** (document or PDF), validate the scheme (allow only http/https;
   reject `javascript:`/`data:`) to prevent stored XSS via a malicious URL.
@@ -123,9 +128,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   with save indicator + template switcher. Content validation is draft-friendly. Added `personalInfo.headline`.
 - ✅ Phase 6 — PDF export: `react-to-print` v3 on the `ResumeDocument` (preview === PDF), Letter @page +
   0.5in margins, Export PDF button wired, `print:p-0` on the document.
-- ⬜ Phase 7 — AI features (`apps/ai`): Claude service + rate-limit gate + `AIUsageLog`; build easy→hard
-  (improve-bullet → generate-summary → tailor-to-JD with ATS score + keywords). Consult the `claude-api`
-  skill first; use tool-use/structured output for the JD JSON. Wire the editor AI menu + usage pill.
+- ✅ Phase 7 — AI features (`apps/ai`): Claude endpoints under `/api/ai/` (improve-bullet/generate-summary/
+  tailor-jd), Haiku for simple + Sonnet for tailor (settings `AI_MODEL_SIMPLE`/`AI_MODEL_TAILOR`), tailor uses
+  tool-use structured JSON, per-user usage gate + `AIUsageLog`, editor AI menu + per-bullet improve + tailor
+  modal, pytest (Claude mocked). Live calls need `ANTHROPIC_API_KEY` in `.env` (absent → graceful 502).
 - ⬜ Phase 8 tests · 9 container · 10 AWS deploy · 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes

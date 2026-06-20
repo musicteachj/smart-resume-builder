@@ -1,8 +1,9 @@
-import { ArrowLeft, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { AiMenu } from "@/features/ai/AiMenu";
 
 import { SaveIndicator } from "./components/SaveIndicator";
 import { TemplateSwitcher } from "./components/TemplateSwitcher";
@@ -44,9 +45,7 @@ export function EditorTopBar({
           value={template}
           onChange={(t) => setValue("template", t, { shouldDirty: true })}
         />
-        <Button variant="secondary" size="sm" disabled title="AI assist — coming in Phase 7" className="gap-1.5">
-          <Sparkles className="h-4 w-4" /> AI
-        </Button>
+        <AiMenu />
         <Button size="sm" onClick={onExport} className="gap-1.5">
           <Download className="h-4 w-4" /> Export PDF
         </Button>

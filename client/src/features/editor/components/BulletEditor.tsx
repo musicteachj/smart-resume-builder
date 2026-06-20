@@ -2,6 +2,7 @@ import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { ImproveBulletButton } from "@/features/ai/ImproveBulletButton";
 
 interface BulletEditorProps {
   value: string[];
@@ -24,6 +25,7 @@ export function BulletEditor({ value, onChange }: BulletEditorProps) {
             placeholder="Describe an accomplishment, ideally with a metric…"
             className="flex-1"
           />
+          <ImproveBulletButton value={bullet} onAccept={(t) => update(i, t)} />
           <button
             type="button"
             onClick={() => remove(i)}
