@@ -9,7 +9,20 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
-_Phase 8 — tests (pytest depth + Vitest/RTL) next._
+_Phase 9 — containerize (multi-stage Dockerfile) next._
+
+## [0.8.0] - 2026-06-13
+
+Phase 8 — client test suite.
+
+### Added
+- **Vitest + React Testing Library** harness (jsdom, jest-dom matchers, setup/cleanup) wired into
+  `npm run test:client` / root `npm run test`
+- Unit tests: `format` (initials, relative time), `editorSchema` (draft-friendly validation, YYYY-MM,
+  email), `ScoreMeter` (band labels, a11y progressbar), `aiError` (429/502/generic mapping + usage sync)
+- Component tests (mocked generated hooks): route guards (protected/public redirects), `LoginPage`
+  (validation + submit), `ImproveBulletButton` (suggestion → Accept flow)
+- 21 client tests across 7 files; full suite (`npm run test`) now runs 21 client + 28 server green
 
 ## [0.7.0] - 2026-06-13
 
@@ -163,7 +176,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.4.0...v0.5.0
