@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import { getTemplate } from "@/features/templates/templates";
 import { relativeTime } from "@/lib/format";
 
 interface ResumeCardProps {
@@ -67,7 +68,7 @@ export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
 
       <h3 className="mt-4 font-display text-lg font-semibold text-foreground">{resume.title}</h3>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        Updated {relativeTime(resume.updated_at)} · {resume.template} template
+        Updated {relativeTime(resume.updated_at)} · {getTemplate(resume.template).label} template
       </p>
 
       {resume.skills.length > 0 && (

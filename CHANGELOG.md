@@ -11,6 +11,25 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 _Phase 10 — AWS deploy (ECS Fargate + ECR + ALB + RDS + Secrets Manager + GitHub Actions) next._
 
+## [0.11.0] - 2026-06-29
+
+Feature C — templates (client-only; no backend/schema changes).
+
+### Added
+- **Visual template gallery** replacing the dropdown: a modal showing each template as a live, scaled-down
+  preview of the user's actual résumé (reuses `ResumeDocument`), click-to-select with an accent ring + check.
+- **Third template — "Banner"**: a full-bleed navy header band with the name/headline/contacts reversed out
+  in white; the body reuses Modern's ATS-safe single-column layout. Real selectable text on color (ATS-safe),
+  prints in the PDF (`print-color-adjust: exact`), and stays light in dark mode.
+- **Template registry** (`features/templates/templates.ts`): templates are now data (id/label/description +
+  style config) instead of an `isModern` boolean; one source of truth for the document, the gallery, and the
+  dashboard card label.
+- Tests: registry/`getTemplate` fallback, `ResumeDocument` Banner header, `TemplateGallery` select-and-close.
+
+### Changed
+- Dashboard résumé cards show the template's display label (e.g. "Banner template") instead of the raw slug.
+- Removed `TemplateSwitcher` (superseded by the gallery).
+
 ## [0.10.0] - 2026-06-29
 
 Feature A — editor & document polish (client-only; no backend/schema changes).
@@ -217,7 +236,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.7.0...v0.8.0

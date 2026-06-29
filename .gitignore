@@ -32,3 +32,6 @@ htmlcov/
 # Logs
 *.log
 npm-debug.log*
+
+# Superpowers visual-companion scratch
+.superpowers/
