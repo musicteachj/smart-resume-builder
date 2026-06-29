@@ -20,7 +20,8 @@ Phase 9 — containerization.
   server, copies the built SPA, runs `collectstatic`, and serves everything via **gunicorn** (~384 MB image)
 - **Single-container serving**: Django + WhiteNoise serve the API (`/api/*`), the hashed SPA assets, Django/
   admin/Swagger static, and a catch-all that returns `index.html` for client-side routes (deep-link safe)
-- `docker-entrypoint.sh` runs `migrate` on start, then gunicorn
+- `docker-entrypoint.sh` runs `migrate` on start, then gunicorn (`--timeout 120` so long Claude calls
+  aren't killed by the 30s default; access logs to stdout for CloudWatch)
 - `.dockerignore` excludes `node_modules`/`.venv`/**`.env`**/caches/build output — keeps the dev API key and
   cruft out of the image (the Phase 7 security follow-up)
 - `docker-compose.yml` gains an opt-in `app` service (`--profile prod`) to run the production container locally
