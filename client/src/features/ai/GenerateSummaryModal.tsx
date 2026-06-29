@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useGenerateSummary } from "@/api/generated/ai/ai";
@@ -14,31 +14,25 @@ import { applyAiUsage } from "./aiUsage";
 
 export function GenerateSummaryModal({ onClose }: { onClose: () => void }) {
   const { getValues, setValue } = useFormContext<EditorValues>();
-  const [summary, setSummary] = useState("");
-  const [error, setError] = useState("");
   const gen = useGenerateSummary();
   const current = getValues("content.summary");
 
-  const run = async () => {
-    try {
-      const res = await gen.mutateAsync({
-        data: { content: getValues("content") as unknown as ResumeContent },
-      });
-      setSummary(res.summary);
-      applyAiUsage(res.ai_usage);
-    } catch (err) {
-      setError(aiErrorMessage(err));
-    }
+  // Summary/error are derived from the mutation rather than mirrored into local
+  // state, so there's no setState to drive from an effect. A new `generate()`
+  // resets the mutation, and the pending branch below hides any stale result.
+  const summary = gen.data?.summary ?? "";
+  const error = gen.isError ? aiErrorMessage(gen.error) : "";
+
+  const generate = () => {
+    gen.mutate(
+      { data: { content: getValues("content") as unknown as ResumeContent } },
+      { onSuccess: (res) => applyAiUsage(res.ai_usage) },
+    );
   };
 
-  const regenerate = () => {
-    setSummary("");
-    setError("");
-    void run();
-  };
-
+  // Generate once when the modal opens.
   useEffect(() => {
-    void run();
+    generate();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
@@ -77,7 +71,7 @@ export function GenerateSummaryModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={regenerate} disabled={gen.isPending} className="gap-1.5">
+          <Button variant="ghost" size="sm" onClick={generate} disabled={gen.isPending} className="gap-1.5">
             <RefreshCw className="h-4 w-4" /> Regenerate
           </Button>
           <Button

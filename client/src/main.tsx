@@ -6,9 +6,14 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { installAuthInterceptors } from "./api/interceptors";
 import { queryClient } from "./api/queryClient";
+import { applyTheme, useThemeStore } from "./stores/theme";
 import "./index.css";
 
 installAuthInterceptors();
+
+// Apply the persisted/OS theme before first paint, then keep <html> in sync.
+applyTheme(useThemeStore.getState().theme);
+useThemeStore.subscribe((s) => applyTheme(s.theme));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
