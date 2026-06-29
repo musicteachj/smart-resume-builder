@@ -143,6 +143,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   Django serves the built SPA (WhiteNoise assets + catch-all `index.html` in `config.urls`), `docker-entrypoint.sh`
   migrates then runs gunicorn, `.dockerignore` (excludes `.env`), `docker compose --profile prod up app` to run
   locally. ~384MB image, verified end-to-end against local Postgres.
+- ✅ Feature A — editor polish (`0.10.0`): headline in the resume document (test coverage; render already
+  existed), `@dnd-kit` drag-to-reorder (experience/education/projects entries + work bullets via a reusable
+  `SortableList` in `components/ui/`), app-chrome dark-mode toggle (Zustand `theme` store → `.dark` on
+  `<html>`, persisted `srb-theme`, OS default; toggle in `AppHeader`). The document + exported PDF stay light.
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
   + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
   (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.
