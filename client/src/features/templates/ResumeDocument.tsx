@@ -1,6 +1,8 @@
 import type { ResumeContent } from "@/api/generated/model";
 import { cn } from "@/lib/utils";
 
+import { getTemplate } from "./templates";
+
 /**
  * The resume document itself — an ATS-safe rendering of the content. This is the
  * SINGLE source for both the editor's live preview and the Phase 6 PDF export
@@ -38,7 +40,7 @@ interface ResumeDocumentProps {
 }
 
 export function ResumeDocument({ content, template = "classic", className }: ResumeDocumentProps) {
-  const isModern = template === "modern";
+  const style = getTemplate(template);
   const { personalInfo: pi, summary, workExperience, education, skills, projects } = content;
 
   const contactLine = joinTruthy([pi.email, pi.phone, pi.location], "  ·  ");
@@ -47,20 +49,46 @@ export function ResumeDocument({ content, template = "classic", className }: Res
   return (
     <article
       className={cn(
-        "bg-white p-[clamp(28px,4vw,52px)] text-[#1a1a1a] print:p-0",
-        isModern ? "font-document-sans" : "font-document",
+        "bg-white p-[var(--doc-pad)] text-[#1a1a1a] [--doc-pad:clamp(28px,4vw,52px)] print:[--doc-pad:0px]",
+        style.font === "sans" ? "font-document-sans" : "font-document",
         className,
       )}
     >
-      {/* Header */}
-      <header className={cn("border-b border-[#d9d6d0] pb-4", isModern ? "text-left" : "text-center")}>
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight">
-          {pi.name || "Your Name"}
-        </h1>
-        {pi.headline && <p className="mt-0.5 text-[13px] text-[#555]">{pi.headline}</p>}
-        {contactLine && <p className="mt-2 text-[11px] text-[#444]">{contactLine}</p>}
-        {linksLine && <p className="mt-1 text-[11px] text-[#444]">{linksLine}</p>}
-      </header>
+      {/* Header — plain (classic/modern) or full-bleed banner */}
+      {style.header === "banner" ? (
+        <header
+          data-testid="doc-header"
+          data-header="banner"
+          className="mb-5 bg-[#2B3A55] px-[var(--doc-pad)] pb-5 pt-[var(--doc-pad)] text-left text-white [-webkit-print-color-adjust:exact] [print-color-adjust:exact]"
+          style={{
+            marginInline: "calc(-1 * var(--doc-pad))",
+            marginTop: "calc(-1 * var(--doc-pad))",
+          }}
+        >
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight">
+            {pi.name || "Your Name"}
+          </h1>
+          {pi.headline && <p className="mt-0.5 text-[13px] text-[#d7dce6]">{pi.headline}</p>}
+          {contactLine && <p className="mt-2 text-[11px] text-[#c2cad8]">{contactLine}</p>}
+          {linksLine && <p className="mt-1 text-[11px] text-[#c2cad8]">{linksLine}</p>}
+        </header>
+      ) : (
+        <header
+          data-testid="doc-header"
+          data-header="plain"
+          className={cn(
+            "border-b border-[#d9d6d0] pb-4",
+            style.headerAlign === "center" ? "text-center" : "text-left",
+          )}
+        >
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight">
+            {pi.name || "Your Name"}
+          </h1>
+          {pi.headline && <p className="mt-0.5 text-[13px] text-[#555]">{pi.headline}</p>}
+          {contactLine && <p className="mt-2 text-[11px] text-[#444]">{contactLine}</p>}
+          {linksLine && <p className="mt-1 text-[11px] text-[#444]">{linksLine}</p>}
+        </header>
+      )}
 
       {summary && (
         <Section title="Summary">

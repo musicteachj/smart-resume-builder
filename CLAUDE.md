@@ -147,6 +147,9 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   existed), `@dnd-kit` drag-to-reorder (experience/education/projects entries + work bullets via a reusable
   `SortableList` in `components/ui/`), app-chrome dark-mode toggle (Zustand `theme` store → `.dark` on
   `<html>`, persisted `srb-theme`, OS default; toggle in `AppHeader`). The document + exported PDF stay light.
+- ✅ Feature C — templates (`0.11.0`): template registry (`features/templates/templates.ts`) replacing the
+  `isModern` boolean, third **Banner** template (full-bleed navy header, Modern body, ATS-safe, prints), and a
+  visual `TemplateGallery` modal with live scaled previews replacing the dropdown. Client-only, no migration.
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
   + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
   (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.

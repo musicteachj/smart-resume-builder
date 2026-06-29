@@ -32,3 +32,18 @@ describe("ResumeDocument headline", () => {
     expect(screen.getByText("Designer")).toBeInTheDocument();
   });
 });
+
+describe("ResumeDocument banner template", () => {
+  it("renders the name in a banner header when template=banner", () => {
+    render(<ResumeDocument content={content({ headline: "Engineer" })} template="banner" />);
+    expect(screen.getByRole("heading", { level: 1, name: "Ada Lovelace" })).toBeInTheDocument();
+    expect(screen.getByTestId("doc-header")).toHaveAttribute("data-header", "banner");
+  });
+
+  it("uses the plain header for classic and modern", () => {
+    const { rerender } = render(<ResumeDocument content={content()} template="classic" />);
+    expect(screen.getByTestId("doc-header")).toHaveAttribute("data-header", "plain");
+    rerender(<ResumeDocument content={content()} template="modern" />);
+    expect(screen.getByTestId("doc-header")).toHaveAttribute("data-header", "plain");
+  });
+});
