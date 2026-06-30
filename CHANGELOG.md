@@ -9,6 +9,16 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Security
+- **Rate-limiting**: scoped DRF throttles — an `auth` scope on login/register (blunts brute force,
+  keyed by IP) and an `ai-burst` per-user guard on the AI endpoints that complements the existing
+  daily/monthly usage quota.
+- **AI errors masked in production**: the AI `502` now returns a generic message when `DEBUG=False`
+  (the raw upstream string is still shown in dev). No more leaking internals to clients.
+- **Content-Security-Policy**: a production-only CSP header on every response (no-op under `DEBUG` so
+  Vite's dev server keeps working). The policy allows the Google Fonts hosts (Newsreader/Inter) and
+  same-origin scripts/API; `frame-ancestors 'none'`.
+
 ### Added
 - **Tailor to JD — file upload**: the Tailor-to-job-description modal now accepts a **PDF or DOCX**
   upload in addition to pasting. The file is read in the browser (reusing the import feature's

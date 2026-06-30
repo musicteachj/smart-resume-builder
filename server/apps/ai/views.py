@@ -1,6 +1,8 @@
+from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from . import service
@@ -37,9 +39,23 @@ def _gate(user):
     return None
 
 
-class ImproveBulletView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+def _ai_error(exc):
+    """502 for an upstream/AI failure. The raw message is handy in dev but may expose
+    internals, so it's only surfaced under DEBUG; production gets a generic message."""
+    detail = str(exc) if settings.DEBUG else "The AI service is temporarily unavailable. Please try again."
+    return Response({"detail": detail}, status=status.HTTP_502_BAD_GATEWAY)
 
+
+class _AIView(APIView):
+    """Base for AI endpoints: auth required + a per-user burst throttle (complements
+    the per-user daily/monthly quota in usage.py)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "ai-burst"
+
+
+class ImproveBulletView(_AIView):
     @extend_schema(
         operation_id="improve_bullet",
         request=ImproveBulletRequestSerializer,
@@ -59,15 +75,13 @@ class ImproveBulletView(APIView):
             suggestion = service.improve_bullet(text, role)
         except AIServiceError as exc:
             record_usage(user, "improve-bullet", input_length=len(text), output_length=0, success=False)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return _ai_error(exc)
 
         record_usage(user, "improve-bullet", input_length=len(text), output_length=len(suggestion), success=True)
         return Response({"suggestion": suggestion, "ai_usage": usage_snapshot(user)})
 
 
-class GenerateSummaryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
+class GenerateSummaryView(_AIView):
     @extend_schema(
         operation_id="generate_summary",
         request=GenerateSummaryRequestSerializer,
@@ -86,15 +100,13 @@ class GenerateSummaryView(APIView):
             summary = service.generate_summary(content)
         except AIServiceError as exc:
             record_usage(user, "generate-summary", input_length=len(str(content)), output_length=0, success=False)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return _ai_error(exc)
 
         record_usage(user, "generate-summary", input_length=len(str(content)), output_length=len(summary), success=True)
         return Response({"summary": summary, "ai_usage": usage_snapshot(user)})
 
 
-class TailorJDView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
+class TailorJDView(_AIView):
     @extend_schema(
         operation_id="tailor_jd",
         request=TailorJDRequestSerializer,
@@ -115,15 +127,13 @@ class TailorJDView(APIView):
             result = service.tailor_to_jd(content, jd)
         except AIServiceError as exc:
             record_usage(user, "tailor-jd", input_length=in_len, output_length=0, success=False)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return _ai_error(exc)
 
         record_usage(user, "tailor-jd", input_length=in_len, output_length=len(str(result)), success=True)
         return Response({**result, "ai_usage": usage_snapshot(user)})
 
 
-class ParseResumeView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
+class ParseResumeView(_AIView):
     @extend_schema(
         operation_id="parse_resume",
         request=ParseResumeRequestSerializer,
@@ -142,7 +152,7 @@ class ParseResumeView(APIView):
             content = service.parse_resume(text)
         except AIServiceError as exc:
             record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return _ai_error(exc)
 
         record_usage(user, "parse-resume", input_length=len(text), output_length=len(str(content)), success=True)
         return Response({"content": content, "ai_usage": usage_snapshot(user)})
