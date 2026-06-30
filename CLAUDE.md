@@ -18,7 +18,7 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 3. **No hardcoded hex in components** — use Tailwind token classes (`bg-accent`, `text-muted-foreground`…).
    Accent (forest green) is RESERVED: one primary CTA per view, active/focus states only.
 4. **The resume document ≠ the app UI**: templates/preview use `font-document` (Georgia) /
-   `font-document-sans` (Arial) — never Fraunces/Inter. App chrome never uses document fonts.
+   `font-document-sans` (Arial) — never Newsreader/Inter. App chrome never uses document fonts.
 5. **Viewports: desktop + tablet only (≥768px).** No mobile layouts.
 
 ## Stack
@@ -110,9 +110,10 @@ links at the file bottom. Then STOP — James reviews and commits himself.
   as `Host`, which Django rejects (400) unless allowed — set `ALLOWED_HOSTS` to include it (or exempt `/health`).
   (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for >1 task run
   migrations as a separate one-off/release task to avoid a concurrent-migration race.
-- Resume URL fields (linkedin/github/website) currently render as **plain text** in `ResumeDocument` (safe).
-  **If they ever become clickable `<a href>`** (document or PDF), validate the scheme (allow only http/https;
-  reject `javascript:`/`data:`) to prevent stored XSS via a malicious URL.
+- Resume URL fields (linkedin/github/website) render in `ResumeDocument` as **labeled clickable links**
+  (LinkedIn / GitHub / Website) via the `DocumentLinks` helper, which links **only** `http(s)` URLs
+  (validated with `new URL()`); any other scheme (`javascript:`/`data:`) falls back to plain label text —
+  a stored-XSS guard. Keep that scheme check if this code is touched.
 
 ## Phase status
 
@@ -150,6 +151,9 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 - ✅ Feature C — templates (`0.11.0`): template registry (`features/templates/templates.ts`) replacing the
   `isModern` boolean, third **Banner** template (full-bleed navy header, Modern body, ATS-safe, prints), and a
   visual `TemplateGallery` modal with live scaled previews replacing the dropdown. Client-only, no migration.
+- ✅ Feature B — import an existing résumé (`0.12.0`): client-side text extraction (`pdfjs-dist`/`mammoth`,
+  lazy), Sonnet `parse-resume` tool-use endpoint → `ResumeContent` (entry UUIDs + email/URL normalization,
+  usage-gated), and an `ImportResumeModal` (upload/paste → AI parse → in-modal review → create on confirm).
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
   + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
   (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.

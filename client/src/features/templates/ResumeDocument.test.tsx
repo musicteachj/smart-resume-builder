@@ -33,6 +33,28 @@ describe("ResumeDocument headline", () => {
   });
 });
 
+describe("ResumeDocument profile links", () => {
+  it("renders linkedin/github/website as labeled clickable links, not raw URLs", () => {
+    render(
+      <ResumeDocument
+        content={content({ linkedin: "https://linkedin.com/in/ada", github: "https://github.com/ada", website: "https://ada.dev" })}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "LinkedIn" })).toHaveAttribute("href", "https://linkedin.com/in/ada");
+    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/ada");
+    expect(screen.getByRole("link", { name: "Website" })).toHaveAttribute("href", "https://ada.dev");
+    // raw URL text is no longer shown
+    expect(screen.queryByText("https://linkedin.com/in/ada")).not.toBeInTheDocument();
+  });
+
+  it("never renders a non-http(s) scheme as a link (XSS guard)", () => {
+    render(<ResumeDocument content={content({ website: "javascript:alert(1)" })} />);
+    expect(screen.queryByRole("link", { name: "Website" })).not.toBeInTheDocument();
+    // the label is still shown as plain text, and no dangerous href exists
+    expect(screen.getByText("Website")).toBeInTheDocument();
+  });
+});
+
 describe("ResumeDocument banner template", () => {
   it("renders the name in a banner header when template=banner", () => {
     render(<ResumeDocument content={content({ headline: "Engineer" })} template="banner" />);

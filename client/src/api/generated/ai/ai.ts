@@ -20,6 +20,8 @@ import type {
   GenerateSummaryResponse,
   ImproveBulletRequest,
   ImproveBulletResponse,
+  ParseResumeRequest,
+  ParseResumeResponse,
   TailorJDRequest,
   TailorJDResponse
 } from '../model';
@@ -144,6 +146,63 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getImproveBulletMutationOptions(options), queryClient);
+    }
+    export const parseResume = (
+    parseResumeRequest: ParseResumeRequest,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<ParseResumeResponse>(
+      {url: `/api/ai/parse-resume`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: parseResumeRequest, signal
+    },
+      options);
+    }
+
+
+
+export const getParseResumeMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseResume>>, TError,{data: ParseResumeRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof parseResume>>, TError,{data: ParseResumeRequest}, TContext> => {
+
+const mutationKey = ['parseResume'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof parseResume>>, {data: ParseResumeRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  parseResume(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ParseResumeMutationResult = NonNullable<Awaited<ReturnType<typeof parseResume>>>
+    export type ParseResumeMutationBody = ParseResumeRequest
+    export type ParseResumeMutationError = unknown
+
+    export const useParseResume = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseResume>>, TError,{data: ParseResumeRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof parseResume>>,
+        TError,
+        {data: ParseResumeRequest},
+        TContext
+      > => {
+      return useMutation(getParseResumeMutationOptions(options), queryClient);
     }
     export const tailorJd = (
     tailorJDRequest: TailorJDRequest,

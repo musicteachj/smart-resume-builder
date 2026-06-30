@@ -55,7 +55,7 @@ export default {
       },
       fontFamily: {
         // App chrome only — the resume document uses font-document (ATS-safe).
-        display: ["Fraunces", "Georgia", "serif"],
+        display: ["Newsreader", "Georgia", "serif"],
         sans: ["Inter", "system-ui", "sans-serif"],
         document: ["Georgia", "Times New Roman", "serif"],
         "document-sans": ["Arial", "Helvetica", "sans-serif"],
