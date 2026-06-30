@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/stores/auth";
 
+import { ImportResumeModal } from "./ImportResumeModal";
 import { ResumeCard } from "./ResumeCard";
 
 export function DashboardPage() {
@@ -29,6 +30,7 @@ export function DashboardPage() {
   const duplicateResume = useDuplicateResume();
   const deleteResume = useDeleteResume();
   const [toDelete, setToDelete] = useState<ResumeList | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const refreshList = () =>
     queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });
@@ -79,9 +81,14 @@ export function DashboardPage() {
           </p>
         </div>
         {list.length > 0 && (
-          <Button onClick={handleCreate} loading={createResume.isPending} className="gap-2">
-            <Plus className="h-4 w-4" /> New resume
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setImportOpen(true)} className="gap-2">
+              <Upload className="h-4 w-4" /> Import resume
+            </Button>
+            <Button onClick={handleCreate} loading={createResume.isPending} className="gap-2">
+              <Plus className="h-4 w-4" /> New resume
+            </Button>
+          </div>
         )}
       </div>
 
@@ -101,9 +108,14 @@ export function DashboardPage() {
             Start from a clean editorial template, then let AI help you tailor it to any role and
             sharpen every bullet.
           </p>
-          <Button onClick={handleCreate} loading={createResume.isPending} className="mt-6 gap-2">
-            <Plus className="h-4 w-4" /> New resume
-          </Button>
+          <div className="mt-6 flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setImportOpen(true)} className="gap-2">
+              <Upload className="h-4 w-4" /> Import resume
+            </Button>
+            <Button onClick={handleCreate} loading={createResume.isPending} className="gap-2">
+              <Plus className="h-4 w-4" /> New resume
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -132,6 +144,8 @@ export function DashboardPage() {
         loading={deleteResume.isPending}
         onConfirm={handleConfirmDelete}
       />
+
+      <ImportResumeModal open={importOpen} onOpenChange={setImportOpen} />
     </main>
   );
 }

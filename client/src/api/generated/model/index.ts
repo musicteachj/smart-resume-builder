@@ -14,6 +14,8 @@ export * from './generateSummaryRequest';
 export * from './generateSummaryResponse';
 export * from './improveBulletRequest';
 export * from './improveBulletResponse';
+export * from './parseResumeRequest';
+export * from './parseResumeResponse';
 export * from './patchedResume';
 export * from './personalInfo';
 export * from './project';

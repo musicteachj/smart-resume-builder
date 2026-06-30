@@ -9,7 +9,38 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Changed
+- App display font swapped from **Fraunces** to **Newsreader** (editorial serif that pairs more naturally
+  with the Inter body). Centralized change via the `font-display` token — the Google Fonts `@import`
+  (`index.css`) and `tailwind.config.ts` `display` family — so all app-chrome headings update through the
+  token. The résumé document/PDF (Georgia/Arial) and `font-sans` (Inter) are unaffected. Design docs
+  (`DESIGN.md`, `CLAUDE.md`, `README.md`, `PLAN.md`) updated to match.
+
 _Phase 10 — AWS deploy (ECS Fargate + ECR + ALB + RDS + Secrets Manager + GitHub Actions) next._
+
+## [0.12.0] - 2026-06-30
+
+Feature B — import an existing résumé.
+
+### Added
+- **Import résumé**: a dashboard action to bring in an existing résumé. Text is extracted in the browser
+  (PDF via `pdfjs-dist`, DOCX via `mammoth`, both lazy-loaded; the file never leaves the client), parsed by
+  Claude (Sonnet) via a forced tool-use `parse-resume` endpoint into structured `ResumeContent`, then shown
+  in an in-modal **review** (live `ResumeDocument` preview) — a new résumé is created only on confirm and
+  opens in the editor.
+- Backend `POST /api/ai/parse-resume` mirrors the tailor endpoint (usage-gated, recorded as `parse-resume`,
+  graceful 502 without an API key); the parse service assigns entry UUIDs and normalizes email/URL fields so
+  the result passes the strict résumé-content validation.
+- Tests: parse normalization (ids, email/URL coercion), the parse view (gate/usage/502), `extractResumeText`
+  (PDF/DOCX/empty/unsupported), and the import modal (parse → review → create, plus error handling).
+
+### Changed
+- The résumé document renders `linkedin`/`github`/`website` as **labeled clickable links** (LinkedIn ·
+  GitHub · Website) instead of raw URLs, in both the preview and the exported PDF. Only `http(s)` URLs are
+  linked (scheme-validated); any other scheme falls back to plain text (stored-XSS guard).
+
+### Notes
+- Import counts against the AI usage limits (10/day · 50/month). Text-based PDFs only — no OCR for scans.
 
 ## [0.11.0] - 2026-06-29
 
@@ -236,7 +267,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.8.0...v0.9.0

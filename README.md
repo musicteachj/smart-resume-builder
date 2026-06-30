@@ -72,6 +72,6 @@ npm run dev
 
 ## Design
 
-The UI follows the **"Editorial Ink"** design system — Fraunces + Inter, a reserved forest-green
+The UI follows the **"Editorial Ink"** design system — Newsreader + Inter, a reserved forest-green
 accent on warm paper, hairline borders, engineered restraint. See [`docs/DESIGN.md`](docs/DESIGN.md)
 (source of truth) and `screens/` (visual reference mockups).

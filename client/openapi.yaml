@@ -56,6 +56,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImproveBulletResponse'
           description: ''
+  /api/ai/parse-resume:
+    post:
+      operationId: parse_resume
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParseResumeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ParseResumeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ParseResumeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParseResumeResponse'
+          description: ''
   /api/ai/tailor-jd:
     post:
       operationId: tailor_jd
@@ -490,6 +516,24 @@ components:
       required:
       - ai_usage
       - suggestion
+    ParseResumeRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 20000
+      required:
+      - text
+    ParseResumeResponse:
+      type: object
+      properties:
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - content
     PatchedResume:
       type: object
       description: Full read + write representation of a resume (retrieve/create/update).

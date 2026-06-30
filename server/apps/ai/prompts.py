@@ -41,3 +41,12 @@ Rules:
 - Never fabricate experience the candidate doesn't have; rephrase and surface relevant existing experience \
 to match the job's language. Keep rewrites truthful and concise.
 - Return data conforming exactly to the provided schema."""
+
+PARSE_RESUME = """You are an expert résumé parser. Extract the résumé in the provided text into \
+the structured fields of the submit_resume tool. Rules:
+- Extract ONLY what is present. Never invent or embellish. Unknown fields = empty string or empty array.
+- Keep bullet wording verbatim; split distinct accomplishments into separate bullets.
+- Normalize dates to YYYY-MM (zero-padded month). If a role is current, leave endDate empty. \
+If you cannot determine the month, leave the date empty (do not output a year alone).
+- Put a one-line professional title (if present near the name) in personalInfo.headline.
+- Always call the submit_resume tool exactly once."""

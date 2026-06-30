@@ -1,4 +1,4 @@
-import type { ResumeContent } from "@/api/generated/model";
+import type { PersonalInfo, ResumeContent } from "@/api/generated/model";
 import { cn } from "@/lib/utils";
 
 import { getTemplate } from "./templates";
@@ -7,7 +7,7 @@ import { getTemplate } from "./templates";
  * The resume document itself — an ATS-safe rendering of the content. This is the
  * SINGLE source for both the editor's live preview and the Phase 6 PDF export
  * ("preview === PDF"). It uses document fonts (Georgia / Arial), never the app's
- * Fraunces/Inter, and no app accent color.
+ * Newsreader/Inter, and no app accent color.
  */
 
 const MONTHS = [
@@ -33,6 +33,50 @@ function joinTruthy(parts: (string | undefined)[], sep: string): string {
   return parts.filter((p) => p && p.trim()).join(sep);
 }
 
+const LINK_FIELDS: { key: "linkedin" | "github" | "website"; label: string }[] = [
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "github", label: "GitHub" },
+  { key: "website", label: "Website" },
+];
+
+/** Only treat http(s) URLs as safe to link — never javascript:/data: (stored-XSS guard). */
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Profile links rendered as labeled, clickable links ("LinkedIn · GitHub · Website")
+ * instead of raw URLs. A present-but-non-http(s) value falls back to plain label text,
+ * so a malicious scheme never becomes an href.
+ */
+function DocumentLinks({ pi, className }: { pi: PersonalInfo; className?: string }) {
+  const links = LINK_FIELDS
+    .map(({ key, label }) => ({ label, url: pi[key] }))
+    .filter((l): l is { label: string; url: string } => Boolean(l.url && l.url.trim()));
+  if (links.length === 0) return null;
+  return (
+    <p className={className}>
+      {links.map((l, i) => (
+        <span key={l.label}>
+          {i > 0 && "  ·  "}
+          {isHttpUrl(l.url) ? (
+            <a href={l.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+              {l.label}
+            </a>
+          ) : (
+            l.label
+          )}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 interface ResumeDocumentProps {
   content: ResumeContent;
   template?: string;
@@ -44,7 +88,6 @@ export function ResumeDocument({ content, template = "classic", className }: Res
   const { personalInfo: pi, summary, workExperience, education, skills, projects } = content;
 
   const contactLine = joinTruthy([pi.email, pi.phone, pi.location], "  ·  ");
-  const linksLine = joinTruthy([pi.linkedin, pi.github, pi.website], "  ·  ");
 
   return (
     <article
@@ -70,7 +113,7 @@ export function ResumeDocument({ content, template = "classic", className }: Res
           </h1>
           {pi.headline && <p className="mt-0.5 text-[13px] text-[#d7dce6]">{pi.headline}</p>}
           {contactLine && <p className="mt-2 text-[11px] text-[#c2cad8]">{contactLine}</p>}
-          {linksLine && <p className="mt-1 text-[11px] text-[#c2cad8]">{linksLine}</p>}
+          <DocumentLinks pi={pi} className="mt-1 text-[11px] text-[#c2cad8]" />
         </header>
       ) : (
         <header
@@ -86,7 +129,7 @@ export function ResumeDocument({ content, template = "classic", className }: Res
           </h1>
           {pi.headline && <p className="mt-0.5 text-[13px] text-[#555]">{pi.headline}</p>}
           {contactLine && <p className="mt-2 text-[11px] text-[#444]">{contactLine}</p>}
-          {linksLine && <p className="mt-1 text-[11px] text-[#444]">{linksLine}</p>}
+          <DocumentLinks pi={pi} className="mt-1 text-[11px] text-[#444]" />
         </header>
       )}
 

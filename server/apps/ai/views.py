@@ -9,6 +9,8 @@ from .serializers import (
     GenerateSummaryResponseSerializer,
     ImproveBulletRequestSerializer,
     ImproveBulletResponseSerializer,
+    ParseResumeRequestSerializer,
+    ParseResumeResponseSerializer,
     TailorJDRequestSerializer,
     TailorJDResponseSerializer,
 )
@@ -117,3 +119,30 @@ class TailorJDView(APIView):
 
         record_usage(user, "tailor-jd", input_length=in_len, output_length=len(str(result)), success=True)
         return Response({**result, "ai_usage": usage_snapshot(user)})
+
+
+class ParseResumeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="parse_resume",
+        request=ParseResumeRequestSerializer,
+        responses=ParseResumeResponseSerializer,
+        tags=["ai"],
+    )
+    def post(self, request):
+        req = ParseResumeRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        user = request.user
+        if (over := _gate(user)) is not None:
+            return over
+
+        text = req.validated_data["text"]
+        try:
+            content = service.parse_resume(text)
+        except AIServiceError as exc:
+            record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        record_usage(user, "parse-resume", input_length=len(text), output_length=len(str(content)), success=True)
+        return Response({"content": content, "ai_usage": usage_snapshot(user)})

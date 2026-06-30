@@ -63,3 +63,17 @@ def mock_claude(monkeypatch):
             ],
         },
     )
+    monkeypatch.setattr(
+        "apps.ai.service.parse_resume",
+        lambda text: {
+            "personalInfo": {"name": "Maya Chen", "email": "maya@example.com",
+                             "headline": "", "phone": "", "location": "",
+                             "linkedin": "", "github": "", "website": ""},
+            "summary": "Senior product designer.",
+            "workExperience": [{"id": "w-imported", "company": "Meridian", "position": "Senior Product Designer",
+                                "location": "", "startDate": "2022-01", "endDate": "", "bullets": ["Led redesign."]}],
+            "education": [],
+            "skills": ["Figma"],
+            "projects": [],
+        },
+    )

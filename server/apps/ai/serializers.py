@@ -20,6 +20,10 @@ class TailorJDRequestSerializer(serializers.Serializer):
     job_description = serializers.CharField(max_length=8000)
 
 
+class ParseResumeRequestSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=20000)
+
+
 # --- responses (shape the generated TS types) -------------------------------
 
 class ImproveBulletResponseSerializer(serializers.Serializer):
@@ -43,4 +47,9 @@ class TailorJDResponseSerializer(serializers.Serializer):
     match_score = serializers.IntegerField()
     missing_keywords = serializers.ListField(child=serializers.CharField())
     suggestions = TailorSuggestionSerializer(many=True)
+    ai_usage = AIUsageSerializer()
+
+
+class ParseResumeResponseSerializer(serializers.Serializer):
+    content = ResumeContentSerializer()
     ai_usage = AIUsageSerializer()

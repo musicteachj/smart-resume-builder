@@ -2,7 +2,7 @@
 
 > **Chosen identity: "Editorial Ink."** A distinct, app-specific look — deliberately NOT the developer's
 > portfolio "Professional Navy" brand. Every project gets its own identity. Editorial Ink treats the resume as
-> a crafted document: **Fraunces** serif headlines + **Inter** body, a reserved forest-green accent on warm
+> a crafted document: **Newsreader** serif headlines + **Inter** body, a reserved forest-green accent on warm
 > paper. Premium, editorial, calm. External craft references (Linear, Stripe, Vercel) inform *polish* only —
 > not the look.
 >
@@ -13,7 +13,7 @@
 ## 0. North Star — "distinctive, but never loud; very professional"
 
 Target the precise middle: **not generic, not outlandish, unmistakably professional.**
-- **Avoid generic** via a *few* signature, disciplined details — Fraunces serif headlines against Inter body,
+- **Avoid generic** via a *few* signature, disciplined details — Newsreader serif headlines against Inter body,
   warm paper canvas with hairline rules, a reserved forest-green accent, generous editorial whitespace, and
   crafted micro-interactions. Differentiation comes from restraint and craft, NOT from loud effects or gimmicks.
 - **Avoid outlandish** — no brutalism/neon/glassmorphism/heavy gradients/aggressive motion. Light-first,
@@ -52,14 +52,14 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 
 ## 2. Typography
 
-- **Display / headings:** `Fraunces` (variable; optical-size aware; weights 400/500/600/700), letter-spacing
+- **Display / headings:** `Newsreader` (variable; optical-size aware; weights 400/500/600), letter-spacing
   `-0.01em` to `-0.02em`. Serif — used for headlines and large display only, **never** body or small UI text.
 - **Body / UI / form labels / buttons:** `Inter` (400/500/600), body line-height 1.55–1.65.
 - **Eyebrow labels:** `Inter` 600, uppercase, `0.14em` tracking, accent or muted color.
 - **Optional mono** (rare — code/IDs only): a neutral mono such as `Spline Sans Mono`. Avoid where not needed.
 - **Resume preview/templates:** a neutral ATS-safe stack (e.g. system `Georgia`/`Arial`) — the resume must look
-  like a *document*, not the app UI. Kept separate from app fonts on purpose; Fraunces must NOT leak into it.
-- `font-display: swap`; preload only Fraunces + Inter.
+  like a *document*, not the app UI. Kept separate from app fonts on purpose; Newsreader must NOT leak into it.
+- `font-display: swap`; preload only Newsreader + Inter.
 - **Type scale (rem):** 0.75 / 0.875 / 1 / 1.125 / 1.25 / 1.5 / 1.875 / 2.25 / 3 (+ hero `clamp(2.5rem,6vw,4rem)`).
 
 ## 3. Spacing / radius / shadow / z-index
@@ -112,7 +112,7 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 ## 7. Anti-patterns / forbidden
 
 - ❌ Blue/violet/purple accents or gradients — the reserved accent is forest green `#0F5132` only.
-- ❌ Fraunces (serif) for body or small UI text — headlines/display only; Inter for everything else.
+- ❌ Newsreader (serif) for body or small UI text — headlines/display only; Inter for everything else.
 - ❌ The portfolio's fonts (JetBrains Mono / IBM Plex) — this app is intentionally its own identity.
 - ❌ Hardcoded hex in components — tokens only. ❌ Accent green used decoratively / everywhere.
 - ❌ Pure black `#000` / harsh pure-white surfaces — use warm paper/ink tokens.
@@ -120,4 +120,4 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 - ❌ Trendy gimmicks: glassmorphism, neon, chromatic/iridescent effects, gradient "AI sparkle."
 - ❌ Placeholder-as-label; ❌ errors only at top of form; ❌ removing focus rings.
 - ❌ Animating layout properties / motion with no meaning / ignoring reduced-motion.
-- ❌ App fonts (Fraunces/Inter) bleeding into the resume preview (the document keeps its own ATS-safe typeface).
+- ❌ App fonts (Newsreader/Inter) bleeding into the resume preview (the document keeps its own ATS-safe typeface).

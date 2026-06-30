@@ -42,7 +42,7 @@ JSON output, the most advanced) — so the first AI integration is the simplest 
 | PDF export | **Client-side `react-to-print`** (PDF = exact live preview; zero backend weight) |
 | Hosting | ECS Fargate on shared `portfolio-cluster`, ECR, shared `portfolio-alb`, Secrets Manager, GitHub Actions, RDS → `resume.jameslittlefield.net` |
 | Container | Multi-stage Dockerfile: Node builds React → Django (gunicorn) serves API + built SPA via WhiteNoise |
-| Design | **"Editorial Ink" — a distinct, app-specific identity, deliberately NOT the portfolio "Professional Navy" brand.** Fraunces serif headlines + Inter body, reserved forest-green accent `#0F5132` on warm paper `#FBFAF8`. Full spec in `docs/DESIGN.md`. Quality bar (professional, distinctive-not-outlandish) + external craft references (Linear, Stripe, Vercel) apply. |
+| Design | **"Editorial Ink" — a distinct, app-specific identity, deliberately NOT the portfolio "Professional Navy" brand.** Newsreader serif headlines + Inter body, reserved forest-green accent `#0F5132` on warm paper `#FBFAF8`. Full spec in `docs/DESIGN.md`. Quality bar (professional, distinctive-not-outlandish) + external craft references (Linear, Stripe, Vercel) apply. |
 
 ## Target repo structure
 
@@ -142,7 +142,7 @@ A small, high-value doc set (no sprawl):
 - **`CLAUDE.md`** (root, Phase 1) — Claude Code's operating manual: stack, repo map, dev/test/deploy
   commands, coding conventions, "definition of done," and a short AI-strategy + rate-limit note.
 - **`docs/DESIGN.md`** (Phase 1, ✅ drafted) — the **Editorial Ink** design system: color tokens
-  (warm paper / ink / reserved forest-green accent, light + dark), typography (Fraunces + Inter), spacing
+  (warm paper / ink / reserved forest-green accent, light + dark), typography (Newsreader + Inter), spacing
   scale, component + motion conventions, accessibility, and an explicit **anti-patterns / forbidden list**.
   Tokens are the single source of truth in `client/tailwind.config.ts` + shadcn CSS variables.
 - **`docs/DEPLOYMENT.md`** (Phase 10) — AWS runbook (ECS/ECR/ALB/RDS/Secrets Manager/GitHub Actions/
