@@ -1,9 +1,11 @@
 import { Check, Plus } from "lucide-react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useTailorJd } from "@/api/generated/ai/ai";
 import type { ResumeContent, TailorJDResponse, TailorSuggestion } from "@/api/generated/model";
+import { useDuplicateResume, usePatchResume } from "@/api/generated/resumes/resumes";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
@@ -14,17 +16,26 @@ import { cn } from "@/lib/utils";
 
 import { aiErrorMessage } from "./aiError";
 import { applyAiUsage } from "./aiUsage";
+import { applyTailoring } from "./applyTailoring";
 import { ScoreMeter } from "./ScoreMeter";
 
 export function TailorModal({ onClose }: { onClose: () => void }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { getValues, setValue } = useFormContext<EditorValues>();
   const [jd, setJd] = useState("");
   const [result, setResult] = useState<TailorJDResponse | null>(null);
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
-  const [appliedBullets, setAppliedBullets] = useState<Set<string>>(new Set());
-  const [addedKeywords, setAddedKeywords] = useState<Set<string>>(new Set());
+  // Items the user has picked — applied to whichever destination they choose.
+  const [pickedBullets, setPickedBullets] = useState<Set<string>>(new Set());
+  const [pickedKeywords, setPickedKeywords] = useState<Set<string>>(new Set());
   const tailor = useTailorJd();
+  const duplicate = useDuplicateResume();
+  const patch = usePatchResume();
+
+  const savingCopy = duplicate.isPending || patch.isPending;
+  const nothingPicked = pickedBullets.size === 0 && pickedKeywords.size === 0;
 
   const readFile = async (file: File | undefined) => {
     if (!file) return;
@@ -48,29 +59,57 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
         data: { content: getValues("content") as unknown as ResumeContent, job_description: jd },
       });
       setResult(res);
-      setAppliedBullets(new Set());
-      setAddedKeywords(new Set());
+      setPickedBullets(new Set());
+      setPickedKeywords(new Set());
       applyAiUsage(res.ai_usage);
     } catch (err) {
       setError(aiErrorMessage(err));
     }
   };
 
-  const applySuggestion = (s: TailorSuggestion) => {
-    const [workId, idxStr] = s.bullet_id.split("::");
-    const bi = Number(idxStr);
-    const work = getValues("content.workExperience");
-    const wi = work.findIndex((w) => w.id === workId);
-    if (wi >= 0 && Number.isInteger(bi) && bi >= 0 && bi < work[wi].bullets.length) {
-      setValue(`content.workExperience.${wi}.bullets.${bi}`, s.suggested, { shouldDirty: true });
-      setAppliedBullets((prev) => new Set(prev).add(s.bullet_id));
-    }
+  const toggle = (set: Set<string>, setter: (s: Set<string>) => void, key: string) => {
+    const next = new Set(set);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setter(next);
   };
 
-  const addKeyword = (kw: string) => {
+  const pickedSuggestions = (): TailorSuggestion[] =>
+    result ? result.suggestions.filter((s) => pickedBullets.has(s.bullet_id)) : [];
+
+  /** Apply the picked changes to the current résumé via RHF (granular, so field arrays stay in sync). */
+  const applyHere = () => {
+    const work = getValues("content.workExperience");
+    for (const s of pickedSuggestions()) {
+      const [workId, idxStr] = s.bullet_id.split("::");
+      const bi = Number(idxStr);
+      const wi = work.findIndex((w) => w.id === workId);
+      if (wi >= 0 && Number.isInteger(bi) && bi >= 0 && bi < work[wi].bullets.length) {
+        setValue(`content.workExperience.${wi}.bullets.${bi}`, s.suggested, { shouldDirty: true });
+      }
+    }
     const skills = getValues("content.skills");
-    if (!skills.includes(kw)) setValue("content.skills", [...skills, kw], { shouldDirty: true });
-    setAddedKeywords((prev) => new Set(prev).add(kw));
+    const toAdd = [...pickedKeywords].filter((k) => !skills.includes(k));
+    if (toAdd.length) setValue("content.skills", [...skills, ...toAdd], { shouldDirty: true });
+    onClose();
+  };
+
+  /** Duplicate the résumé, apply the picked changes to the copy, and open it — original untouched. */
+  const saveAsCopy = async () => {
+    if (!id) return;
+    setError("");
+    try {
+      const copy = await duplicate.mutateAsync({ id });
+      const tailored = applyTailoring(
+        getValues("content") as unknown as ResumeContent,
+        pickedSuggestions(),
+        [...pickedKeywords],
+      );
+      await patch.mutateAsync({ id: copy.id, data: { content: tailored } });
+      navigate(`/resumes/${copy.id}`);
+    } catch (err) {
+      setError(aiErrorMessage(err));
+    }
   };
 
   return (
@@ -135,21 +174,21 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
               </p>
               <div className="flex flex-wrap gap-2">
                 {result.missing_keywords.map((kw) => {
-                  const added = addedKeywords.has(kw);
+                  const picked = pickedKeywords.has(kw);
                   return (
                     <button
                       key={kw}
                       type="button"
-                      onClick={() => addKeyword(kw)}
-                      disabled={added}
+                      aria-pressed={picked}
+                      onClick={() => toggle(pickedKeywords, setPickedKeywords, kw)}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        added
+                        picked
                           ? "bg-success/10 text-success"
                           : "bg-warning/10 text-warning hover:bg-warning/20",
                       )}
                     >
-                      {added ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                      {picked ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                       {kw}
                     </button>
                   );
@@ -163,7 +202,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
               <h3 className="mb-2 text-sm font-semibold text-foreground">Suggested rewrites</h3>
               <div className="space-y-3">
                 {result.suggestions.map((s) => {
-                  const applied = appliedBullets.has(s.bullet_id);
+                  const picked = pickedBullets.has(s.bullet_id);
                   return (
                     <div key={s.bullet_id} className="overflow-hidden rounded-lg border border-border">
                       <div className="border-b border-border bg-surface-variant px-3 py-2">
@@ -184,15 +223,21 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
                           </div>
                         )}
                         <div className="mt-3 flex justify-end">
-                          {applied ? (
-                            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success">
-                              <Check className="h-4 w-4" /> Applied
-                            </span>
-                          ) : (
-                            <Button size="sm" onClick={() => applySuggestion(s)}>
-                              Accept
-                            </Button>
-                          )}
+                          <Button
+                            variant={picked ? "secondary" : "primary"}
+                            size="sm"
+                            className="gap-1.5"
+                            aria-pressed={picked}
+                            onClick={() => toggle(pickedBullets, setPickedBullets, s.bullet_id)}
+                          >
+                            {picked ? (
+                              <>
+                                <Check className="h-4 w-4" /> Selected
+                              </>
+                            ) : (
+                              "Accept"
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -207,13 +252,18 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
               {error}
             </p>
           )}
-          <div className="flex justify-between gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setResult(null)} disabled={tailor.isPending}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+            <Button variant="ghost" size="sm" onClick={() => setResult(null)} disabled={savingCopy}>
               New analysis
             </Button>
-            <Button variant="secondary" size="sm" onClick={onClose}>
-              Done
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={applyHere} disabled={nothingPicked || savingCopy}>
+                Apply to this résumé
+              </Button>
+              <Button size="sm" onClick={() => void saveAsCopy()} loading={savingCopy} disabled={nothingPicked}>
+                Save as tailored copy
+              </Button>
+            </div>
           </div>
         </div>
       )}
