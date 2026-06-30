@@ -67,6 +67,9 @@ AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Sets a Content-Security-Policy on every response in production (no-op under
+    # DEBUG so Vite's dev server keeps working). Cheap response-header middleware.
+    "config.middleware.ContentSecurityPolicyMiddleware",
     # WhiteNoise (serves the built SPA + static) is inserted below for non-DEBUG.
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -130,6 +133,13 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    # Scoped throttles applied per-view (not globally): "auth" blunts login/register
+    # brute force (keyed by IP); "ai-burst" is a per-user burst guard on the AI
+    # endpoints that complements the per-user daily/monthly quota in apps/ai/usage.py.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "10/min",
+        "ai-burst": "20/hour",
+    },
 }
 
 SPECTACULAR_SETTINGS = {

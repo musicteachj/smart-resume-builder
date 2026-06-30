@@ -91,6 +91,33 @@ def test_failure_logs_and_does_not_consume(auth_client, user, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
+    settings.DEBUG = False
+
+    def boom(text, role=""):
+        raise AIServiceError("missing ANTHROPIC_API_KEY")
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert res.status_code == 502
+    # The raw upstream string must not leak in production.
+    assert "ANTHROPIC_API_KEY" not in res.json()["detail"]
+
+
+@pytest.mark.django_db
+def test_ai_error_is_verbose_in_debug(auth_client, monkeypatch, settings):
+    settings.DEBUG = True
+
+    def boom(text, role=""):
+        raise AIServiceError("missing ANTHROPIC_API_KEY")
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert res.status_code == 502
+    assert "ANTHROPIC_API_KEY" in res.json()["detail"]
+
+
+@pytest.mark.django_db
 def test_daily_counter_resets_on_new_day(auth_client, user):
     from datetime import date, timedelta
 
