@@ -19,6 +19,11 @@ export interface PatchedResume {
      * @pattern ^[-a-zA-Z0-9_]+$
      */
   template?: string;
+  /**
+     * @maxLength 50
+     * @pattern ^[-a-zA-Z0-9_]+$
+     */
+  document_font?: string;
   content?: ResumeContent;
   readonly created_at?: string;
   readonly updated_at?: string;

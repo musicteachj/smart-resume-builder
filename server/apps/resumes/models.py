@@ -18,6 +18,8 @@ class Resume(models.Model):
     )
     title = models.CharField(max_length=100)
     template = models.SlugField(default=DEFAULT_TEMPLATE)
+    # Optional per-resume document typeface override; blank = use the template's default font.
+    document_font = models.SlugField(default="", blank=True)
     content = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,7 +1,7 @@
 import type { PersonalInfo, ResumeContent } from "@/api/generated/model";
 import { cn } from "@/lib/utils";
 
-import { getTemplate } from "./templates";
+import { getDocumentFontFamily, getTemplate } from "./templates";
 
 /**
  * The resume document itself — an ATS-safe rendering of the content. This is the
@@ -80,17 +80,23 @@ function DocumentLinks({ pi, className }: { pi: PersonalInfo; className?: string
 interface ResumeDocumentProps {
   content: ResumeContent;
   template?: string;
+  /** Optional document typeface override (slug from DOCUMENT_FONTS); blank = template default. */
+  documentFont?: string;
   className?: string;
 }
 
-export function ResumeDocument({ content, template = "classic", className }: ResumeDocumentProps) {
+export function ResumeDocument({ content, template = "classic", documentFont, className }: ResumeDocumentProps) {
   const style = getTemplate(template);
+  const fontFamily = getDocumentFontFamily(documentFont);
   const { personalInfo: pi, summary, workExperience, education, skills, projects } = content;
 
   const contactLine = joinTruthy([pi.email, pi.phone, pi.location], "  ·  ");
 
   return (
     <article
+      // When a user font is chosen, the inline fontFamily overrides the template's
+      // Tailwind font class; otherwise the class (Georgia/Arial) applies.
+      style={fontFamily ? { fontFamily } : undefined}
       className={cn(
         "bg-white p-[var(--doc-pad)] text-[#1a1a1a] [--doc-pad:clamp(28px,4vw,52px)] print:[--doc-pad:0px]",
         style.font === "sans" ? "font-document-sans" : "font-document",
@@ -134,13 +140,13 @@ export function ResumeDocument({ content, template = "classic", className }: Res
       )}
 
       {summary && (
-        <Section title="Summary">
+        <Section title="Summary" variant={style.heading}>
           <p className="text-[12.5px] leading-relaxed text-[#222]">{summary}</p>
         </Section>
       )}
 
       {workExperience.length > 0 && (
-        <Section title="Experience">
+        <Section title="Experience" variant={style.heading}>
           <div className="space-y-3">
             {workExperience.map((w) => (
               <div key={w.id}>
@@ -169,7 +175,7 @@ export function ResumeDocument({ content, template = "classic", className }: Res
       )}
 
       {education.length > 0 && (
-        <Section title="Education">
+        <Section title="Education" variant={style.heading}>
           <div className="space-y-2">
             {education.map((e) => (
               <div key={e.id}>
@@ -189,13 +195,13 @@ export function ResumeDocument({ content, template = "classic", className }: Res
       )}
 
       {skills.length > 0 && (
-        <Section title="Skills">
+        <Section title="Skills" variant={style.heading}>
           <p className="text-[12px] leading-relaxed text-[#222]">{skills.join("  ·  ")}</p>
         </Section>
       )}
 
       {projects && projects.length > 0 && (
-        <Section title="Projects">
+        <Section title="Projects" variant={style.heading}>
           <div className="space-y-2">
             {projects.map((p) => (
               <div key={p.id}>
@@ -215,10 +221,25 @@ export function ResumeDocument({ content, template = "classic", className }: Res
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  variant = "ruled",
+  children,
+}: {
+  title: string;
+  variant?: "ruled" | "minimal";
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-5">
-      <h2 className="mb-2 border-b border-[#d9d6d0] pb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#333]">
+      <h2
+        className={cn(
+          "mb-2 uppercase",
+          variant === "minimal"
+            ? "text-[10.5px] font-semibold tracking-[0.2em] text-[#666]"
+            : "border-b border-[#d9d6d0] pb-1 text-[11px] font-bold tracking-[0.12em] text-[#333]",
+        )}
+      >
         {title}
       </h2>
       {children}

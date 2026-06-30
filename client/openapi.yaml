@@ -7,6 +7,9 @@ paths:
   /api/ai/generate-summary:
     post:
       operationId: generate_summary
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
       tags:
       - ai
       requestBody:
@@ -33,6 +36,9 @@ paths:
   /api/ai/improve-bullet:
     post:
       operationId: improve_bullet
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
       tags:
       - ai
       requestBody:
@@ -59,6 +65,9 @@ paths:
   /api/ai/parse-resume:
     post:
       operationId: parse_resume
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
       tags:
       - ai
       requestBody:
@@ -85,6 +94,9 @@ paths:
   /api/ai/tailor-jd:
     post:
       operationId: tailor_jd
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
       tags:
       - ai
       requestBody:
@@ -549,6 +561,10 @@ components:
           type: string
           maxLength: 50
           pattern: ^[-a-zA-Z0-9_]+$
+        document_font:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
         content:
           $ref: '#/components/schemas/ResumeContent'
         created_at:
@@ -637,6 +653,10 @@ components:
           type: string
           maxLength: 100
         template:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        document_font:
           type: string
           maxLength: 50
           pattern: ^[-a-zA-Z0-9_]+$

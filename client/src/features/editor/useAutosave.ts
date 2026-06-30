@@ -45,6 +45,7 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): S
         ...prev,
         title: v.title,
         template: v.template,
+        document_font: v.documentFont,
         content: v.content,
       });
     }
@@ -62,7 +63,7 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): S
       try {
         const updated = await mutateRef.current({
           id,
-          data: { title: v.title, template: v.template, content: v.content },
+          data: { title: v.title, template: v.template, document_font: v.documentFont, content: v.content },
         });
         queryClient.setQueryData(getGetResumeQueryKey(id), updated);
         queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });

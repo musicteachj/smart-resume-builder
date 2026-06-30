@@ -13,6 +13,7 @@ const emailOrEmpty = z.union([z.string().email("Enter a valid email"), z.literal
 export const editorSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   template: z.string(),
+  documentFont: z.string(),
   content: z.object({
     personalInfo: z.object({
       name: z.string().max(100),
@@ -74,6 +75,7 @@ export function toFormValues(resume: Resume): EditorValues {
   return {
     title: resume.title,
     template: resume.template ?? "classic",
+    documentFont: resume.document_font ?? "",
     content: {
       personalInfo: {
         name: pi.name ?? "",
