@@ -9,6 +9,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- **Tailor to JD — file upload**: the Tailor-to-job-description modal now accepts a **PDF or DOCX**
+  upload in addition to pasting. The file is read in the browser (reusing the import feature's
+  extractor, now generalized to `extractFileText`) and its text fills the editable job-description
+  box, so the user can trim boilerplate before analyzing. Client-only; no AI credit is spent on
+  extraction and the file never leaves the browser.
+
 ### Changed
 - App display font swapped from **Fraunces** to **Newsreader** (editorial serif that pairs more naturally
   with the Inter body). Centralized change via the `font-display` token — the Google Fonts `@import`

@@ -6,8 +6,10 @@ import { useTailorJd } from "@/api/generated/ai/ai";
 import type { ResumeContent, TailorJDResponse, TailorSuggestion } from "@/api/generated/model";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
 import type { EditorValues } from "@/features/editor/editorSchema";
+import { extractFileText } from "@/lib/extractFileText";
 import { cn } from "@/lib/utils";
 
 import { aiErrorMessage } from "./aiError";
@@ -19,9 +21,25 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
   const [jd, setJd] = useState("");
   const [result, setResult] = useState<TailorJDResponse | null>(null);
   const [error, setError] = useState("");
+  const [reading, setReading] = useState(false);
   const [appliedBullets, setAppliedBullets] = useState<Set<string>>(new Set());
   const [addedKeywords, setAddedKeywords] = useState<Set<string>>(new Set());
   const tailor = useTailorJd();
+
+  const readFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError("");
+    setReading(true);
+    try {
+      setJd(await extractFileText(file));
+    } catch (err) {
+      // extractFileText throws user-friendly messages (unsupported type, scanned/empty);
+      // surface them directly rather than the generic AI-error fallback.
+      setError(err instanceof Error ? err.message : aiErrorMessage(err));
+    } finally {
+      setReading(false);
+    }
+  };
 
   const analyze = async () => {
     setError("");
@@ -67,6 +85,14 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
     >
       {!result ? (
         <div className="space-y-4">
+          <input
+            type="file"
+            accept=".pdf,.docx"
+            aria-label="Upload job description file"
+            onChange={(e) => void readFile(e.target.files?.[0])}
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:bg-surface-variant"
+          />
+          <div className="text-center text-xs text-muted-foreground">or paste below</div>
           <Textarea
             value={jd}
             onChange={(e) => setJd(e.target.value)}
@@ -79,8 +105,20 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
             </p>
           )}
           <div className="flex items-center justify-end gap-2">
-            <span className="mr-auto text-xs text-muted-foreground">Uses 1 of your daily AI credits.</span>
-            <Button onClick={() => void analyze()} loading={tailor.isPending} disabled={jd.trim().length < 20}>
+            <span className="mr-auto text-xs text-muted-foreground">
+              {reading ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="h-4 w-4" /> Reading file…
+                </span>
+              ) : (
+                "Uses 1 of your daily AI credits."
+              )}
+            </span>
+            <Button
+              onClick={() => void analyze()}
+              loading={tailor.isPending}
+              disabled={reading || jd.trim().length < 20}
+            >
               Analyze match
             </Button>
           </div>
