@@ -20,6 +20,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **Export to DOCX and plain text**: the editor's Export button is now a menu — **PDF** (as before), **Word
+  (.docx)**, and **Plain text (.txt)**. Both new formats are built from the résumé content (not scraped from
+  HTML) so they're clean and ATS-safe, follow the saved section order, and the `.docx` uses the chosen
+  document font. The `docx` library is lazy-loaded into its own chunk, so the main bundle is unaffected.
+  Shared date/format helpers were extracted so every output (preview, PDF, DOCX, text) reads identically.
 - **Reorder résumé sections**: drag the section panels in the editor (Summary, Experience, Education, Skills,
   Projects) to change their order in the document — e.g. put Skills directly under Summary. Reuses the
   existing `@dnd-kit` drag infrastructure; the header stays pinned at the top. Order persists per résumé

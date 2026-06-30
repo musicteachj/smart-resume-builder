@@ -10,8 +10,14 @@ import type { Resume } from "@/api/generated/model";
 import { useGetResume } from "@/api/generated/resumes/resumes";
 import { SortableList } from "@/components/ui/SortableList";
 import { Spinner } from "@/components/ui/Spinner";
+import { downloadBlob, safeFileName } from "@/lib/download";
 import { ResumeDocument } from "@/features/templates/ResumeDocument";
 import type { SectionKey } from "@/features/templates/sections";
+import { getTemplate } from "@/features/templates/templates";
+
+import { docxFontName, resumeToDocxBlob } from "./exportDocx";
+import type { ExportFormat } from "./exportFormats";
+import { resumeToText } from "./exportText";
 
 import { EditorTopBar } from "./EditorTopBar";
 import { CollapsibleSection } from "./components/CollapsibleSection";
@@ -79,14 +85,30 @@ function EditorForm({ resume }: { resume: Resume }) {
   const printRef = useRef<HTMLDivElement>(null);
   const handleExport = useReactToPrint({
     contentRef: printRef,
-    documentTitle: title.replace(/[^\w\- ]+/g, "").trim() || "resume",
+    documentTitle: safeFileName(title),
     pageStyle: "@page { size: letter; margin: 0.5in; }",
   });
+
+  const exportAs = (format: ExportFormat) => {
+    const base = safeFileName(title);
+    if (format === "pdf") {
+      handleExport();
+    } else if (format === "txt") {
+      const blob = new Blob([resumeToText(content, sectionOrder)], { type: "text/plain;charset=utf-8" });
+      downloadBlob(`${base}.txt`, blob);
+    } else {
+      // .docx — apply the chosen document font, else the template's default face.
+      const font = docxFontName(documentFont) ?? (getTemplate(template).font === "sans" ? "Arial" : "Georgia");
+      void resumeToDocxBlob(content, { sectionOrder, font }).then((blob) =>
+        downloadBlob(`${base}.docx`, blob),
+      );
+    }
+  };
 
   return (
     <FormProvider {...methods}>
       <div className="flex h-dvh flex-col bg-background">
-        <EditorTopBar status={status} onExport={() => handleExport()} />
+        <EditorTopBar status={status} onExport={exportAs} />
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
           {/* Form */}
           <div className="min-h-0 space-y-3 overflow-y-auto border-border p-5 lg:border-r">

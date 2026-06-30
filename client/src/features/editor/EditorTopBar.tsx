@@ -1,16 +1,23 @@
-import { ArrowLeft, ChevronDown, Download } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FileText, FileType, FileType2 } from "lucide-react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import type { ResumeContent } from "@/api/generated/model";
 import { Button } from "@/components/ui/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
 import { AiMenu } from "@/features/ai/AiMenu";
 import { getTemplate } from "@/features/templates/templates";
 
 import { SaveIndicator } from "./components/SaveIndicator";
 import { TemplateGallery } from "./components/TemplateGallery";
 import type { EditorValues } from "./editorSchema";
+import type { ExportFormat } from "./exportFormats";
 import type { SaveStatus } from "./useAutosave";
 
 export function EditorTopBar({
@@ -18,7 +25,7 @@ export function EditorTopBar({
   onExport,
 }: {
   status: SaveStatus;
-  onExport: () => void;
+  onExport: (format: ExportFormat) => void;
 }) {
   const navigate = useNavigate();
   const { register, watch, setValue } = useFormContext<EditorValues>();
@@ -55,9 +62,25 @@ export function EditorTopBar({
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
         </button>
         <AiMenu />
-        <Button size="sm" onClick={onExport} className="gap-1.5">
-          <Download className="h-4 w-4" /> Export PDF
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" className="gap-1.5">
+              <Download className="h-4 w-4" /> Export
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => onExport("pdf")}>
+              <FileText className="h-4 w-4" aria-hidden /> PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onExport("docx")}>
+              <FileType2 className="h-4 w-4" aria-hidden /> Word (.docx)
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onExport("txt")}>
+              <FileType className="h-4 w-4" aria-hidden /> Plain text (.txt)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <TemplateGallery
