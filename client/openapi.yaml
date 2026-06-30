@@ -565,6 +565,12 @@ components:
           type: string
           maxLength: 50
           pattern: ^[-a-zA-Z0-9_]+$
+        section_order:
+          type: array
+          items:
+            type: string
+            pattern: ^[-a-zA-Z0-9_]+$
+          maxItems: 12
         content:
           $ref: '#/components/schemas/ResumeContent'
         created_at:
@@ -660,6 +666,12 @@ components:
           type: string
           maxLength: 50
           pattern: ^[-a-zA-Z0-9_]+$
+        section_order:
+          type: array
+          items:
+            type: string
+            pattern: ^[-a-zA-Z0-9_]+$
+          maxItems: 12
         content:
           $ref: '#/components/schemas/ResumeContent'
         created_at:

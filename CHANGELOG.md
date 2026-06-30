@@ -20,6 +20,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **Reorder résumé sections**: drag the section panels in the editor (Summary, Experience, Education, Skills,
+  Projects) to change their order in the document — e.g. put Skills directly under Summary. Reuses the
+  existing `@dnd-kit` drag infrastructure; the header stays pinned at the top. Order persists per résumé
+  (new `section_order` field; empty = the canonical order, so existing résumés are unchanged) and the live
+  preview + exported PDF follow it.
 - **More templates (6 total)**: three new ATS-safe, single-column templates — **Executive** (left serif,
   quiet headings), **Minimal** (airy sans), and **Editorial** (centered serif) — added to Classic/Modern/Banner
   via a new section-heading style axis in the template registry.

@@ -1,6 +1,9 @@
+import { Fragment, type ReactNode } from "react";
+
 import type { PersonalInfo, ResumeContent } from "@/api/generated/model";
 import { cn } from "@/lib/utils";
 
+import { normalizeSectionOrder, type SectionKey } from "./sections";
 import { getDocumentFontFamily, getTemplate } from "./templates";
 
 /**
@@ -82,15 +85,102 @@ interface ResumeDocumentProps {
   template?: string;
   /** Optional document typeface override (slug from DOCUMENT_FONTS); blank = template default. */
   documentFont?: string;
+  /** Optional custom order of the content sections; empty/absent = canonical order. */
+  sectionOrder?: string[];
   className?: string;
 }
 
-export function ResumeDocument({ content, template = "classic", documentFont, className }: ResumeDocumentProps) {
+export function ResumeDocument({
+  content,
+  template = "classic",
+  documentFont,
+  sectionOrder,
+  className,
+}: ResumeDocumentProps) {
   const style = getTemplate(template);
   const fontFamily = getDocumentFontFamily(documentFont);
   const { personalInfo: pi, summary, workExperience, education, skills, projects } = content;
 
   const contactLine = joinTruthy([pi.email, pi.phone, pi.location], "  ·  ");
+
+  // Each content section, keyed; null when empty so it's skipped. Rendered in the
+  // user's saved order (header stays pinned above, regardless of order).
+  const sections: Record<SectionKey, ReactNode> = {
+    summary: summary ? (
+      <Section title="Summary" variant={style.heading}>
+        <p className="text-[12.5px] leading-relaxed text-[#222]">{summary}</p>
+      </Section>
+    ) : null,
+    experience: workExperience.length > 0 ? (
+      <Section title="Experience" variant={style.heading}>
+        <div className="space-y-3">
+          {workExperience.map((w) => (
+            <div key={w.id}>
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="text-[13px] font-bold">{w.position || "Position"}</h3>
+                <span className="shrink-0 text-[11px] text-[#555]">
+                  {dateRange(w.startDate, w.endDate)}
+                </span>
+              </div>
+              {joinTruthy([w.company, w.location], " · ") && (
+                <p className="text-[12px] italic text-[#444]">
+                  {joinTruthy([w.company, w.location], " · ")}
+                </p>
+              )}
+              {w.bullets && w.bullets.filter(Boolean).length > 0 && (
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] leading-snug text-[#222]">
+                  {w.bullets.filter(Boolean).map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      </Section>
+    ) : null,
+    education: education.length > 0 ? (
+      <Section title="Education" variant={style.heading}>
+        <div className="space-y-2">
+          {education.map((e) => (
+            <div key={e.id}>
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="text-[13px] font-bold">{e.school || "School"}</h3>
+                <span className="shrink-0 text-[11px] text-[#555]">
+                  {formatMonth(e.graduationDate)}
+                </span>
+              </div>
+              <p className="text-[12px] italic text-[#444]">
+                {joinTruthy([joinTruthy([e.degree, e.field], ", "), e.gpa && `GPA ${e.gpa}`], " · ")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    ) : null,
+    skills: skills.length > 0 ? (
+      <Section title="Skills" variant={style.heading}>
+        <p className="text-[12px] leading-relaxed text-[#222]">{skills.join("  ·  ")}</p>
+      </Section>
+    ) : null,
+    projects: projects && projects.length > 0 ? (
+      <Section title="Projects" variant={style.heading}>
+        <div className="space-y-2">
+          {projects.map((p) => (
+            <div key={p.id}>
+              <h3 className="text-[13px] font-bold">{p.name || "Project"}</h3>
+              {p.description && (
+                <p className="text-[12px] leading-snug text-[#222]">{p.description}</p>
+              )}
+              {p.technologies && p.technologies.length > 0 && (
+                <p className="text-[11px] text-[#555]">{p.technologies.join(" · ")}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </Section>
+    ) : null,
+  };
 
   return (
     <article
@@ -139,84 +229,9 @@ export function ResumeDocument({ content, template = "classic", documentFont, cl
         </header>
       )}
 
-      {summary && (
-        <Section title="Summary" variant={style.heading}>
-          <p className="text-[12.5px] leading-relaxed text-[#222]">{summary}</p>
-        </Section>
-      )}
-
-      {workExperience.length > 0 && (
-        <Section title="Experience" variant={style.heading}>
-          <div className="space-y-3">
-            {workExperience.map((w) => (
-              <div key={w.id}>
-                <div className="flex items-baseline justify-between gap-4">
-                  <h3 className="text-[13px] font-bold">{w.position || "Position"}</h3>
-                  <span className="shrink-0 text-[11px] text-[#555]">
-                    {dateRange(w.startDate, w.endDate)}
-                  </span>
-                </div>
-                {joinTruthy([w.company, w.location], " · ") && (
-                  <p className="text-[12px] italic text-[#444]">
-                    {joinTruthy([w.company, w.location], " · ")}
-                  </p>
-                )}
-                {w.bullets && w.bullets.filter(Boolean).length > 0 && (
-                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[12px] leading-snug text-[#222]">
-                    {w.bullets.filter(Boolean).map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {education.length > 0 && (
-        <Section title="Education" variant={style.heading}>
-          <div className="space-y-2">
-            {education.map((e) => (
-              <div key={e.id}>
-                <div className="flex items-baseline justify-between gap-4">
-                  <h3 className="text-[13px] font-bold">{e.school || "School"}</h3>
-                  <span className="shrink-0 text-[11px] text-[#555]">
-                    {formatMonth(e.graduationDate)}
-                  </span>
-                </div>
-                <p className="text-[12px] italic text-[#444]">
-                  {joinTruthy([joinTruthy([e.degree, e.field], ", "), e.gpa && `GPA ${e.gpa}`], " · ")}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {skills.length > 0 && (
-        <Section title="Skills" variant={style.heading}>
-          <p className="text-[12px] leading-relaxed text-[#222]">{skills.join("  ·  ")}</p>
-        </Section>
-      )}
-
-      {projects && projects.length > 0 && (
-        <Section title="Projects" variant={style.heading}>
-          <div className="space-y-2">
-            {projects.map((p) => (
-              <div key={p.id}>
-                <h3 className="text-[13px] font-bold">{p.name || "Project"}</h3>
-                {p.description && (
-                  <p className="text-[12px] leading-snug text-[#222]">{p.description}</p>
-                )}
-                {p.technologies && p.technologies.length > 0 && (
-                  <p className="text-[11px] text-[#555]">{p.technologies.join(" · ")}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+      {normalizeSectionOrder(sectionOrder).map((key) => (
+        <Fragment key={key}>{sections[key]}</Fragment>
+      ))}
     </article>
   );
 }
@@ -228,7 +243,7 @@ function Section({
 }: {
   title: string;
   variant?: "ruled" | "minimal";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="mt-5">
