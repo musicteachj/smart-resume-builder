@@ -20,7 +20,7 @@ const validContent: EditorValues["content"] = {
   projects: [],
 };
 
-const base: EditorValues = { title: "My Resume", template: "classic", content: validContent };
+const base: EditorValues = { title: "My Resume", template: "classic", documentFont: "", content: validContent };
 
 describe("editorSchema", () => {
   it("accepts a valid (draft-friendly) resume", () => {

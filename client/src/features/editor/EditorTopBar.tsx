@@ -23,6 +23,7 @@ export function EditorTopBar({
   const navigate = useNavigate();
   const { register, watch, setValue } = useFormContext<EditorValues>();
   const template = watch("template");
+  const documentFont = watch("documentFont");
   const [galleryOpen, setGalleryOpen] = useState(false);
 
   return (
@@ -65,6 +66,8 @@ export function EditorTopBar({
         content={watch("content") as unknown as ResumeContent}
         value={template}
         onSelect={(id) => setValue("template", id, { shouldDirty: true })}
+        fontValue={documentFont}
+        onSelectFont={(id) => setValue("documentFont", id, { shouldDirty: true })}
       />
     </div>
   );

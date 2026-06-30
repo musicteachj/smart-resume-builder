@@ -57,6 +57,7 @@ function EditorForm({ resume }: { resume: Resume }) {
   const status = useAutosave(resume.id, methods);
   const content = useWatch({ control: methods.control, name: "content" });
   const template = useWatch({ control: methods.control, name: "template" });
+  const documentFont = useWatch({ control: methods.control, name: "documentFont" });
   const title = useWatch({ control: methods.control, name: "title" });
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -97,7 +98,7 @@ function EditorForm({ resume }: { resume: Resume }) {
           <div className="min-h-0 overflow-y-auto bg-surface-variant p-6">
             <div className="mx-auto max-w-[816px] shadow-medium">
               <div ref={printRef}>
-                <ResumeDocument content={content} template={template} />
+                <ResumeDocument content={content} template={template} documentFont={documentFont} />
               </div>
             </div>
           </div>

@@ -69,3 +69,35 @@ describe("ResumeDocument banner template", () => {
     expect(screen.getByTestId("doc-header")).toHaveAttribute("data-header", "plain");
   });
 });
+
+describe("ResumeDocument templates", () => {
+  it("renders all six templates", () => {
+    for (const id of ["classic", "modern", "banner", "executive", "minimal", "editorial"]) {
+      const { unmount } = render(<ResumeDocument content={content()} template={id} />);
+      expect(screen.getByRole("heading", { level: 1, name: "Ada Lovelace" })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("rules section headings on 'ruled' templates and not on 'minimal' ones", () => {
+    const withSummary: ResumeContent = { ...content(), summary: "A short summary." };
+    const { rerender } = render(<ResumeDocument content={withSummary} template="classic" />);
+    expect(screen.getByText("Summary").className).toContain("border-b"); // ruled
+    rerender(<ResumeDocument content={withSummary} template="minimal" />);
+    expect(screen.getByText("Summary").className).not.toContain("border-b"); // minimal
+  });
+});
+
+describe("ResumeDocument document font", () => {
+  it("applies a chosen ATS-safe font inline, overriding the template default", () => {
+    const { container } = render(<ResumeDocument content={content()} documentFont="arial" />);
+    expect(container.querySelector("article")!.style.fontFamily).toContain("Arial");
+  });
+
+  it("falls back to the template font class when no font is chosen", () => {
+    const { container } = render(<ResumeDocument content={content()} template="classic" />);
+    const article = container.querySelector("article")!;
+    expect(article.style.fontFamily).toBe("");
+    expect(article.className).toContain("font-document");
+  });
+});

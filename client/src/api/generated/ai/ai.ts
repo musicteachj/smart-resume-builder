@@ -33,6 +33,10 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
+/**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
 export const generateSummary = (
     generateSummaryRequest: GenerateSummaryRequest,
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
@@ -90,7 +94,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getGenerateSummaryMutationOptions(options), queryClient);
     }
-    export const improveBullet = (
+    /**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
+export const improveBullet = (
     improveBulletRequest: ImproveBulletRequest,
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
 ) => {
@@ -147,7 +155,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getImproveBulletMutationOptions(options), queryClient);
     }
-    export const parseResume = (
+    /**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
+export const parseResume = (
     parseResumeRequest: ParseResumeRequest,
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
 ) => {
@@ -204,7 +216,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getParseResumeMutationOptions(options), queryClient);
     }
-    export const tailorJd = (
+    /**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
+export const tailorJd = (
     tailorJDRequest: TailorJDRequest,
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
 ) => {

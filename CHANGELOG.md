@@ -20,6 +20,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **More templates (6 total)**: three new ATS-safe, single-column templates — **Executive** (left serif,
+  quiet headings), **Minimal** (airy sans), and **Editorial** (centered serif) — added to Classic/Modern/Banner
+  via a new section-heading style axis in the template registry.
+- **User-selectable document font**: a curated set of ATS-safe typefaces (Georgia, Times New Roman, Garamond,
+  Arial, Helvetica, Calibri) selectable per résumé, independent of the template (new `document_font` field;
+  blank = the template's default). The picker lives in the template gallery; the live preview and exported PDF
+  both reflect the choice.
 - **Tailor to JD — file upload**: the Tailor-to-job-description modal now accepts a **PDF or DOCX**
   upload in addition to pasting. The file is read in the browser (reusing the import feature's
   extractor, now generalized to `extractFileText`) and its text fills the editable job-description
