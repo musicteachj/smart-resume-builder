@@ -88,6 +88,31 @@ describe("ResumeDocument templates", () => {
   });
 });
 
+describe("ResumeDocument section order", () => {
+  const multi: ResumeContent = {
+    ...content(),
+    summary: "A short summary.",
+    skills: ["Figma"],
+    workExperience: [
+      { id: "w1", company: "Acme", position: "Designer", location: "", startDate: "2022-01", endDate: "", bullets: ["Did work."] },
+    ],
+  };
+
+  function headingOrder() {
+    return screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+  }
+
+  it("renders sections in the saved order", () => {
+    render(<ResumeDocument content={multi} sectionOrder={["skills", "summary", "experience"]} />);
+    expect(headingOrder()).toEqual(["Skills", "Summary", "Experience"]);
+  });
+
+  it("falls back to the canonical order when none is given", () => {
+    render(<ResumeDocument content={multi} />);
+    expect(headingOrder()).toEqual(["Summary", "Experience", "Skills"]);
+  });
+});
+
 describe("ResumeDocument document font", () => {
   it("applies a chosen ATS-safe font inline, overriding the template default", () => {
     const { container } = render(<ResumeDocument content={content()} documentFont="arial" />);

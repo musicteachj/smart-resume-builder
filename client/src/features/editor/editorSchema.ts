@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { Resume } from "@/api/generated/model";
+import { normalizeSectionOrder } from "@/features/templates/sections";
 
 const monthOrEmpty = z
   .string()
@@ -14,6 +15,7 @@ export const editorSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   template: z.string(),
   documentFont: z.string(),
+  sectionOrder: z.array(z.string()),
   content: z.object({
     personalInfo: z.object({
       name: z.string().max(100),
@@ -76,6 +78,7 @@ export function toFormValues(resume: Resume): EditorValues {
     title: resume.title,
     template: resume.template ?? "classic",
     documentFont: resume.document_font ?? "",
+    sectionOrder: normalizeSectionOrder(resume.section_order),
     content: {
       personalInfo: {
         name: pi.name ?? "",

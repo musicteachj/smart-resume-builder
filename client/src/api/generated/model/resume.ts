@@ -24,6 +24,11 @@ export interface Resume {
      * @pattern ^[-a-zA-Z0-9_]+$
      */
   document_font?: string;
+  /**
+     * @maxItems 12
+     * @items.pattern ^[-a-zA-Z0-9_]+$
+     */
+  section_order?: string[];
   content: ResumeContent;
   readonly created_at: string;
   readonly updated_at: string;

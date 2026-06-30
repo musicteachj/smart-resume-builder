@@ -20,6 +20,8 @@ class Resume(models.Model):
     template = models.SlugField(default=DEFAULT_TEMPLATE)
     # Optional per-resume document typeface override; blank = use the template's default font.
     document_font = models.SlugField(default="", blank=True)
+    # Optional custom order of the content sections (keys like "skills"); empty = canonical order.
+    section_order = models.JSONField(default=list, blank=True)
     content = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -69,6 +69,19 @@ def test_document_font_round_trips(auth_client, content):
 
 
 @pytest.mark.django_db
+def test_section_order_round_trips(auth_client, content):
+    rid = auth_client.post(
+        LIST, {"title": "R", "template": "classic", "content": content}, format="json"
+    ).json()["id"]
+    assert auth_client.get(detail(rid)).json()["section_order"] == []  # canonical by default
+    res = auth_client.patch(
+        detail(rid), {"section_order": ["skills", "summary"]}, format="json"
+    )
+    assert res.status_code == 200
+    assert auth_client.get(detail(rid)).json()["section_order"] == ["skills", "summary"]
+
+
+@pytest.mark.django_db
 def test_delete(auth_client, content):
     rid = auth_client.post(
         LIST, {"title": "Temp", "template": "classic", "content": content}, format="json"

@@ -106,10 +106,17 @@ class ResumeSerializer(serializers.ModelSerializer):
     """Full read + write representation of a resume (retrieve/create/update)."""
 
     content = ResumeContentSerializer()
+    # Custom section order — a list of section keys ("summary", "skills", …). Empty = canonical.
+    section_order = serializers.ListField(
+        child=serializers.SlugField(), required=False, allow_empty=True, max_length=12
+    )
 
     class Meta:
         model = Resume
-        fields = ["id", "title", "template", "document_font", "content", "created_at", "updated_at"]
+        fields = [
+            "id", "title", "template", "document_font", "section_order",
+            "content", "created_at", "updated_at",
+        ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
