@@ -3,6 +3,7 @@ import { Fragment, type ReactNode } from "react";
 import type { PersonalInfo, ResumeContent } from "@/api/generated/model";
 import { cn } from "@/lib/utils";
 
+import { dateRange, formatMonth, joinTruthy } from "./documentFormat";
 import { normalizeSectionOrder, type SectionKey } from "./sections";
 import { getDocumentFontFamily, getTemplate } from "./templates";
 
@@ -12,29 +13,6 @@ import { getDocumentFontFamily, getTemplate } from "./templates";
  * ("preview === PDF"). It uses document fonts (Georgia / Arial), never the app's
  * Newsreader/Inter, and no app accent color.
  */
-
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-function formatMonth(value?: string | null): string {
-  if (!value) return "";
-  const m = /^(\d{4})-(\d{2})$/.exec(value);
-  if (!m) return value;
-  const month = MONTHS[Number(m[2]) - 1];
-  return month ? `${month} ${m[1]}` : m[1];
-}
-
-function dateRange(start?: string, end?: string | null): string {
-  const s = formatMonth(start);
-  if (!s) return "";
-  return `${s} – ${end ? formatMonth(end) : "Present"}`;
-}
-
-function joinTruthy(parts: (string | undefined)[], sep: string): string {
-  return parts.filter((p) => p && p.trim()).join(sep);
-}
 
 const LINK_FIELDS: { key: "linkedin" | "github" | "website"; label: string }[] = [
   { key: "linkedin", label: "LinkedIn" },
