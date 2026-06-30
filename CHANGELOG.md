@@ -20,6 +20,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **Save a tailored copy per job**: in the Tailor-to-JD modal, accepted bullet rewrites and keywords are now
+  *picked* (not applied immediately), then sent to one of two destinations — **Apply to this résumé** (in place,
+  as before) or **Save as tailored copy**, which duplicates the résumé, applies the picks to the copy, and opens
+  it, leaving the original untouched. Reuses the existing duplicate + patch endpoints (no backend change); the
+  apply logic is a tested pure `applyTailoring` helper.
 - **Export to DOCX and plain text**: the editor's Export button is now a menu — **PDF** (as before), **Word
   (.docx)**, and **Plain text (.txt)**. Both new formats are built from the résumé content (not scraped from
   HTML) so they're clean and ATS-safe, follow the saved section order, and the `.docx` uses the chosen

@@ -66,7 +66,9 @@ export function EditorPage() {
     );
   }
 
-  return <EditorForm resume={resume} />;
+  // Key by id so navigating editor→editor (e.g. opening a freshly saved tailored copy)
+  // remounts the form with the new résumé's values rather than keeping the old ones.
+  return <EditorForm key={resume.id} resume={resume} />;
 }
 
 function EditorForm({ resume }: { resume: Resume }) {
