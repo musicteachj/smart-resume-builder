@@ -32,10 +32,11 @@ async function extractDocx(file: File): Promise<string> {
 }
 
 /**
- * Extract plain text from a résumé file in the browser. PDF via pdf.js, DOCX via mammoth
- * (both lazy-loaded). The file never leaves the client; only the returned text is sent on.
+ * Extract plain text from a PDF or DOCX file in the browser. PDF via pdf.js, DOCX via
+ * mammoth (both lazy-loaded). The file never leaves the client; only the returned text
+ * is sent on. Generic over document kind — used for both résumé import and JD tailoring.
  */
-export async function extractResumeText(file: File): Promise<string> {
+export async function extractFileText(file: File): Promise<string> {
   let text: string;
   if (isPdf(file)) text = await extractPdf(file);
   else if (isDocx(file)) text = await extractDocx(file);

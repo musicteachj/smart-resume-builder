@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { aiErrorMessage } from "@/features/ai/aiError";
 import { applyAiUsage } from "@/features/ai/aiUsage";
 import { ResumeDocument } from "@/features/templates/ResumeDocument";
-import { extractResumeText } from "@/lib/extractResumeText";
+import { extractFileText } from "@/lib/extractFileText";
 
 type Step = "input" | "parsing" | "review";
 
@@ -43,7 +43,7 @@ export function ImportResumeModal({
     setError("");
     setStep("parsing");
     try {
-      const text = file ? await extractResumeText(file) : pasted.trim();
+      const text = file ? await extractFileText(file) : pasted.trim();
       if (text.length < 30) throw new Error("Add a file or paste your résumé text first.");
       const res = await parse.mutateAsync({ data: { text } });
       applyAiUsage(res.ai_usage);
