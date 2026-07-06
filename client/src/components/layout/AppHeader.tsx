@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import { AXIOS_INSTANCE } from "@/api/axios";
 import { UsagePill } from "@/components/ui/UsagePill";
 import { initials } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth";
@@ -19,6 +20,16 @@ export function AppHeader() {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const navigate = useNavigate();
+
+  // Clear the refresh cookie server-side, then clear the in-memory session.
+  const handleLogout = async () => {
+    try {
+      await AXIOS_INSTANCE.post("/api/auth/logout");
+    } finally {
+      logout();
+      navigate("/");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-header border-b border-border bg-background/90 backdrop-blur">
@@ -52,12 +63,7 @@ export function AppHeader() {
             <DropdownMenuContent>
               <div className="px-2.5 py-1.5 text-xs text-muted-foreground">{user?.email}</div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() => {
-                  logout();
-                  navigate("/");
-                }}
-              >
+              <DropdownMenuItem onSelect={() => void handleLogout()}>
                 <LogOut className="h-4 w-4" aria-hidden />
                 Sign out
               </DropdownMenuItem>

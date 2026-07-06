@@ -32,7 +32,7 @@ export function RegisterPage() {
     setFormError(null);
     try {
       const res = await mutateAsync({ data: values });
-      setSession({ user: res.user, access: res.access, refresh: res.refresh });
+      setSession({ user: res.user, access: res.access });
       navigate("/dashboard");
     } catch (err) {
       const fe = fieldErrors(err);

@@ -22,7 +22,7 @@ const renderPage = () =>
 describe("LoginPage", () => {
   beforeEach(() => {
     mutateAsync.mockReset();
-    useAuthStore.setState({ accessToken: null, user: null, refreshToken: null } as never);
+    useAuthStore.setState({ accessToken: null, user: null, status: "loading" });
   });
 
   it("shows validation errors and does not submit when empty", async () => {
@@ -34,7 +34,7 @@ describe("LoginPage", () => {
   });
 
   it("submits valid credentials", async () => {
-    mutateAsync.mockResolvedValue({ user: { id: 1 }, access: "a", refresh: "r" });
+    mutateAsync.mockResolvedValue({ user: { id: 1 }, access: "a" });
     renderPage();
     await userEvent.type(screen.getByLabelText("Email"), "maya@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "sup3rSecret!");

@@ -94,11 +94,11 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class AuthResponseSerializer(serializers.Serializer):
-    """Returned by register and login: the user plus a JWT pair."""
+    """Returned by register and login: the user plus a short-lived access token.
+    The refresh token is set as an httpOnly cookie, not returned in the body."""
 
     user = UserSerializer(read_only=True)
     access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
 
 
 class TokenRefreshResponseSerializer(serializers.Serializer):

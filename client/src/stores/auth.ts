@@ -1,34 +1,31 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 import type { User } from "@/api/generated/model";
 
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
 interface AuthState {
   user: User | null;
+  /** Access token — in memory only (never persisted). */
   accessToken: string | null;
-  refreshToken: string | null;
-  setSession: (session: { user: User; access: string; refresh: string }) => void;
+  status: AuthStatus;
+  setSession: (session: { user: User; access: string }) => void;
   setAccessToken: (access: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
 }
 
-/** Auth/session store. Tokens persist to localStorage so a reload stays signed in. */
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      setSession: ({ user, access, refresh }) =>
-        set({ user, accessToken: access, refreshToken: refresh }),
-      setAccessToken: (access) => set({ accessToken: access }),
-      setUser: (user) => set({ user }),
-      logout: () => set({ user: null, accessToken: null, refreshToken: null }),
-    }),
-    { name: "srb-auth" },
-  ),
-);
+/** Auth/session store. Nothing persists — the refresh token is an httpOnly cookie,
+ * and the session is restored on load via bootstrapAuth(). */
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  accessToken: null,
+  status: "loading",
+  setSession: ({ user, access }) => set({ user, accessToken: access, status: "authenticated" }),
+  setAccessToken: (access) => set({ accessToken: access }),
+  setUser: (user) => set({ user }),
+  logout: () => set({ user: null, accessToken: null, status: "unauthenticated" }),
+}));
 
-/** Non-reactive auth check for guards/interceptors outside React. */
-export const isAuthenticated = () => Boolean(useAuthStore.getState().accessToken);
+/** Non-reactive auth check for interceptors outside React. */
+export const isAuthenticated = () => useAuthStore.getState().status === "authenticated";

@@ -21,7 +21,10 @@ def test_register_creates_user_and_returns_tokens(client):
     res = client.post(REGISTER, VALID, format="json")
     assert res.status_code == 201
     body = res.json()
-    assert body["access"] and body["refresh"]
+    assert body["access"]
+    assert "refresh" not in body  # refresh is an httpOnly cookie now
+    cookie = res.cookies.get("refresh_token")
+    assert cookie is not None and cookie["httponly"]
     assert body["user"]["email"] == "maya@example.com"
     assert body["user"]["is_admin"] is False
     assert body["user"]["ai_usage"]["daily_limit"] == 10
@@ -45,15 +48,41 @@ def test_register_rejects_weak_password(client):
 
 
 @pytest.mark.django_db
-def test_login_returns_tokens_and_user(client):
+def test_login_returns_access_and_sets_refresh_cookie(client):
     client.post(REGISTER, VALID, format="json")
     res = client.post(
         LOGIN, {"email": VALID["email"], "password": VALID["password"]}, format="json"
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["access"] and body["refresh"]
+    assert body["access"]
+    assert "refresh" not in body
+    assert res.cookies.get("refresh_token") is not None
     assert body["user"]["email"] == "maya@example.com"
+
+
+@pytest.mark.django_db
+def test_refresh_uses_cookie_and_returns_access(client):
+    client.post(REGISTER, VALID, format="json")
+    client.post(LOGIN, {"email": VALID["email"], "password": VALID["password"]}, format="json")
+    # The test client persists cookies across requests, so the refresh cookie is sent automatically.
+    res = client.post("/api/auth/refresh")
+    assert res.status_code == 200
+    assert res.json()["access"]
+
+
+@pytest.mark.django_db
+def test_refresh_without_cookie_is_unauthorized(client):
+    assert client.post("/api/auth/refresh").status_code == 401
+
+
+@pytest.mark.django_db
+def test_logout_clears_the_cookie(client):
+    client.post(REGISTER, VALID, format="json")
+    res = client.post("/api/auth/logout")
+    assert res.status_code == 204
+    # delete_cookie sets the cookie to empty with a past expiry.
+    assert res.cookies["refresh_token"].value == ""
 
 
 @pytest.mark.django_db

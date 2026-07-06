@@ -6,7 +6,8 @@ import Axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
  * (called once at app startup). baseURL is "" so requests are same-origin —
  * Vite proxies `/api` to Django in dev, and Django serves the SPA in prod.
  */
-export const AXIOS_INSTANCE = Axios.create({ baseURL: "" });
+// withCredentials so the httpOnly refresh cookie is sent/received (flows are same-origin).
+export const AXIOS_INSTANCE = Axios.create({ baseURL: "", withCredentials: true });
 
 export const customAxios = <T>(
   config: AxiosRequestConfig,

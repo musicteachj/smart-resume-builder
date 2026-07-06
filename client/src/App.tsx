@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthedLayout } from "@/components/layout/AuthedLayout";
+import { bootstrapAuth } from "@/features/auth/bootstrap";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
@@ -9,6 +11,11 @@ import { LandingPage } from "@/features/marketing/LandingPage";
 import { ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
 
 function App() {
+  // Restore the session (silent refresh via the httpOnly cookie) once on load.
+  useEffect(() => {
+    void bootstrapAuth();
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
