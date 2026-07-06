@@ -16,6 +16,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AtsCheckRequest,
+  AtsCheckResponse,
+  CoverLetterRequest,
+  CoverLetterResponse,
   GenerateSummaryRequest,
   GenerateSummaryResponse,
   ImproveBulletRequest,
@@ -34,6 +38,128 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
+export const atsHealthCheck = (
+    atsCheckRequest: AtsCheckRequest,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<AtsCheckResponse>(
+      {url: `/api/ai/ats-check`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: atsCheckRequest, signal
+    },
+      options);
+    }
+
+
+
+export const getAtsHealthCheckMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof atsHealthCheck>>, TError,{data: AtsCheckRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof atsHealthCheck>>, TError,{data: AtsCheckRequest}, TContext> => {
+
+const mutationKey = ['atsHealthCheck'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof atsHealthCheck>>, {data: AtsCheckRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  atsHealthCheck(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AtsHealthCheckMutationResult = NonNullable<Awaited<ReturnType<typeof atsHealthCheck>>>
+    export type AtsHealthCheckMutationBody = AtsCheckRequest
+    export type AtsHealthCheckMutationError = unknown
+
+    export const useAtsHealthCheck = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof atsHealthCheck>>, TError,{data: AtsCheckRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof atsHealthCheck>>,
+        TError,
+        {data: AtsCheckRequest},
+        TContext
+      > => {
+      return useMutation(getAtsHealthCheckMutationOptions(options), queryClient);
+    }
+    /**
+ * Base for AI endpoints: auth required + a per-user burst throttle (complements
+ * the per-user daily/monthly quota in usage.py).
+ */
+export const generateCoverLetter = (
+    coverLetterRequest: CoverLetterRequest,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<CoverLetterResponse>(
+      {url: `/api/ai/cover-letter`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: coverLetterRequest, signal
+    },
+      options);
+    }
+
+
+
+export const getGenerateCoverLetterMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCoverLetter>>, TError,{data: CoverLetterRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateCoverLetter>>, TError,{data: CoverLetterRequest}, TContext> => {
+
+const mutationKey = ['generateCoverLetter'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateCoverLetter>>, {data: CoverLetterRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateCoverLetter(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateCoverLetterMutationResult = NonNullable<Awaited<ReturnType<typeof generateCoverLetter>>>
+    export type GenerateCoverLetterMutationBody = CoverLetterRequest
+    export type GenerateCoverLetterMutationError = unknown
+
+    export const useGenerateCoverLetter = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCoverLetter>>, TError,{data: CoverLetterRequest}, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateCoverLetter>>,
+        TError,
+        {data: CoverLetterRequest},
+        TContext
+      > => {
+      return useMutation(getGenerateCoverLetterMutationOptions(options), queryClient);
+    }
+    /**
  * Base for AI endpoints: auth required + a per-user burst throttle (complements
  * the per-user daily/monthly quota in usage.py).
  */

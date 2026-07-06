@@ -9,6 +9,9 @@ class AIUsageLog(models.Model):
         ("improve-bullet", "Improve bullet"),
         ("generate-summary", "Generate summary"),
         ("tailor-jd", "Tailor to job description"),
+        ("parse-resume", "Parse résumé"),
+        ("cover-letter", "Cover letter"),
+        ("ats-check", "ATS health check"),
     ]
 
     user = models.ForeignKey(

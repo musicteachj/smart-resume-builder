@@ -7,7 +7,11 @@
  */
 
 export * from './aIUsage';
+export * from './atsCheckRequest';
+export * from './atsCheckResponse';
 export * from './authResponse';
+export * from './coverLetterRequest';
+export * from './coverLetterResponse';
 export * from './education';
 export * from './emailTokenObtainPair';
 export * from './generateSummaryRequest';

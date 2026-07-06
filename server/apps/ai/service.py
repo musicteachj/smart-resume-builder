@@ -200,6 +200,84 @@ def tailor_to_jd(content: dict, job_description: str) -> dict:
     }
 
 
+def generate_cover_letter(content: dict, job_description: str) -> str:
+    from .prompts import COVER_LETTER
+
+    user = "Resume:\n" + _content_to_text(content) + "\n\nJob description:\n" + job_description
+    try:
+        resp = _client().messages.create(
+            model=settings.AI_MODEL_TAILOR,
+            max_tokens=1200,
+            system=COVER_LETTER,
+            messages=[{"role": "user", "content": user}],
+        )
+    except AIServiceError:
+        raise
+    except Exception as exc:
+        raise AIServiceError(str(exc)) from exc
+    out = _text_from(resp)
+    if not out:
+        raise AIServiceError("Empty response from the AI service.")
+    return out
+
+
+ATS_TOOL = {
+    "name": "submit_ats_check",
+    "description": "Submit the ATS readiness score, issues, and recommendations.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "score": {"type": "integer", "description": "0-100 overall ATS readiness / quality."},
+            "issues": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Specific problems with the resume, most important first.",
+            },
+            "recommendations": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Actionable improvements, most impactful first.",
+            },
+        },
+        "required": ["score", "issues", "recommendations"],
+    },
+}
+
+
+def ats_health_check(content: dict) -> dict:
+    from .prompts import ATS_HEALTH_CHECK
+
+    user = "Review this resume:\n\n" + _content_to_text(content)
+    try:
+        resp = _client().messages.create(
+            model=settings.AI_MODEL_TAILOR,
+            max_tokens=1500,
+            system=ATS_HEALTH_CHECK,
+            tools=[ATS_TOOL],
+            tool_choice={"type": "tool", "name": "submit_ats_check"},
+            messages=[{"role": "user", "content": user}],
+        )
+    except AIServiceError:
+        raise
+    except Exception as exc:
+        raise AIServiceError(str(exc)) from exc
+
+    data = next((b.input for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
+    if not isinstance(data, dict):
+        raise AIServiceError("Malformed response from the AI service.")
+
+    score = data.get("score", 0)
+    try:
+        score = max(0, min(100, int(score)))
+    except (TypeError, ValueError):
+        score = 0
+    return {
+        "score": score,
+        "issues": [str(s) for s in (data.get("issues") or [])][:8],
+        "recommendations": [str(s) for s in (data.get("recommendations") or [])][:8],
+    }
+
+
 # --- import / parse ---------------------------------------------------------
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

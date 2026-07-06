@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    AtsCheckView,
+    CoverLetterView,
     GenerateSummaryView,
     ImproveBulletView,
     ParseResumeView,
@@ -12,4 +14,6 @@ urlpatterns = [
     path("generate-summary", GenerateSummaryView.as_view(), name="generate-summary"),
     path("tailor-jd", TailorJDView.as_view(), name="tailor-jd"),
     path("parse-resume", ParseResumeView.as_view(), name="parse-resume"),
+    path("cover-letter", CoverLetterView.as_view(), name="cover-letter"),
+    path("ats-check", AtsCheckView.as_view(), name="ats-check"),
 ]

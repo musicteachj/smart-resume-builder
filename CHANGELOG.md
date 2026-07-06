@@ -20,6 +20,12 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **AI cover-letter generator**: a new editor AI action drafts a tailored cover letter from the résumé and a
+  pasted-or-uploaded job description (Sonnet), shown in an editable field with copy-to-clipboard and `.txt`
+  download. Usage-gated; graceful `502` without an API key.
+- **AI ATS health check**: a new editor AI action scores the current résumé for ATS-readiness (0–100, no job
+  description needed) via forced tool-use, and lists specific issues and recommendations (reuses `ScoreMeter`
+  and the score-band convention). Usage-gated.
 - **Save a tailored copy per job**: in the Tailor-to-JD modal, accepted bullet rewrites and keywords are now
   *picked* (not applied immediately), then sent to one of two destinations — **Apply to this résumé** (in place,
   as before) or **Save as tailored copy**, which duplicates the résumé, applies the picks to the copy, and opens

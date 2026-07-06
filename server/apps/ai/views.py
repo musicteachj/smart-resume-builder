@@ -7,6 +7,10 @@ from rest_framework.views import APIView
 
 from . import service
 from .serializers import (
+    AtsCheckRequestSerializer,
+    AtsCheckResponseSerializer,
+    CoverLetterRequestSerializer,
+    CoverLetterResponseSerializer,
     GenerateSummaryRequestSerializer,
     GenerateSummaryResponseSerializer,
     ImproveBulletRequestSerializer,
@@ -156,3 +160,56 @@ class ParseResumeView(_AIView):
 
         record_usage(user, "parse-resume", input_length=len(text), output_length=len(str(content)), success=True)
         return Response({"content": content, "ai_usage": usage_snapshot(user)})
+
+
+class CoverLetterView(_AIView):
+    @extend_schema(
+        operation_id="generate_cover_letter",
+        request=CoverLetterRequestSerializer,
+        responses=CoverLetterResponseSerializer,
+        tags=["ai"],
+    )
+    def post(self, request):
+        req = CoverLetterRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        user = request.user
+        if (over := _gate(user)) is not None:
+            return over
+
+        content = req.validated_data["content"]
+        jd = req.validated_data["job_description"]
+        in_len = len(jd) + len(str(content))
+        try:
+            letter = service.generate_cover_letter(content, jd)
+        except AIServiceError as exc:
+            record_usage(user, "cover-letter", input_length=in_len, output_length=0, success=False)
+            return _ai_error(exc)
+
+        record_usage(user, "cover-letter", input_length=in_len, output_length=len(letter), success=True)
+        return Response({"cover_letter": letter, "ai_usage": usage_snapshot(user)})
+
+
+class AtsCheckView(_AIView):
+    @extend_schema(
+        operation_id="ats_health_check",
+        request=AtsCheckRequestSerializer,
+        responses=AtsCheckResponseSerializer,
+        tags=["ai"],
+    )
+    def post(self, request):
+        req = AtsCheckRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        user = request.user
+        if (over := _gate(user)) is not None:
+            return over
+
+        content = req.validated_data["content"]
+        in_len = len(str(content))
+        try:
+            result = service.ats_health_check(content)
+        except AIServiceError as exc:
+            record_usage(user, "ats-check", input_length=in_len, output_length=0, success=False)
+            return _ai_error(exc)
+
+        record_usage(user, "ats-check", input_length=in_len, output_length=len(str(result)), success=True)
+        return Response({**result, "ai_usage": usage_snapshot(user)})

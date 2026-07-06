@@ -24,6 +24,15 @@ class ParseResumeRequestSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=20000)
 
 
+class CoverLetterRequestSerializer(serializers.Serializer):
+    content = ResumeContentSerializer()
+    job_description = serializers.CharField(max_length=8000)
+
+
+class AtsCheckRequestSerializer(serializers.Serializer):
+    content = ResumeContentSerializer()
+
+
 # --- responses (shape the generated TS types) -------------------------------
 
 class ImproveBulletResponseSerializer(serializers.Serializer):
@@ -52,4 +61,16 @@ class TailorJDResponseSerializer(serializers.Serializer):
 
 class ParseResumeResponseSerializer(serializers.Serializer):
     content = ResumeContentSerializer()
+    ai_usage = AIUsageSerializer()
+
+
+class CoverLetterResponseSerializer(serializers.Serializer):
+    cover_letter = serializers.CharField()
+    ai_usage = AIUsageSerializer()
+
+
+class AtsCheckResponseSerializer(serializers.Serializer):
+    score = serializers.IntegerField()
+    issues = serializers.ListField(child=serializers.CharField())
+    recommendations = serializers.ListField(child=serializers.CharField())
     ai_usage = AIUsageSerializer()
