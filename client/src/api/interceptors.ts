@@ -8,16 +8,10 @@ import { AXIOS_INSTANCE } from "./axios";
 let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, setAccessToken, logout } = useAuthStore.getState();
-  if (!refreshToken) {
-    logout();
-    return null;
-  }
+  const { setAccessToken, logout } = useAuthStore.getState();
   try {
-    const { data } = await AXIOS_INSTANCE.post<{ access: string }>(
-      "/api/auth/refresh",
-      { refresh: refreshToken },
-    );
+    // The refresh token rides along as an httpOnly cookie — no request body needed.
+    const { data } = await AXIOS_INSTANCE.post<{ access: string }>("/api/auth/refresh");
     setAccessToken(data.access);
     return data.access;
   } catch {

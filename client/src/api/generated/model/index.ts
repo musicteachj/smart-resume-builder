@@ -30,7 +30,6 @@ export * from './resumeList';
 export * from './tailorJDRequest';
 export * from './tailorJDResponse';
 export * from './tailorSuggestion';
-export * from './tokenRefresh';
 export * from './tokenRefreshResponse';
 export * from './user';
 export * from './workExperience';

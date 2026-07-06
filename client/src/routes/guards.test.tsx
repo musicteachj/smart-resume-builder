@@ -22,23 +22,29 @@ function renderAt(path: string) {
 }
 
 describe("route guards", () => {
-  beforeEach(() => {
-    useAuthStore.setState({ accessToken: null, user: null, refreshToken: null } as never);
-  });
+  beforeEach(() => useAuthStore.setState({ user: null, accessToken: null, status: "loading" }));
 
-  it("ProtectedRoute redirects to /login when unauthenticated", () => {
+  it("shows a splash (no redirect) while auth is loading", () => {
     renderAt("/dashboard");
-    expect(screen.getByText("LOGIN")).toBeInTheDocument();
+    expect(screen.queryByText("DASHBOARD")).not.toBeInTheDocument();
+    expect(screen.queryByText("LOGIN")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("ProtectedRoute renders the page when authenticated", () => {
-    useAuthStore.setState({ accessToken: "token" } as never);
+    useAuthStore.setState({ status: "authenticated", accessToken: "token" });
     renderAt("/dashboard");
     expect(screen.getByText("DASHBOARD")).toBeInTheDocument();
   });
 
+  it("ProtectedRoute redirects to /login when unauthenticated", () => {
+    useAuthStore.setState({ status: "unauthenticated" });
+    renderAt("/dashboard");
+    expect(screen.getByText("LOGIN")).toBeInTheDocument();
+  });
+
   it("PublicOnlyRoute sends authenticated users to /dashboard", () => {
-    useAuthStore.setState({ accessToken: "token" } as never);
+    useAuthStore.setState({ status: "authenticated", accessToken: "token" });
     renderAt("/login");
     expect(screen.getByText("DASHBOARD")).toBeInTheDocument();
   });

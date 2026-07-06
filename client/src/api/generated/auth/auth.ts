@@ -28,39 +28,11 @@ import type {
   AuthResponse,
   EmailTokenObtainPair,
   Register,
-  TokenRefresh,
   TokenRefreshResponse,
   User
 } from '../model';
 
 import { customAxios } from '../../axios';
-
-// https://stackoverflow.com/questions/49579094/typescript-conditional-types-filter-out-readonly-properties-pick-only-requir/49579497#49579497
-type IfEquals<X, Y, A = X, B = never> = (<T>() => T extends X ? 1 : 2) extends <
-T,
->() => T extends Y ? 1 : 2
-? A
-: B;
-
-type WritableKeys<T> = {
-[P in keyof T]-?: IfEquals<
-  { [Q in P]: T[P] },
-  { -readonly [Q in P]: T[P] },
-  P
->;
-}[keyof T];
-
-type UnionToIntersection<U> =
-  (U extends any ? (k: U)=>void : never) extends ((k: infer I)=>void) ? I : never;
-type DistributeReadOnlyOverUnions<T> = T extends any ? NonReadonly<T> : never;
-
-type Writable<T> = Pick<T, WritableKeys<T>>;
-type NonReadonly<T> = [T] extends [UnionToIntersection<T>] ? {
-  [P in keyof Writable<T>]: T[P] extends object
-    ? NonReadonly<NonNullable<T[P]>>
-    : T[P];
-} : DistributeReadOnlyOverUnions<T>;
-
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -68,7 +40,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * Obtain a JWT pair via email + password; also returns the user.
+ * Obtain an access token via email + password; set the refresh cookie.
  */
 export const login = (
     emailTokenObtainPair: EmailTokenObtainPair,
@@ -126,6 +98,64 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLoginMutationOptions(options), queryClient);
+    }
+    /**
+ * Clear the refresh cookie.
+ */
+export const logout = (
+
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<void>(
+      {url: `/api/auth/logout`, method: 'POST', signal
+    },
+      options);
+    }
+
+
+
+export const getLogoutMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext> => {
+
+const mutationKey = ['logout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logout>>, void> = () => {
+
+
+          return  logout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutMutationResult = NonNullable<Awaited<ReturnType<typeof logout>>>
+
+    export type LogoutMutationError = unknown
+
+    export const useLogout = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError,void, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof logout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutMutationOptions(options), queryClient);
     }
     /**
  * Return the currently authenticated user.
@@ -217,19 +247,16 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
 
 
 /**
- * Takes a refresh type JSON web token and returns an access type JSON web
- * token if the refresh token is valid.
+ * Issue a new access token from the refresh cookie (non-rotating).
  */
 export const refreshToken = (
-    tokenRefresh: NonReadonly<TokenRefresh>,
+
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
 ) => {
 
 
       return customAxios<TokenRefreshResponse>(
-      {url: `/api/auth/refresh`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: tokenRefresh, signal
+      {url: `/api/auth/refresh`, method: 'POST', signal
     },
       options);
     }
@@ -237,8 +264,8 @@ export const refreshToken = (
 
 
 export const getRefreshTokenMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,{data: NonReadonly<TokenRefresh>}, TContext>, request?: SecondParameter<typeof customAxios>}
-): UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,{data: NonReadonly<TokenRefresh>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,void, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,void, TContext> => {
 
 const mutationKey = ['refreshToken'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -250,10 +277,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshToken>>, {data: NonReadonly<TokenRefresh>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshToken>>, void> = () => {
 
-          return  refreshToken(data,requestOptions)
+
+          return  refreshToken(requestOptions)
         }
 
 
@@ -264,21 +291,21 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RefreshTokenMutationResult = NonNullable<Awaited<ReturnType<typeof refreshToken>>>
-    export type RefreshTokenMutationBody = NonReadonly<TokenRefresh>
+
     export type RefreshTokenMutationError = unknown
 
     export const useRefreshToken = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,{data: NonReadonly<TokenRefresh>}, TContext>, request?: SecondParameter<typeof customAxios>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshToken>>, TError,void, TContext>, request?: SecondParameter<typeof customAxios>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof refreshToken>>,
         TError,
-        {data: NonReadonly<TokenRefresh>},
+        void,
         TContext
       > => {
       return useMutation(getRefreshTokenMutationOptions(options), queryClient);
     }
     /**
- * Create an account and return the user plus a JWT access/refresh pair.
+ * Create an account; return the user + access token, set the refresh cookie.
  */
 export const register = (
     register: Register,

@@ -8,10 +8,10 @@
 import type { User } from './user';
 
 /**
- * Returned by register and login: the user plus a JWT pair.
+ * Returned by register and login: the user plus a short-lived access token.
+ * The refresh token is set as an httpOnly cookie, not returned in the body.
  */
 export interface AuthResponse {
   readonly user: User;
   readonly access: string;
-  readonly refresh: string;
 }

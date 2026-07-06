@@ -14,7 +14,7 @@ describe("aiErrorMessage", () => {
     useAuthStore.setState({
       user: { id: 1, email: "a@b.com", name: "A", is_admin: false, created_at: "", ai_usage: undefined },
       accessToken: "t",
-      refreshToken: "r",
+      status: "authenticated",
     } as never);
   });
 

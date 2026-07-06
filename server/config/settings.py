@@ -6,6 +6,7 @@ or real environment variables (Docker / ECS). See ../.env.example.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -149,10 +150,18 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
+# JWT lifetimes — short access token (kept in JS memory), longer refresh (httpOnly cookie).
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
+
 
 # CORS — Vite dev server locally; same-origin in production (SPA served by Django)
 
 CORS_ALLOWED_ORIGINS = [CLIENT_URL]
+# Allow credentials so the refresh cookie rides along (flows are same-origin in dev-via-proxy and prod).
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Internationalization

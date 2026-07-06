@@ -10,6 +10,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Security
+- **Refresh token moved to an `httpOnly` cookie; access token is memory-only.** The long-lived refresh
+  JWT is now set as an `HttpOnly`/`Secure`(prod)/`SameSite=Lax` cookie scoped to `/api/auth` — no longer
+  readable by JS. The short-lived access token lives only in memory (nothing auth-related is persisted to
+  `localStorage`), so the app performs a silent `/api/auth/refresh` on load to restore the session (guards
+  gain a brief loading splash). Access token lifetime 15 min, refresh 7 days (non-rotating). New
+  `POST /api/auth/logout` clears the cookie; `SameSite` is the CSRF defense (all mutating endpoints are
+  `Bearer`-authed and CSRF-immune). Login/register responses no longer include `refresh`.
 - **Rate-limiting**: scoped DRF throttles — an `auth` scope on login/register (blunts brute force,
   keyed by IP) and an `ai-burst` per-user guard on the AI endpoints that complements the existing
   daily/monthly usage quota.
