@@ -14,9 +14,31 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   JWT is now set as an `HttpOnly`/`Secure`(prod)/`SameSite=Lax` cookie scoped to `/api/auth` — no longer
   readable by JS. The short-lived access token lives only in memory (nothing auth-related is persisted to
   `localStorage`), so the app performs a silent `/api/auth/refresh` on load to restore the session (guards
-  gain a brief loading splash). Access token lifetime 15 min, refresh 7 days (non-rotating). New
+  gain a brief loading splash). Access token lifetime 15 min, refresh 7 days. New
   `POST /api/auth/logout` clears the cookie; `SameSite` is the CSRF defense (all mutating endpoints are
   `Bearer`-authed and CSRF-immune). Login/register responses no longer include `refresh`.
+- **Security audit hardening** (full front + back audit ahead of the Phase 10 deploy):
+  - **`DEBUG` now defaults to `False` (fail-closed)** — an unset `DEBUG` means production behavior
+    (CSP on, `Secure` cookies, AI limits enforced, real `SECRET_KEY` required). Local dev now requires
+    a repo-root `.env` with `DEBUG=True` (see `.env.example`).
+  - **Refresh tokens rotate and can be revoked**: SimpleJWT `token_blacklist` app added (new migration);
+    every `/api/auth/refresh` rotates the cookie and blacklists the old token, and logout blacklists the
+    cookie's token — a leaked refresh token no longer survives to its 7-day expiry. Logout also gains the
+    `auth` throttle scope.
+  - **Production HTTPS settings**: `SECURE_PROXY_SSL_HEADER` (ALB terminates TLS), `SECURE_SSL_REDIRECT`
+    (env-overridable; `/health` exempt for ALB health checks), HSTS (30 days, incl. subdomains, no preload),
+    and `Secure` session/CSRF cookies for the admin. `manage.py check --deploy` is clean apart from the
+    deliberate no-preload warning.
+  - **Throttle keys hardened for the ALB**: DRF `NUM_PROXIES=1`, so IP throttles key on the real client IP
+    instead of the spoofable full `X-Forwarded-For` header.
+  - **OpenAPI schema + Swagger UI are login-gated in production** (still open in dev for Orval).
+  - **Dependency hygiene**: `npm audit fix` clears a high-severity `form-data` advisory (transitive via
+    axios; 0 vulnerabilities now); `server/requirements.txt` pinned to exact versions for reproducible
+    image builds.
+  - **Container**: the Docker image now runs as a non-root `app` user; local Postgres in `docker-compose.yml`
+    binds to `127.0.0.1` only.
+  - **Misc**: AI usage counters increment atomically via `F()` expressions (no lost updates under concurrent
+    calls); résumé/JD file import rejects files over 10 MB before parsing.
 - **Rate-limiting**: scoped DRF throttles — an `auth` scope on login/register (blunts brute force,
   keyed by IP) and an `ai-burst` per-user guard on the AI endpoints that complements the existing
   daily/monthly usage quota.

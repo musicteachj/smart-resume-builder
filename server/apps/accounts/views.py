@@ -79,7 +79,7 @@ class LoginView(TokenObtainPairView):
     )
 )
 class CookieTokenRefreshView(APIView):
-    """Issue a new access token from the refresh cookie (non-rotating)."""
+    """Issue a new access token from the refresh cookie, rotating the cookie."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
@@ -94,18 +94,32 @@ class CookieTokenRefreshView(APIView):
             serializer.is_valid(raise_exception=True)
         except (InvalidToken, TokenError):
             return Response({"detail": "Invalid refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
-        return Response({"access": serializer.validated_data["access"]})
+        response = Response({"access": serializer.validated_data["access"]})
+        # ROTATE_REFRESH_TOKENS puts the replacement token in validated_data;
+        # the old one is already blacklisted (BLACKLIST_AFTER_ROTATION).
+        rotated = serializer.validated_data.get("refresh")
+        if rotated:
+            set_refresh_cookie(response, rotated)
+        return response
 
 
 @extend_schema_view(
     post=extend_schema(operation_id="logout", request=None, responses={204: None}, tags=["auth"])
 )
 class LogoutView(APIView):
-    """Clear the refresh cookie."""
+    """Blacklist the refresh token from the cookie, then clear the cookie."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     def post(self, request):
+        token = request.COOKIES.get(REFRESH_COOKIE_NAME)
+        if token:
+            try:
+                RefreshToken(token).blacklist()
+            except TokenError:
+                pass  # expired/garbage cookie — clearing it is all that's left to do
         return clear_refresh_cookie(Response(status=status.HTTP_204_NO_CONTENT))
 
 

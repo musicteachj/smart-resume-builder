@@ -1,4 +1,7 @@
 const MIN_CHARS = 30;
+// Real résumés are well under 10 MB; anything bigger would just hang the tab
+// in pdf.js/mammoth before the (server-side, 20k-char) text cap ever applies.
+const MAX_BYTES = 10 * 1024 * 1024;
 
 function isPdf(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -37,6 +40,9 @@ async function extractDocx(file: File): Promise<string> {
  * is sent on. Generic over document kind — used for both résumé import and JD tailoring.
  */
 export async function extractFileText(file: File): Promise<string> {
+  if (file.size > MAX_BYTES) {
+    throw new Error("File is too large (max 10 MB) — paste the text instead.");
+  }
   let text: string;
   if (isPdf(file)) text = await extractPdf(file);
   else if (isDocx(file)) text = await extractDocx(file);

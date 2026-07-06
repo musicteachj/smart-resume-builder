@@ -25,7 +25,10 @@ load_dotenv(REPO_ROOT / ".env")
 # .env file in the image, so Secrets Manager env vars are never overridden.
 load_dotenv(BASE_DIR / ".env", override=True)
 
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+# Fail-closed: an unset DEBUG means production behavior (CSP on, Secure cookies,
+# AI limits enforced, real SECRET_KEY required). Local dev sets DEBUG=True in the
+# repo-root .env (see .env.example).
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Require a real SECRET_KEY in production; only fall back to a placeholder in DEBUG.
 SECRET_KEY = os.environ.get("SECRET_KEY")
@@ -56,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "corsheaders",
     # Local apps (live under apps/)
@@ -85,6 +89,24 @@ if not DEBUG:
     # In dev, Django's runserver serves static; WhiteNoise is only needed in
     # the production container (after collectstatic).
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
+    # HTTPS hardening — TLS terminates at the ALB, which forwards plain HTTP with
+    # X-Forwarded-Proto. Trusting that header makes request.is_secure() correct.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Env-overridable only so the local prod-container smoke test
+    # (docker compose --profile prod) can run over plain-HTTP localhost.
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() in (
+        "true", "1", "yes",
+    )
+    # ALB health checks arrive over plain HTTP from inside the VPC — a redirect
+    # would fail the check and cycle the task.
+    SECURE_REDIRECT_EXEMPT = [r"^health$"]
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 days; no preload (deliberate)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # covers *.resume.…; other apps live on the parent domain
+    # Sessions/CSRF cookies only exist for the Django admin, but the site is
+    # HTTPS-only so they should never travel in the clear.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 ROOT_URLCONF = "config.urls"
 
@@ -141,6 +163,10 @@ REST_FRAMEWORK = {
         "auth": "10/min",
         "ai-burst": "20/hour",
     },
+    # One trusted proxy hop (the ALB). Without this, DRF keys IP throttles on the
+    # whole client-supplied X-Forwarded-For header, which an attacker can rotate
+    # to dodge the auth throttle. No effect in dev (no XFF header there).
+    "NUM_PROXIES": 1,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -148,12 +174,24 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "AI-powered resume builder — resumes, auth, and Claude-assisted content.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Schema + Swagger UI are open in dev (Orval reads /api/schema/) but
+    # login-gated in production — no anonymous API-surface disclosure.
+    "SERVE_PERMISSIONS": (
+        ["rest_framework.permissions.AllowAny"]
+        if DEBUG
+        else ["rest_framework.permissions.IsAuthenticated"]
+    ),
 }
 
 # JWT lifetimes — short access token (kept in JS memory), longer refresh (httpOnly cookie).
+# Each refresh rotates the token and blacklists the old one, so logout can revoke
+# the cookie's token and a leaked refresh token dies at its next (or the real
+# user's next) refresh instead of living out its full 7 days.
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 

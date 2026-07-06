@@ -38,6 +38,12 @@ describe("extractFileText", () => {
     await expect(extractFileText(file("cv.png", "image/png"))).rejects.toThrow(/PDF or DOCX/);
   });
 
+  it("rejects a file over the 10 MB cap before parsing", async () => {
+    const big = file("cv.pdf", "application/pdf");
+    Object.defineProperty(big, "size", { value: 10 * 1024 * 1024 + 1 });
+    await expect(extractFileText(big)).rejects.toThrow(/too large/i);
+  });
+
   it("rejects a near-empty extraction (likely scanned)", async () => {
     await expect(
       extractFileText(

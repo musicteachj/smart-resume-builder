@@ -77,6 +77,37 @@ def test_refresh_without_cookie_is_unauthorized(client):
 
 
 @pytest.mark.django_db
+def test_refresh_rotates_the_cookie_and_blacklists_the_old_token(client):
+    reg = client.post(REGISTER, VALID, format="json")
+    original = reg.cookies["refresh_token"].value
+
+    res = client.post("/api/auth/refresh")
+    assert res.status_code == 200
+    rotated = res.cookies["refresh_token"].value
+    assert rotated and rotated != original
+
+    # Replaying the pre-rotation token must fail (blacklisted).
+    client.cookies["refresh_token"] = original
+    assert client.post("/api/auth/refresh").status_code == 401
+
+    # The rotated token still works.
+    client.cookies["refresh_token"] = rotated
+    assert client.post("/api/auth/refresh").status_code == 200
+
+
+@pytest.mark.django_db
+def test_logout_revokes_the_refresh_token(client):
+    reg = client.post(REGISTER, VALID, format="json")
+    token = reg.cookies["refresh_token"].value
+
+    assert client.post("/api/auth/logout").status_code == 204
+
+    # Re-presenting the logged-out token must fail even before its expiry.
+    client.cookies["refresh_token"] = token
+    assert client.post("/api/auth/refresh").status_code == 401
+
+
+@pytest.mark.django_db
 def test_logout_clears_the_cookie(client):
     client.post(REGISTER, VALID, format="json")
     res = client.post("/api/auth/logout")
