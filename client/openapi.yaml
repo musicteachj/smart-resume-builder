@@ -4,6 +4,64 @@ info:
   version: 0.1.0
   description: AI-powered resume builder — resumes, auth, and Claude-assisted content.
 paths:
+  /api/ai/ats-check:
+    post:
+      operationId: ats_health_check
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtsCheckRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AtsCheckRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AtsCheckRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtsCheckResponse'
+          description: ''
+  /api/ai/cover-letter:
+    post:
+      operationId: generate_cover_letter
+      description: |-
+        Base for AI endpoints: auth required + a per-user burst throttle (complements
+        the per-user daily/monthly quota in usage.py).
+      tags:
+      - ai
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverLetterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoverLetterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoverLetterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverLetterResponse'
+          description: ''
   /api/ai/generate-summary:
     post:
       operationId: generate_summary
@@ -435,6 +493,33 @@ components:
       - daily_limit
       - is_admin
       - monthly_limit
+    AtsCheckRequest:
+      type: object
+      properties:
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+      required:
+      - content
+    AtsCheckResponse:
+      type: object
+      properties:
+        score:
+          type: integer
+        issues:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - issues
+      - recommendations
+      - score
     AuthResponse:
       type: object
       description: 'Returned by register and login: the user plus a JWT pair.'
@@ -453,6 +538,27 @@ components:
       - access
       - refresh
       - user
+    CoverLetterRequest:
+      type: object
+      properties:
+        content:
+          $ref: '#/components/schemas/ResumeContent'
+        job_description:
+          type: string
+          maxLength: 8000
+      required:
+      - content
+      - job_description
+    CoverLetterResponse:
+      type: object
+      properties:
+        cover_letter:
+          type: string
+        ai_usage:
+          $ref: '#/components/schemas/AIUsage'
+      required:
+      - ai_usage
+      - cover_letter
     Education:
       type: object
       properties:

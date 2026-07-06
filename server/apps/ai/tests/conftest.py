@@ -77,3 +77,15 @@ def mock_claude(monkeypatch):
             "projects": [],
         },
     )
+    monkeypatch.setattr(
+        "apps.ai.service.generate_cover_letter",
+        lambda content, jd: "Dear Hiring Manager,\n\nI am excited about this role.\n\nSincerely,\nMaya",
+    )
+    monkeypatch.setattr(
+        "apps.ai.service.ats_health_check",
+        lambda content: {
+            "score": 78,
+            "issues": ["Summary is generic.", "Few quantified results."],
+            "recommendations": ["Add metrics to bullets.", "Sharpen the summary."],
+        },
+    )

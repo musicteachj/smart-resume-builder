@@ -7,6 +7,8 @@ from apps.ai.service import AIServiceError
 IMPROVE = "/api/ai/improve-bullet"
 SUMMARY = "/api/ai/generate-summary"
 TAILOR = "/api/ai/tailor-jd"
+COVER_LETTER = "/api/ai/cover-letter"
+ATS_CHECK = "/api/ai/ats-check"
 
 
 @pytest.mark.django_db
@@ -46,6 +48,28 @@ def test_tailor_jd_happy_path(auth_client, content):
     assert "A/B testing" in body["missing_keywords"]
     assert body["suggestions"][0]["bullet_id"] == "w1::0"
     assert "ai_usage" in body
+
+
+@pytest.mark.django_db
+def test_cover_letter_happy_path(auth_client, content):
+    res = auth_client.post(
+        COVER_LETTER, {"content": content, "job_description": "Senior PM role"}, format="json"
+    )
+    assert res.status_code == 200
+    assert "Dear Hiring Manager" in res.json()["cover_letter"]
+    assert AIUsageLog.objects.filter(feature="cover-letter", success=True).count() == 1
+
+
+@pytest.mark.django_db
+def test_ats_check_happy_path(auth_client, content):
+    res = auth_client.post(ATS_CHECK, {"content": content}, format="json")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["score"] == 78
+    assert len(body["issues"]) == 2
+    assert len(body["recommendations"]) == 2
+    assert "ai_usage" in body
+    assert AIUsageLog.objects.filter(feature="ats-check", success=True).count() == 1
 
 
 @pytest.mark.django_db
