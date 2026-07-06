@@ -29,6 +29,11 @@ RUN SECRET_KEY=build-only DEBUG=False python manage.py collectstatic --noinput
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Run as a non-root user; 8000 is unprivileged and nothing needs write access
+# outside /app after the build steps above.
+RUN useradd --create-home --uid 1000 app && chown -R app:app /app
+USER app
+
 EXPOSE 8000
 ENTRYPOINT ["docker-entrypoint.sh"]
 # --timeout 120: AI requests (Claude) can exceed gunicorn's 30s default. Log to stdout for CloudWatch.

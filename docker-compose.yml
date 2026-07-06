@@ -7,7 +7,8 @@ services:
       POSTGRES_PASSWORD: resume_pass
       POSTGRES_DB: resume_builder
     ports:
-      - "5432:5432"
+      # Loopback only — no reason to expose the dev DB (default creds!) to the LAN.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,6 +29,8 @@ services:
     environment:
       SECRET_KEY: local-prod-test-key-not-for-real-use-0123456789
       DEBUG: "False"
+      # Local smoke test runs over plain HTTP; in real prod the redirect stays on.
+      SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: localhost,127.0.0.1
       DATABASE_URL: postgres://resume_user:resume_pass@db:5432/resume_builder
       CLIENT_URL: http://localhost:8000

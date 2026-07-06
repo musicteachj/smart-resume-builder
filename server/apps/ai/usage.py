@@ -8,6 +8,7 @@ dev) bypass the cap but are still logged.
 from datetime import timedelta
 
 from django.conf import settings
+from django.db.models import F
 from django.utils import timezone
 
 from .models import AIUsageLog
@@ -62,10 +63,14 @@ def record_usage(user, feature: str, *, input_length: int, output_length: int, s
         success=success,
     )
     if success:
-        user.ai_calls_today += 1
-        user.ai_calls_this_month += 1
+        # F() expressions so concurrent calls increment atomically in the DB
+        # instead of racing through a stale read-modify-write.
+        user.ai_calls_today = F("ai_calls_today") + 1
+        user.ai_calls_this_month = F("ai_calls_this_month") + 1
         user.last_ai_call_date = timezone.now().date()
         user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
+        # Callers read the counters right after (usage_snapshot in the response).
+        user.refresh_from_db(fields=["ai_calls_today", "ai_calls_this_month"])
 
 
 def usage_snapshot(user) -> dict:
