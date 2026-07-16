@@ -13,7 +13,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Resume
+from .models import CoverLetter, Resume
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")  # YYYY-MM
 
@@ -135,3 +135,26 @@ class ResumeListSerializer(serializers.ModelSerializer):
     def get_skills(self, obj) -> list[str]:
         skills = (obj.content or {}).get("skills", [])
         return skills if isinstance(skills, list) else []
+
+
+class CoverLetterSerializer(serializers.ModelSerializer):
+    """A saved cover letter attached to one of the caller's résumés."""
+
+    body = serializers.CharField(max_length=8000)
+    job_description = serializers.CharField(
+        max_length=8000, required=False, allow_blank=True
+    )
+
+    class Meta:
+        model = CoverLetter
+        fields = [
+            "id", "resume", "title", "body", "job_description",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_resume(self, resume):
+        request = self.context.get("request")
+        if request and resume.user_id != request.user.id:
+            raise serializers.ValidationError("Not your résumé.")
+        return resume

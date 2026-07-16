@@ -1,10 +1,21 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view
+import uuid
+
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Resume
-from .serializers import ResumeListSerializer, ResumeSerializer
+from .models import CoverLetter, Resume
+from .serializers import (
+    CoverLetterSerializer,
+    ResumeListSerializer,
+    ResumeSerializer,
+)
 
 
 @extend_schema_view(
@@ -55,3 +66,56 @@ class ResumeViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(copy)
         return Response(serializer.data, status=201)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        operation_id="list_cover_letters",
+        parameters=[
+            OpenApiParameter(
+                "resume",
+                OpenApiTypes.UUID,
+                description="Filter to one résumé's letters.",
+            )
+        ],
+        tags=["cover-letters"],
+    ),
+    create=extend_schema(operation_id="create_cover_letter", tags=["cover-letters"]),
+    retrieve=extend_schema(operation_id="get_cover_letter", tags=["cover-letters"]),
+    partial_update=extend_schema(operation_id="patch_cover_letter", tags=["cover-letters"]),
+    destroy=extend_schema(operation_id="delete_cover_letter", tags=["cover-letters"]),
+)
+class CoverLetterViewSet(viewsets.ModelViewSet):
+    """CRUD for the authenticated user's saved cover letters, scoped to
+    request.user (cross-user access → 404). Optional ?resume= filter."""
+
+    serializer_class = CoverLetterSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["get", "post", "patch", "delete"]  # no PUT
+
+    RETENTION = 25
+
+    def get_queryset(self):
+        # drf-spectacular introspects with an unauthenticated "fake" view.
+        if getattr(self, "swagger_fake_view", False):
+            return CoverLetter.objects.none()
+        qs = CoverLetter.objects.filter(user=self.request.user)
+        resume_id = self.request.query_params.get("resume")
+        if resume_id:
+            try:
+                uuid.UUID(str(resume_id))
+            except ValueError:
+                return qs.none()
+            qs = qs.filter(resume_id=resume_id)
+        return qs
+
+    def perform_create(self, serializer):
+        letter = serializer.save(user=self.request.user)
+        # Keep only the newest RETENTION letters for this résumé.
+        extra = list(
+            CoverLetter.objects.filter(resume=letter.resume)
+            .order_by("-updated_at")
+            .values_list("pk", flat=True)[self.RETENTION:]
+        )
+        if extra:
+            CoverLetter.objects.filter(pk__in=extra).delete()

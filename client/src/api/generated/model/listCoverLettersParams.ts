@@ -5,9 +5,10 @@
  * AI-powered resume builder — resumes, auth, and Claude-assisted content.
  * OpenAPI spec version: 0.1.0
  */
-import type { AIUsage } from './aIUsage';
 
-export interface GenerateSummaryResponse {
-  summary: string;
-  ai_usage: AIUsage;
-}
+export type ListCoverLettersParams = {
+/**
+ * Filter to one résumé's letters.
+ */
+resume?: string;
+};
