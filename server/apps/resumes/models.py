@@ -32,3 +32,28 @@ class Resume(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.user_id})"
+
+
+class CoverLetter(models.Model):
+    """A saved cover letter, generated from a résumé + a job description.
+    Deleted with its résumé. See apps.resumes.serializers.CoverLetterSerializer."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    resume = models.ForeignKey(
+        Resume, on_delete=models.CASCADE, related_name="cover_letters"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cover_letters"
+    )
+    title = models.CharField(max_length=150)
+    body = models.TextField()
+    job_description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [models.Index(fields=["resume"])]
+
+    def __str__(self):
+        return f"{self.title} ({self.resume_id})"

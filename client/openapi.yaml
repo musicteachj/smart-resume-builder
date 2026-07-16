@@ -208,7 +208,7 @@ paths:
   /api/auth/logout:
     post:
       operationId: logout
-      description: Clear the refresh cookie.
+      description: Blacklist the refresh token from the cookie, then clear the cookie.
       tags:
       - auth
       security:
@@ -235,7 +235,8 @@ paths:
   /api/auth/refresh:
     post:
       operationId: refresh_token
-      description: Issue a new access token from the refresh cookie (non-rotating).
+      description: Issue a new access token from the refresh cookie, rotating the
+        cookie.
       tags:
       - auth
       security:
@@ -277,6 +278,140 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
           description: ''
+  /api/cover-letters/:
+    get:
+      operationId: list_cover_letters
+      description: |-
+        CRUD for the authenticated user's saved cover letters, scoped to
+        request.user (cross-user access → 404). Optional ?resume= filter.
+      parameters:
+      - in: query
+        name: resume
+        schema:
+          type: string
+          format: uuid
+        description: Filter to one résumé's letters.
+      tags:
+      - cover-letters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoverLetter'
+          description: ''
+    post:
+      operationId: create_cover_letter
+      description: |-
+        CRUD for the authenticated user's saved cover letters, scoped to
+        request.user (cross-user access → 404). Optional ?resume= filter.
+      tags:
+      - cover-letters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverLetter'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoverLetter'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoverLetter'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverLetter'
+          description: ''
+  /api/cover-letters/{id}/:
+    get:
+      operationId: get_cover_letter
+      description: |-
+        CRUD for the authenticated user's saved cover letters, scoped to
+        request.user (cross-user access → 404). Optional ?resume= filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this cover letter.
+        required: true
+      tags:
+      - cover-letters
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverLetter'
+          description: ''
+    patch:
+      operationId: patch_cover_letter
+      description: |-
+        CRUD for the authenticated user's saved cover letters, scoped to
+        request.user (cross-user access → 404). Optional ?resume= filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this cover letter.
+        required: true
+      tags:
+      - cover-letters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCoverLetter'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCoverLetter'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCoverLetter'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverLetter'
+          description: ''
+    delete:
+      operationId: delete_cover_letter
+      description: |-
+        CRUD for the authenticated user's saved cover letters, scoped to
+        request.user (cross-user access → 404). Optional ?resume= filter.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this cover letter.
+        required: true
+      tags:
+      - cover-letters
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/resumes/:
     get:
       operationId: list_resumes
@@ -537,6 +672,41 @@ components:
       required:
       - access
       - user
+    CoverLetter:
+      type: object
+      description: A saved cover letter attached to one of the caller's résumés.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resume:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 150
+        body:
+          type: string
+          maxLength: 8000
+        job_description:
+          type: string
+          maxLength: 8000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - resume
+      - title
+      - updated_at
     CoverLetterRequest:
       type: object
       properties:
@@ -651,6 +821,34 @@ components:
       required:
       - ai_usage
       - content
+    PatchedCoverLetter:
+      type: object
+      description: A saved cover letter attached to one of the caller's résumés.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resume:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 150
+        body:
+          type: string
+          maxLength: 8000
+        job_description:
+          type: string
+          maxLength: 8000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedResume:
       type: object
       description: Full read + write representation of a resume (retrieve/create/update).
