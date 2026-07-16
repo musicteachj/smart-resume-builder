@@ -93,27 +93,26 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 
 ## Future hardening (tech debt)
 
-- **JWTs (access + refresh) are stored in `localStorage`** (`client/src/stores/auth.ts`) — convenient and
-  standard, but exposed to any XSS, and the long-lived **refresh** token is the higher-value target.
-  **Fix later:** move the refresh token to an `httpOnly` cookie (immune to JS), keep only the short-lived
-  access token in JS/memory. Requires adding CSRF handling on the cookie path — treat as a deliberate
-  change (good to pair with the Phase 10 deploy hardening). Until then: never introduce
-  `dangerouslySetInnerHTML`, and add a CSP at deploy.
-- Login/register have no rate-limiting yet — add a DRF throttle (anti-brute-force) in a later phase.
+The big pre-deploy security items are **done** (see the CHANGELOG `[Unreleased]` Security section):
+refresh token in an `httpOnly` cookie + memory-only access token, refresh-token rotation/revocation,
+login/register throttling, production CSP, prod AI-`502` masking, fail-closed `DEBUG`, and prod
+HTTPS/HSTS. Still open:
+
 - Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
-- **Phase 9 must-do:** add a `.dockerignore` excluding `.env` and `**/.env` so the dev `ANTHROPIC_API_KEY`
-  is never baked into the production image. (Settings loads `server/.env` with `override=True`, so a stray
-  `.env` in the image could otherwise shadow the Secrets Manager value — keep it out of the build context.)
-- Minor: AI `502` responses surface the upstream error string to the client (handy in dev). It can't leak the
-  key, but consider mapping to a generic message in production.
 - **Phase 10 deploy gotchas:** (1) with `DEBUG=False`, the ALB health check hits the container with the task IP
   as `Host`, which Django rejects (400) unless allowed — set `ALLOWED_HOSTS` to include it (or exempt `/health`).
-  (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for >1 task run
-  migrations as a separate one-off/release task to avoid a concurrent-migration race.
+  (`/health` is already exempt from the HTTPS redirect via `SECURE_REDIRECT_EXEMPT`, but the Host-header check
+  is separate.) (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for
+  >1 task run migrations as a separate one-off/release task to avoid a concurrent-migration race.
+
+## Security invariants (preserve if you touch the code)
+
+- **Never introduce `dangerouslySetInnerHTML`** — all résumé content is React-escaped today; keep it that way.
+  The production CSP (`config/middleware.py`) is a second layer, not a substitute.
 - Resume URL fields (linkedin/github/website) render in `ResumeDocument` as **labeled clickable links**
   (LinkedIn / GitHub / Website) via the `DocumentLinks` helper, which links **only** `http(s)` URLs
   (validated with `new URL()`); any other scheme (`javascript:`/`data:`) falls back to plain label text —
-  a stored-XSS guard. Keep that scheme check if this code is touched.
+  a stored-XSS guard. The server-side `URLField` is a second check. Keep both if this code is touched.
 
 ## Phase status
 
