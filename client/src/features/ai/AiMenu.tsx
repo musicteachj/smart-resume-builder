@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 
 import { AtsHealthModal } from "./AtsHealthModal";
-import { CoverLetterModal } from "./CoverLetterModal";
+import { CoverLettersModal } from "./CoverLettersModal";
 import { GenerateSummaryModal } from "./GenerateSummaryModal";
 import { TailorModal } from "./TailorModal";
 
@@ -47,7 +47,7 @@ export function AiMenu() {
             <Target className="h-4 w-4" aria-hidden /> Tailor to job description
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setModal("cover")}>
-            <Mail className="h-4 w-4" aria-hidden /> Generate cover letter
+            <Mail className="h-4 w-4" aria-hidden /> Cover letters
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setModal("ats")}>
             <Gauge className="h-4 w-4" aria-hidden /> ATS health check
@@ -57,7 +57,7 @@ export function AiMenu() {
 
       {modal === "summary" && <GenerateSummaryModal onClose={() => setModal(null)} />}
       {modal === "tailor" && <TailorModal onClose={() => setModal(null)} />}
-      {modal === "cover" && <CoverLetterModal onClose={() => setModal(null)} />}
+      {modal === "cover" && <CoverLettersModal onClose={() => setModal(null)} />}
       {modal === "ats" && <AtsHealthModal onClose={() => setModal(null)} />}
     </>
   );

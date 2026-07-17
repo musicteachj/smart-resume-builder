@@ -49,6 +49,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **Saved cover letters**: AI-generated cover letters can now be saved to the résumé they were generated
+  from — the editor's AI menu opens a **Cover letters** manager listing this résumé's letters, where you can
+  generate a new one, reopen and edit any letter, copy / download `.txt`, or delete it. Letters store their
+  job description for context and are capped at 25 per résumé (oldest pruned). New `CoverLetter` model +
+  user-scoped `/api/cover-letters/` CRUD in `apps/resumes`; generation still uses `/api/ai/cover-letter`.
 - **AI cover-letter generator**: a new editor AI action drafts a tailored cover letter from the résumé and a
   pasted-or-uploaded job description (Sonnet), shown in an editable field with copy-to-clipboard and `.txt`
   download. Usage-gated; graceful `502` without an API key.
