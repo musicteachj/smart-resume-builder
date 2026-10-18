@@ -187,6 +187,11 @@ SPECTACULAR_SETTINGS = {
         if DEBUG
         else ["rest_framework.permissions.IsAuthenticated"]
     ),
+    # Two "kind" choice sets (all version kinds vs. the ones a client may create)
+    # need explicit names, or the generated TS enum gets a hash suffix.
+    "ENUM_NAME_OVERRIDES": {
+        "ResumeVersionKindEnum": "apps.resumes.models.ResumeVersion.Kind",
+    },
 }
 
 # JWT lifetimes — short access token (kept in JS memory), longer refresh (httpOnly cookie).

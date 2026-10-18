@@ -412,6 +412,172 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/resume-versions/:
+    get:
+      operationId: list_resume_versions
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      parameters:
+      - in: query
+        name: resume
+        schema:
+          type: string
+          format: uuid
+        description: The résumé whose history to list (required).
+        required: true
+      tags:
+      - resume-versions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResumeVersionList'
+          description: ''
+    post:
+      operationId: create_resume_version
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      tags:
+      - resume-versions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumeVersionCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResumeVersionCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResumeVersionCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeVersion'
+          description: ''
+  /api/resume-versions/{id}/:
+    get:
+      operationId: get_resume_version
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume version.
+        required: true
+      tags:
+      - resume-versions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeVersion'
+          description: ''
+    patch:
+      operationId: patch_resume_version
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume version.
+        required: true
+      tags:
+      - resume-versions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedResumeVersion'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedResumeVersion'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedResumeVersion'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeVersion'
+          description: ''
+    delete:
+      operationId: delete_resume_version
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume version.
+        required: true
+      tags:
+      - resume-versions
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/resume-versions/{id}/restore/:
+    post:
+      operationId: restore_resume_version
+      description: |-
+        History for the authenticated user's résumés, scoped to request.user
+        (cross-user access → 404). Optional ?resume= filter. Versions are snapshots:
+        only `label` is editable; restore puts one back on its résumé.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resume version.
+        required: true
+      tags:
+      - resume-versions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resume'
+          description: ''
   /api/resumes/:
     get:
       operationId: list_resumes
@@ -884,6 +1050,47 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedResumeVersion:
+      type: object
+      description: A full version snapshot (retrieve) and the rename payload (PATCH
+        `label`).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resume:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ResumeVersionKindEnum'
+          readOnly: true
+        label:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          readOnly: true
+        template:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        document_font:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        section_order:
+          readOnly: true
+        content:
+          allOf:
+          - $ref: '#/components/schemas/ResumeContent'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PersonalInfo:
       type: object
       properties:
@@ -1060,6 +1267,132 @@ components:
       - template
       - title
       - updated_at
+    ResumeVersion:
+      type: object
+      description: A full version snapshot (retrieve) and the rename payload (PATCH
+        `label`).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resume:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ResumeVersionKindEnum'
+          readOnly: true
+        label:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          readOnly: true
+        template:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        document_font:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        section_order:
+          readOnly: true
+        content:
+          allOf:
+          - $ref: '#/components/schemas/ResumeContent'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - document_font
+      - id
+      - kind
+      - resume
+      - section_order
+      - template
+      - title
+    ResumeVersionCreate:
+      type: object
+      description: Save the current state of one of the caller's résumés as a version.
+      properties:
+        resume:
+          type: string
+          format: uuid
+        label:
+          type: string
+          default: ''
+          maxLength: 100
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ResumeVersionCreateKindEnum'
+          default: manual
+      required:
+      - resume
+    ResumeVersionCreateKindEnum:
+      enum:
+      - manual
+      - ai
+      type: string
+      description: |-
+        * `manual` - manual
+        * `ai` - ai
+    ResumeVersionKindEnum:
+      enum:
+      - auto
+      - manual
+      - restore
+      - ai
+      type: string
+      description: |-
+        * `auto` - Automatic checkpoint
+        * `manual` - Saved version
+        * `restore` - Before restore
+        * `ai` - Before an AI change
+    ResumeVersionList:
+      type: object
+      description: 'A version in the history list: metadata only, no `content` blob.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resume:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ResumeVersionKindEnum'
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        template:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - kind
+      - label
+      - resume
+      - template
+      - title
     TailorJDRequest:
       type: object
       properties:

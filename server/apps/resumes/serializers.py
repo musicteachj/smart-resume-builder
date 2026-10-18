@@ -13,7 +13,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import CoverLetter, Resume
+from .models import CoverLetter, Resume, ResumeVersion
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")  # YYYY-MM
 
@@ -102,6 +102,21 @@ class ResumeContentSerializer(serializers.Serializer):
         return attrs
 
 
+class OwnedResumeField(serializers.PrimaryKeyRelatedField):
+    """A résumé id that must belong to the requesting user. Someone else's résumé
+    and a nonexistent one get the same "does not exist" error, so the response
+    can't be used to probe for other users' résumé ids."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("queryset", Resume.objects.all())
+        super().__init__(**kwargs)
+
+    def get_queryset(self):
+        request = self.context.get("request")
+        qs = super().get_queryset()
+        return qs.filter(user=request.user) if request else qs.none()
+
+
 class ResumeSerializer(serializers.ModelSerializer):
     """Full read + write representation of a resume (retrieve/create/update)."""
 
@@ -140,6 +155,7 @@ class ResumeListSerializer(serializers.ModelSerializer):
 class CoverLetterSerializer(serializers.ModelSerializer):
     """A saved cover letter attached to one of the caller's résumés."""
 
+    resume = OwnedResumeField()
     body = serializers.CharField(max_length=8000)
     job_description = serializers.CharField(
         max_length=8000, required=False, allow_blank=True
@@ -153,8 +169,40 @@ class CoverLetterSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def validate_resume(self, resume):
-        request = self.context.get("request")
-        if request and resume.user_id != request.user.id:
-            raise serializers.ValidationError("Not your résumé.")
-        return resume
+
+
+class ResumeVersionListSerializer(serializers.ModelSerializer):
+    """A version in the history list: metadata only, no `content` blob."""
+
+    class Meta:
+        model = ResumeVersion
+        fields = ["id", "resume", "kind", "label", "title", "template", "created_at"]
+        read_only_fields = fields
+
+
+class ResumeVersionSerializer(serializers.ModelSerializer):
+    """A full version snapshot (retrieve) and the rename payload (PATCH `label`)."""
+
+    content = ResumeContentSerializer(read_only=True)
+
+    class Meta:
+        model = ResumeVersion
+        fields = [
+            "id", "resume", "kind", "label", "title", "template", "document_font",
+            "section_order", "content", "created_at",
+        ]
+        read_only_fields = [f for f in fields if f != "label"]
+
+
+class ResumeVersionCreateSerializer(serializers.Serializer):
+    """Save the current state of one of the caller's résumés as a version."""
+
+    resume = OwnedResumeField()
+    label = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    # Only user-initiated kinds; "auto" and "restore" are created by the server.
+    kind = serializers.ChoiceField(
+        choices=[ResumeVersion.Kind.MANUAL, ResumeVersion.Kind.AI],
+        default=ResumeVersion.Kind.MANUAL,
+    )
+
+
