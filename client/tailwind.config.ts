@@ -69,7 +69,8 @@ export default {
         light: "0 1px 2px rgb(27 27 26 / 0.04), 0 2px 8px rgb(27 27 26 / 0.05)",
         medium: "0 4px 12px rgb(27 27 26 / 0.08)",
         heavy: "0 12px 32px rgb(27 27 26 / 0.12)",
-        accent: "0 8px 24px rgb(15 81 50 / 0.22)",
+        // Not "accent": Tailwind would read shadow-accent as the accent *color* and paint the shadow solid.
+        cta: "0 1px 2px rgb(15 81 50 / 0.12), 0 3px 8px rgb(15 81 50 / 0.12)",
       },
       zIndex: {
         header: "10",

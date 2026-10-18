@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PersonalInfo, ResumeContent } from "@/api/generated/model";
@@ -71,5 +71,25 @@ describe("TemplateGallery", () => {
     fireEvent.click(screen.getByRole("button", { name: "Garamond" }));
     expect(onSelectFont).toHaveBeenCalledWith("garamond");
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("previews each template in the résumé's own section order", () => {
+    const withSections: ResumeContent = { ...content(), summary: "A short summary.", skills: ["Figma"] };
+    render(
+      <TemplateGallery
+        open
+        onOpenChange={() => {}}
+        content={withSections}
+        value="classic"
+        onSelect={() => {}}
+        fontValue=""
+        onSelectFont={() => {}}
+        sectionOrder={["skills", "summary", "experience"]}
+      />,
+    );
+    const card = screen.getByRole("button", { name: "Classic template" });
+    // Thumbnails are aria-hidden, so include hidden headings.
+    const headings = within(card).getAllByRole("heading", { level: 2, hidden: true });
+    expect(headings.map((h) => h.textContent)).toEqual(["Skills", "Summary"]);
   });
 });

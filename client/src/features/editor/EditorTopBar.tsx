@@ -33,6 +33,7 @@ export function EditorTopBar({
   const { register, watch, setValue } = useFormContext<EditorValues>();
   const template = watch("template");
   const documentFont = watch("documentFont");
+  const sectionOrder = watch("sectionOrder");
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -97,6 +98,7 @@ export function EditorTopBar({
         onSelect={(id) => setValue("template", id, { shouldDirty: true })}
         fontValue={documentFont}
         onSelectFont={(id) => setValue("documentFont", id, { shouldDirty: true })}
+        sectionOrder={sectionOrder}
       />
       {historyOpen && <VersionHistoryModal onClose={() => setHistoryOpen(false)} />}
     </div>

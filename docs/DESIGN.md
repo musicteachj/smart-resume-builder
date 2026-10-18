@@ -70,13 +70,13 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
   - `--shadow-light` `0 1px 2px rgb(27 27 26 / .04), 0 2px 8px rgb(27 27 26 / .05)`
   - `--shadow-medium` `0 4px 12px rgb(27 27 26 / .08)`
   - `--shadow-heavy` `0 12px 32px rgb(27 27 26 / .12)`
-  - `--shadow-accent` `0 8px 24px rgb(15 81 50 / .22)` (hover on primary CTA only)
+  - `shadow-cta` `0 1px 2px rgb(15 81 50 / .12), 0 3px 8px rgb(15 81 50 / .12)` (hover on primary CTA only; a subtle lift, never a glow)
 - Cards/surfaces use **1px border + light shadow**, never heavy elevation.
 - **z-index scale:** 0 / 10 (sticky header) / 20 (dropdown) / 40 (drawer) / 100 (modal) / 1000 (toast).
 
 ## 4. Component conventions (shadcn/ui, themed)
 
-- **Buttons:** primary = solid `accent` + `accent-foreground`, `radius-md`, hover lifts via `--shadow-accent`,
+- **Buttons:** primary = solid `accent` + `accent-foreground`, `radius-md`, hover shifts to `accent/90` + `shadow-cta`,
   press scale `0.98`; secondary = `surface` + `border`; ghost = transparent; destructive = `destructive`.
   One primary per view. Disabled = opacity 0.5 + `cursor-not-allowed`. Async = spinner + disabled.
 - **Inputs:** outlined (`border`), `radius-md`, visible label above (never placeholder-only), helper text below,
@@ -121,3 +121,19 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 - ❌ Placeholder-as-label; ❌ errors only at top of form; ❌ removing focus rings.
 - ❌ Animating layout properties / motion with no meaning / ignoring reduced-motion.
 - ❌ App fonts (Newsreader/Inter) bleeding into the resume preview (the document keeps its own ATS-safe typeface).
+
+## 8. Brand: the ResumeIQ mark
+
+Made in Claude Design (exports and history in `docs/design/logo/`, brief in `docs/design/logo-brief.md`).
+
+- **Mark:** a résumé page (folded corner, three text lines) with a four-point spark at its upper right. Drawn
+  inline by `BrandMark` in `components/layout/Brand.tsx`, in `currentColor`.
+- **Lockup:** mark + "ResumeIQ" in Newsreader 600 (the serifed "I" keeps it from reading "ResumelQ"). Always one
+  word, capital R, I, Q, no accent. Use `<Brand />`; don't rebuild it.
+- **Color:** theme ink only (`foreground`): `#1B1B1A` on light, `#F5F3EE` on dark, black for one-color print.
+  Never the accent, never a score color.
+- **The spark is the brand's only sparkle.** It stays flat, still, and attached to the page. Don't reuse it as a
+  UI decoration or an "AI" badge, and don't animate, glow, or color it; the §0/§7 rules against "AI sparkle"
+  still hold everywhere else.
+- **Clear space and size:** at least the mark's own width around the lockup; mark no smaller than 16 px
+  (the favicon has its own pixel drawing).
