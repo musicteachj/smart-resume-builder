@@ -9,6 +9,21 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- **Résumé version history (API)**: a new `ResumeVersion` model and user-scoped `/api/resume-versions/`
+  endpoints (list with `?resume=`, get, save, rename, delete, and `restore`). The server checkpoints a résumé's
+  previous state automatically on the first change of an editing session (when the newest version is over 10
+  minutes old), users can save named versions (up to 20 per résumé), and restoring snapshots the current state
+  first so it can be undone. The newest 30 automatic versions are kept per résumé; saved versions are never
+  pruned. Covered by the `writes` throttle. The editor UI follows in a separate PR.
+
+### Security
+- The `resume` field on cover-letter (and version) writes is now scoped to the requesting user, so another
+  user's résumé and a nonexistent one return the same error instead of revealing which ids exist.
+
+### Fixed
+- Duplicating a résumé (including **Save as tailored copy**) now keeps its document font and section order.
+
 ## [0.13.0] - 2026-10-18
 
 Pre-deploy batch: security hardening and audit fixes, document customization, section reordering,
