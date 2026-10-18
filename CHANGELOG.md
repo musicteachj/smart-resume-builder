@@ -9,6 +9,23 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Changed
+- **Faster first load**: each page (landing, login, register, dashboard, editor) is now its own lazily loaded
+  chunk, so visitors download only the page they open. The main bundle drops from ~698 kB to ~426 kB
+  (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
+
+### Fixed
+- **Autosave retries failed saves**: a rate-limited (`429`, honoring `Retry-After` up to 2 minutes),
+  server-error, or offline save is retried with backoff (2s doubling to 30s) and the editor shows "Couldn't
+  save, retrying…" instead of stopping at "Couldn't save". A newer edit's save always supersedes a retry.
+  After the editor closes, its last save gets up to 5 retries; if the résumé is reopened first, the new editor
+  shows those edits as unsaved and saves them itself, and the old retries stand down. Saves for a résumé run
+  one at a time, so a closed editor's slow save can't land after a newer one. Errors that won't fix themselves
+  (other 4xx, cancellations) still show "Couldn't save".
+- **A page that fails to load no longer blanks the app**: if a page's code can't be downloaded (offline, or
+  stale files right after a deploy) or the page crashes, a "This page didn't load" screen offers a Reload. The
+  dashboard keeps its header while its page loads.
+
 ## [0.14.0] - 2026-10-18
 
 Résumé version history.
