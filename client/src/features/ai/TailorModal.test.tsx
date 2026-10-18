@@ -18,6 +18,11 @@ vi.mock("@/api/generated/resumes/resumes", () => ({
   usePatchResume: () => ({ mutateAsync: patchMutate, isPending: false }),
 }));
 
+const { checkpointMutate } = vi.hoisted(() => ({ checkpointMutate: vi.fn() }));
+vi.mock("@/api/generated/resume-versions/resume-versions", () => ({
+  useCreateResumeVersion: () => ({ mutateAsync: checkpointMutate, isPending: false }),
+}));
+
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "r1" }),
@@ -142,9 +147,36 @@ describe("TailorModal destinations", () => {
     fireEvent.click(screen.getByRole("button", { name: /^accept$/i }));
     fireEvent.click(screen.getByRole("button", { name: /apply to this résumé/i }));
 
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(duplicateMutate).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("saves a 'before tailoring' version before applying in place", async () => {
+    const order: string[] = [];
+    checkpointMutate.mockImplementation(async () => {
+      order.push("checkpoint");
+      return { id: "v1" };
+    });
+    render(<Harness onClose={() => order.push("applied")} />);
+    await analyzeTo();
+    fireEvent.click(screen.getByRole("button", { name: /^accept$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply to this résumé/i }));
+
+    await waitFor(() => expect(order).toEqual(["checkpoint", "applied"]));
+    expect(checkpointMutate).toHaveBeenCalledWith({
+      data: { resume: "r1", kind: "ai", label: "Before tailoring to a job description" },
+    });
+  });
+
+  it("still applies when the checkpoint can't be saved", async () => {
+    checkpointMutate.mockRejectedValue(new Error("offline"));
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} />);
+    await analyzeTo();
+    fireEvent.click(screen.getByRole("button", { name: /^accept$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply to this résumé/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
 

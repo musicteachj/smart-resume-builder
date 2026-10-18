@@ -39,12 +39,12 @@ Details:
 
 
 ## PR 2: `feature-resume-history-ui`
-- [ ] `useAutosave` returns `{ status, flush }`
-- [ ] `Modal` `size="xl"`; `VersionHistoryModal` + `versionLabel.ts` + tests
-- [ ] History button in `EditorTopBar`; restore remount via `EditorPage` revision key
-- [ ] Tailor "Apply to this résumé" flushes autosave, then creates an `ai` checkpoint (the server snapshots the
+- [x] `useAutosave` returns `{ status, flush, abandonPending }`
+- [x] `Modal` `size="xl"`; `VersionHistoryModal` + `versionLabel.ts` + tests
+- [x] History button in `EditorTopBar`; restore remount via `EditorPage` revision key
+- [x] Tailor "Apply to this résumé" flushes autosave, then creates an `ai` checkpoint (the server snapshots the
   database row, so unsaved keystrokes must be saved first)
-- [ ] CHANGELOG, cut `0.14.0`, CLAUDE.md phase status
+- [x] CHANGELOG, cut `0.14.0`, CLAUDE.md phase status
 
 Details:
 

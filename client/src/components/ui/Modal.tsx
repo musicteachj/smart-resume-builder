@@ -25,7 +25,7 @@ export function Modal({
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
   confirmDiscard?: ConfirmDiscard;
   children: ReactNode;
 }) {
@@ -45,7 +45,7 @@ export function Modal({
         <D.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-modal max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface p-6 shadow-heavy focus:outline-none",
-            size === "lg" ? "max-w-2xl" : "max-w-md",
+            size === "xl" ? "max-w-5xl" : size === "lg" ? "max-w-2xl" : "max-w-md",
           )}
         >
           <div className="mb-4 flex items-start justify-between gap-4">

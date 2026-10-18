@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, Download, FileText, FileType, FileType2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FileText, FileType, FileType2, History } from "lucide-react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,8 @@ import { getTemplate } from "@/features/templates/templates";
 
 import { SaveIndicator } from "./components/SaveIndicator";
 import { TemplateGallery } from "./components/TemplateGallery";
+import { VersionHistoryModal } from "./components/VersionHistoryModal";
+
 import type { EditorValues } from "./editorSchema";
 import type { ExportFormat } from "./exportFormats";
 import type { SaveStatus } from "./useAutosave";
@@ -32,6 +34,7 @@ export function EditorTopBar({
   const template = watch("template");
   const documentFont = watch("documentFont");
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <div className="sticky top-0 z-header flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur">
@@ -61,6 +64,9 @@ export function EditorTopBar({
           <span className="text-muted-foreground">Template:</span> {getTemplate(template).label}
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
         </button>
+        <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setHistoryOpen(true)}>
+          <History className="h-4 w-4" aria-hidden /> History
+        </Button>
         <AiMenu />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -92,6 +98,7 @@ export function EditorTopBar({
         fontValue={documentFont}
         onSelectFont={(id) => setValue("documentFont", id, { shouldDirty: true })}
       />
+      {historyOpen && <VersionHistoryModal onClose={() => setHistoryOpen(false)} />}
     </div>
   );
 }

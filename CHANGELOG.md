@@ -9,13 +9,26 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-18
+
+Résumé version history.
+
 ### Added
+- **Version history in the editor**: a new **History** button opens a version browser for the résumé. The list
+  is grouped by day (automatic checkpoints, saved versions tagged "Saved", and safety checkpoints), and the
+  selected version shows a read-only preview of the document. Save the current state as a named version,
+  rename or delete versions, or **Restore** one (after a confirm); restoring saves the current state first, so
+  it can be undone from the same list, and the editor reloads with the restored résumé.
+- **"Before tailoring" checkpoint**: Tailor's **Apply to this résumé** saves a version first, so a tailoring pass
+  can be rolled back from History.
 - **Résumé version history (API)**: a new `ResumeVersion` model and user-scoped `/api/resume-versions/`
   endpoints (list with `?resume=`, get, save, rename, delete, and `restore`). The server checkpoints a résumé's
   previous state automatically on the first change of an editing session (when the newest version is over 10
   minutes old), users can save named versions (up to 20 per résumé), and restoring snapshots the current state
   first so it can be undone. The newest 30 automatic versions are kept per résumé; saved versions are never
-  pruned. Covered by the `writes` throttle. The editor UI follows in a separate PR.
+  pruned. Covered by the `writes` throttle.
+- `useAutosave` exposes `flush()` (save a pending edit now) and `abandonPending()`; an `EditorSession` context
+  makes them available to top-bar modals. `Modal` gains `size="xl"`.
 
 ### Security
 - The `resume` field on cover-letter (and version) writes is now scoped to the requesting user, so another
@@ -23,6 +36,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ### Fixed
 - Duplicating a résumé (including **Save as tailored copy**) now keeps its document font and section order.
+- Autosave no longer marks edits typed while a save is in flight as saved; they're saved by the next save
+  instead of waiting for another keystroke.
 
 ## [0.13.0] - 2026-10-18
 
@@ -394,7 +409,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.10.0...v0.11.0
