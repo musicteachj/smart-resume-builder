@@ -118,8 +118,6 @@ HTTPS/HSTS. Still open:
   (3) There's no `CACHES` setting, so DRF throttles (`auth`, `ai-burst`, `writes`) count in a per-process
   LocMemCache: each gunicorn worker (3 per task) and each ECS task keeps its own counters, so the real caps are
   looser than configured. Configure a shared cache (Django's database cache, or Redis) before relying on them.
-- `useAutosave` doesn't retry failed saves: a `429` from the `writes` throttle leaves the status on "error" until
-  the next edit, and the final save on leaving the editor fails silently. Add a retry honoring `Retry-After`.
 
 ## Security invariants (preserve if you touch the code)
 
@@ -190,5 +188,5 @@ HTTPS/HSTS. Still open:
 - ⬜ Phase 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes
-`client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Bundle is one chunk
-(~540kB) — route-level code-splitting is a future optimization.
+`client/openapi.yaml` + `client/src/api/generated/`). Lint ignores the generated dir. Pages are lazy-loaded
+per route (`React.lazy` in `App.tsx`, `LoadingSplash` fallback); the shared framework chunk is ~426kB (139kB gzip).
