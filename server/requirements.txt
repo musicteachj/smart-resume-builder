@@ -3,8 +3,8 @@
 # bump a pin, run the suite, commit.
 
 # Web framework
-Django==5.2.15
-djangorestframework==3.17.1
+Django==5.2.18
+djangorestframework==3.17.2
 djangorestframework-simplejwt==5.5.1
 drf-spectacular==0.29.0
 django-cors-headers==4.9.0
