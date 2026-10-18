@@ -57,17 +57,21 @@ export function TemplateGallery({
                 selected ? "border-accent ring-2 ring-accent" : "border-border hover:border-accent/60",
               )}
             >
-              <div className="relative h-44 overflow-hidden bg-white">
-                {/* 816px ≈ 8.5in Letter width at 96dpi; scaled into the thumbnail. Non-interactive. */}
+              {/* No absolute positioning in here: Safari (and DuckDuckGo, also system WebKit)
+                  doesn't paint absolutely positioned content inside a <button>, which blanked
+                  every thumbnail and the check badge. The page and badge share one grid cell
+                  instead. */}
+              <div className="grid h-44 overflow-hidden bg-white">
+                {/* 816px ≈ 8.5in Letter width at 96dpi; zoomed into the thumbnail. Non-interactive. */}
                 <div
-                  className="pointer-events-none absolute left-0 top-0 origin-top-left"
-                  style={{ width: 816, transform: "scale(0.23)" }}
+                  className="pointer-events-none [grid-area:1/1]"
+                  style={{ width: 816, zoom: 0.23 }}
                   aria-hidden
                 >
                   <ResumeDocument content={content} template={t.id} documentFont={fontValue} />
                 </div>
                 {selected && (
-                  <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <span className="m-2 flex h-6 w-6 items-center justify-center self-start justify-self-end rounded-full bg-accent text-accent-foreground [grid-area:1/1]">
                     <Check className="h-3.5 w-3.5" aria-hidden />
                   </span>
                 )}

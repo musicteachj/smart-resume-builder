@@ -9,6 +9,14 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- **The ResumeIQ logo** (Claude Design; exports and history in `docs/design/logo/`): a résumé page with a
+  four-point spark beside a Newsreader "ResumeIQ" wordmark. `Brand` now draws the mark inline (`BrandMark`, in
+  theme ink) in the header, auth screens, and landing page, replacing the placeholder icon tile. The stock Vite
+  favicon is replaced by a pixel-drawn `favicon.svg` that switches ink for dark tab bars, plus a PNG fallback,
+  touch icon, `site.webmanifest`, and a 1200 × 630 link-preview image with Open Graph tags. DESIGN.md gains a
+  Brand section (the mark's spark is the only sparkle in the product).
+
 ### Changed
 - **Renamed to ResumeIQ** (descriptor: "AI resume builder"). The header, auth and landing lockups now
   share one `Brand` component, the page title reads "ResumeIQ: AI resume builder", the API schema title is
@@ -30,6 +38,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - **A page that fails to load no longer blanks the app**: if a page's code can't be downloaded (offline, or
   stale files right after a deploy) or the page crashes, a "This page didn't load" screen offers a Reload. The
   dashboard keeps its header while its page loads.
+- **Template previews blank in Safari and DuckDuckGo**: system WebKit doesn't paint absolutely positioned
+  content inside a `<button>`, so every template-gallery thumbnail (and the selected check badge) was empty.
+  The thumbnail and badge now share one grid cell instead, and the page is shrunk with `zoom` like the History
+  preview.
+- **Primary buttons glowed on hover**: `hover:shadow-accent` collided with the `accent` color name, so
+  Tailwind painted the shadow in solid accent (a wide halo, bright green in dark mode). The shadow is now
+  `shadow-cta`, a small 12% lift, and hover also shifts the fill to `accent/90` so the change is visible.
 
 ## [0.14.0] - 2026-10-18
 

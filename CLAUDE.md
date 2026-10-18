@@ -3,6 +3,7 @@
 **ResumeIQ**, an AI resume builder: split-screen editor with live preview, Claude-assisted content
 (improve bullets / generate summary / tailor-to-JD with ATS score), client-side PDF export. Formerly
 "Smart Resume Builder"; the GitHub repo, local folder, and CI image tag keep the `smart-resume-builder` slug.
+Logo and lockup: `<Brand />` / `BrandMark` in `components/layout/Brand.tsx`; rules in DESIGN.md §8.
 Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 
 ## Hard rules
