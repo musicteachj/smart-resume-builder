@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Smart Resume Builder are documented here.
+All notable changes to ResumeIQ (formerly Smart Resume Builder) are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project follows
 [Semantic Versioning](https://semver.org/). Until the first production deploy, each completed
@@ -10,6 +10,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Changed
+- **Renamed to ResumeIQ** (descriptor: "AI resume builder"). The header, auth and landing lockups now
+  share one `Brand` component, the page title reads "ResumeIQ: AI resume builder", the API schema title is
+  "ResumeIQ API" (Orval client regenerated), the root package is `resumeiq`, and the theme preference is
+  stored under `resumeiq-theme` (was `srb-theme`). The GitHub repo, folder, and CI image tag keep the
+  `smart-resume-builder` slug. A Claude Design logo brief is in `docs/design/logo-brief.md`.
 - **Faster first load**: each page (landing, login, register, dashboard, editor) is now its own lazily loaded
   chunk, so visitors download only the page they open. The main bundle drops from ~698 kB to ~426 kB
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.

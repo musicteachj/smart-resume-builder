@@ -1,4 +1,4 @@
-"""URL configuration for Smart Resume Builder."""
+"""URL configuration for ResumeIQ."""
 
 from django.conf import settings
 from django.contrib import admin

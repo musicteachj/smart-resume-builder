@@ -34,9 +34,9 @@ describe("theme store", () => {
     expect(useThemeStore.getState().theme).toBe("light");
   });
 
-  it("persists the theme to localStorage under srb-theme", () => {
+  it("persists the theme to localStorage under resumeiq-theme", () => {
     useThemeStore.getState().setTheme("dark");
-    expect(localStorage.getItem("srb-theme")).toContain("dark");
+    expect(localStorage.getItem("resumeiq-theme")).toContain("dark");
   });
 
   it("applyTheme toggles the .dark class on <html>", () => {

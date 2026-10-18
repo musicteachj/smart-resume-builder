@@ -1,5 +1,5 @@
 """
-Django settings for Smart Resume Builder.
+Django settings for ResumeIQ.
 
 Environment-driven: values come from a `.env` file at the repo root (local dev)
 or real environment variables (Docker / ECS). See ../.env.example.
@@ -176,8 +176,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Smart Resume Builder API",
-    "DESCRIPTION": "AI-powered resume builder — resumes, auth, and Claude-assisted content.",
+    "TITLE": "ResumeIQ API",
+    "DESCRIPTION": "AI resume builder: resumes, auth, and Claude-assisted content.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     # Schema + Swagger UI are open in dev (Orval reads /api/schema/) but

@@ -1,4 +1,4 @@
-# Smart Resume Builder — Design System ("Editorial Ink")
+# ResumeIQ: Design System ("Editorial Ink")
 
 > **Chosen identity: "Editorial Ink."** A distinct, app-specific look — deliberately NOT the developer's
 > portfolio "Professional Navy" brand. Every project gets its own identity. Editorial Ink treats the resume as

@@ -1,7 +1,8 @@
-# CLAUDE.md — Smart Resume Builder
+# CLAUDE.md: ResumeIQ
 
-AI-powered resume builder: split-screen editor with live preview, Claude-assisted content
-(improve bullets / generate summary / tailor-to-JD with ATS score), client-side PDF export.
+**ResumeIQ**, an AI resume builder: split-screen editor with live preview, Claude-assisted content
+(improve bullets / generate summary / tailor-to-JD with ATS score), client-side PDF export. Formerly
+"Smart Resume Builder"; the GitHub repo, local folder, and CI image tag keep the `smart-resume-builder` slug.
 Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 
 ## Hard rules
@@ -160,7 +161,7 @@ HTTPS/HSTS. Still open:
 - ✅ Feature A — editor polish (`0.10.0`): headline in the resume document (test coverage; render already
   existed), `@dnd-kit` drag-to-reorder (experience/education/projects entries + work bullets via a reusable
   `SortableList` in `components/ui/`), app-chrome dark-mode toggle (Zustand `theme` store → `.dark` on
-  `<html>`, persisted `srb-theme`, OS default; toggle in `AppHeader`). The document + exported PDF stay light.
+  `<html>`, persisted `resumeiq-theme`, OS default; toggle in `AppHeader`). The document + exported PDF stay light.
 - ✅ Feature C — templates (`0.11.0`): template registry (`features/templates/templates.ts`) replacing the
   `isModern` boolean, third **Banner** template (full-bleed navy header, Modern body, ATS-safe, prints), and a
   visual `TemplateGallery` modal with live scaled previews replacing the dropdown. Client-only, no migration.

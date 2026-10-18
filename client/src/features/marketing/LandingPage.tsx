@@ -1,6 +1,7 @@
-import { ArrowRight, Check, FileText } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Brand } from "@/components/layout/Brand";
 import { Button } from "@/components/ui/Button";
 
 const BENEFITS: [string, string][] = [
@@ -13,12 +14,7 @@ export function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
-            <FileText className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="font-semibold text-foreground">Resume Builder</span>
-        </div>
+        <Brand />
         <nav className="flex items-center gap-2">
           <Link to="/login">
             <Button variant="ghost" size="sm">
@@ -42,7 +38,7 @@ export function LandingPage() {
         </h1>
         <p className="mt-5 max-w-lg text-lg text-muted-foreground">
           Build a clean, ATS-safe resume in minutes. Sharpen every bullet, tailor to any role, and
-          export a polished PDF — without fighting a template.
+          export a polished PDF, without fighting a template.
         </p>
 
         <ul className="mt-9 w-full max-w-md space-y-3 text-left">
@@ -66,7 +62,7 @@ export function LandingPage() {
       </main>
 
       <footer className="mx-auto flex w-full max-w-6xl items-center justify-between border-t border-border px-6 py-5 text-sm text-muted-foreground">
-        <span>© 2026 Resume Builder</span>
+        <span>© 2026 ResumeIQ</span>
         <div className="flex gap-5">
           <span>Privacy</span>
           <span>Terms</span>

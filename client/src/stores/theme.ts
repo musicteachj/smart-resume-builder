@@ -22,7 +22,7 @@ interface ThemeState {
 }
 
 /**
- * App-chrome theme store. Persists to localStorage (`srb-theme`); first visit with no
+ * App-chrome theme store. Persists to localStorage (`resumeiq-theme`); first visit with no
  * stored value defaults to the OS preference. The resume document stays light regardless
  * — `ResumeDocument` uses explicit paper/ink colors, not theme tokens.
  */
@@ -33,6 +33,6 @@ export const useThemeStore = create<ThemeState>()(
       toggle: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
       setTheme: (theme) => set({ theme }),
     }),
-    { name: "srb-theme" },
+    { name: "resumeiq-theme" },
   ),
 );
