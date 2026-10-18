@@ -27,6 +27,7 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<CoverLetter | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CoverLetter | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListCoverLettersQueryKey({ resume: resumeId }) });
@@ -35,6 +36,8 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
     setEditing(letter);
     setView("editor");
   };
+
+  const showList = () => setView("list");
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -57,6 +60,11 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
           if (!o) onClose();
         }}
         size="lg"
+        confirmDiscard={{
+          when: view === "editor" && editorDirty,
+          title: "Discard changes?",
+          description: "You'll lose this cover letter's unsaved changes if you close.",
+        }}
         title="Cover letters"
         description="Saved cover letters for this résumé."
       >
@@ -64,10 +72,11 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
           <CoverLetterEditor
             resumeId={resumeId}
             letter={editing}
-            onBack={() => setView("list")}
+            onBack={showList}
+            onDirtyChange={setEditorDirty}
             onSaved={() => {
               void invalidate();
-              setView("list");
+              showList();
             }}
           />
         ) : (

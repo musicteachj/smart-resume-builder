@@ -9,7 +9,15 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-18
+
+Pre-deploy batch: security hardening and audit fixes, document customization, section reordering,
+DOCX/text export, tailored copies, cover letters (generate, save, manage), and the ATS health check.
+
 ### Security
+- **Write rate limit on résumé and cover-letter CRUD**: a per-user `writes` throttle (120/min) on create,
+  update, delete, and duplicate under `/api/resumes/` and `/api/cover-letters/`. Reads are never throttled,
+  and editor autosave (800ms debounce) stays well under the cap.
 - **Refresh token moved to an `httpOnly` cookie; access token is memory-only.** The long-lived refresh
   JWT is now set as an `HttpOnly`/`Secure`(prod)/`SameSite=Lax` cookie scoped to `/api/auth` — no longer
   readable by JS. The short-lived access token lives only in memory (nothing auth-related is persisted to
@@ -49,6 +57,15 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   same-origin scripts/API; `frame-ancestors 'none'`.
 
 ### Added
+- **Warning before discarding AI suggestions**: closing an AI modal (X, Esc, or clicking outside) while it
+  holds an unused or in-flight result now asks for confirmation first. Covers Improve bullet, Generate
+  summary, Tailor to JD (including **New analysis**), Import résumé (while parsing, in review, and **Start
+  over**), and the cover-letter editor (generating, or an unsaved generated or edited letter, including its
+  **Back** button). Built on a shared `useDiscardConfirm` hook, exposed on `Modal` as an opt-in
+  `confirmDiscard` prop.
+- **Regenerate a cover letter from its stored job description**: the cover-letter editor has a
+  **Regenerate** button that drafts a fresh letter from the saved JD (uses 1 AI credit; not saved until you
+  click Save). It asks before replacing edits you've made by hand.
 - **Saved cover letters**: AI-generated cover letters can now be saved to the résumé they were generated
   from — the editor's AI menu opens a **Cover letters** manager listing this résumé's letters, where you can
   generate a new one, reopen and edit any letter, copy / download `.txt`, or delete it. Letters store their
@@ -94,8 +111,10 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (`index.css`) and `tailwind.config.ts` `display` family — so all app-chrome headings update through the
   token. The résumé document/PDF (Georgia/Arial) and `font-sans` (Inter) are unaffected. Design docs
   (`DESIGN.md`, `CLAUDE.md`, `README.md`, `PLAN.md`) updated to match.
-
-_Phase 10 — AWS deploy (ECS Fargate + ECR + ALB + RDS + Secrets Manager + GitHub Actions) next._
+- The Tailor modal stays open while **Save as tailored copy** runs, so its duplicate-then-patch steps can't be
+  interrupted. A résumé parse that finishes after you discarded it is now ignored instead of reappearing the
+  next time Import opens.
+- README prerequisites now list Node 22 (matches `.nvmrc` and the Docker build stage) and React 19.
 
 ## [0.12.0] - 2026-06-30
 
@@ -346,7 +365,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.9.0...v0.10.0

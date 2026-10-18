@@ -18,12 +18,22 @@ import type { CoverLetter } from "@/api/generated/model";
 
 import { CoverLetterEditor } from "./CoverLetterEditor";
 
-function Harness({ letter = null }: { letter?: CoverLetter | null }) {
+const saved: CoverLetter = {
+  id: "c1",
+  resume: "r1",
+  title: "Old title",
+  body: "Old body",
+  job_description: "We need a product manager with SQL and roadmap skills.",
+  created_at: "",
+  updated_at: "",
+};
+
+function Harness({ letter = null, onBack = () => {} }: { letter?: CoverLetter | null; onBack?: () => void }) {
   const form = useForm({ defaultValues: { title: "PM résumé", content: {} } });
   return (
     <QueryClientProvider client={new QueryClient()}>
       <FormProvider {...form}>
-        <CoverLetterEditor resumeId="r1" letter={letter} onSaved={() => {}} onBack={() => {}} />
+        <CoverLetterEditor resumeId="r1" letter={letter} onSaved={() => {}} onBack={onBack} />
       </FormProvider>
     </QueryClientProvider>
   );
@@ -73,5 +83,44 @@ describe("CoverLetterEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
     await waitFor(() => expect(patch).toHaveBeenCalledOnce());
     expect(patch.mock.calls[0][0]).toMatchObject({ id: "c1", data: { body: "Revised body" } });
+  });
+
+  it("regenerates a saved letter from its stored job description", async () => {
+    render(<Harness letter={saved} />);
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+    await waitFor(() => expect(screen.getByLabelText(/cover letter/i)).toHaveValue("Dear team…"));
+    expect(generate.mock.calls[0][0].data.job_description).toBe(saved.job_description);
+    // Regenerating doesn't save; that still takes an explicit Save.
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("goes back without asking when nothing changed", () => {
+    const onBack = vi.fn();
+    render(<Harness letter={saved} onBack={onBack} />);
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("asks before going back with unsaved edits", async () => {
+    const onBack = vi.fn();
+    render(<Harness letter={saved} onBack={onBack} />);
+    fireEvent.change(screen.getByLabelText(/cover letter/i), { target: { value: "Edited" } });
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+    expect(onBack).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("asks before Regenerate replaces hand edits", async () => {
+    render(<Harness letter={saved} />);
+    fireEvent.change(screen.getByLabelText(/cover letter/i), { target: { value: "My careful edits" } });
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+    expect(await screen.findByText(/replace your edits/i)).toBeInTheDocument();
+    expect(generate).not.toHaveBeenCalled();
+
+    // The confirm dialog's own button is also labelled "Regenerate"; it's the last one.
+    const buttons = screen.getAllByRole("button", { name: /regenerate/i });
+    fireEvent.click(buttons[buttons.length - 1]);
+    await waitFor(() => expect(screen.getByLabelText(/cover letter/i)).toHaveValue("Dear team…"));
   });
 });

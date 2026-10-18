@@ -42,6 +42,7 @@ export function GenerateSummaryModal({ onClose }: { onClose: () => void }) {
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
+      confirmDiscard={{ when: !!summary && !gen.isPending }}
       title="Generate summary"
       description="Drafted from your experience, skills, and education."
     >

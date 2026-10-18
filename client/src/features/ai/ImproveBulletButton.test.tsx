@@ -31,4 +31,17 @@ describe("ImproveBulletButton", () => {
     await userEvent.click(screen.getByRole("button", { name: /^accept$/i }));
     expect(onAccept).toHaveBeenCalledWith("Led a redesign that lifted engagement 34%.");
   });
+
+  it("asks before closing with an unused suggestion", async () => {
+    mutateAsync.mockResolvedValue({ suggestion: "Led a redesign that lifted engagement 34%.", ai_usage: usage });
+    render(<ImproveBulletButton value="did design work" onAccept={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /improve with ai/i }));
+    await screen.findByText("Led a redesign that lifted engagement 34%.");
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(await screen.findByText(/discard ai suggestions/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(screen.queryByText("Led a redesign that lifted engagement 34%.")).not.toBeInTheDocument();
+  });
 });

@@ -14,4 +14,6 @@ def _disable_throttling(monkeypatch):
     patch the class attribute directly. Tests that exercise throttling override this
     with a real rate and clear the cache.
     """
-    monkeypatch.setattr(SimpleRateThrottle, "THROTTLE_RATES", {"auth": None, "ai-burst": None})
+    monkeypatch.setattr(
+        SimpleRateThrottle, "THROTTLE_RATES", {"auth": None, "ai-burst": None, "writes": None}
+    )

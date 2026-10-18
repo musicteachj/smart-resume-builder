@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
+import { useDiscardConfirm } from "@/components/ui/useDiscardConfirm";
 import type { EditorValues } from "@/features/editor/editorSchema";
 import { extractFileText } from "@/lib/extractFileText";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
   const tailor = useTailorJd();
   const duplicate = useDuplicateResume();
   const patch = usePatchResume();
+  const discard = useDiscardConfirm();
 
   const savingCopy = duplicate.isPending || patch.isPending;
   const nothingPicked = pickedBullets.size === 0 && pickedKeywords.size === 0;
@@ -116,9 +118,11 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onOpenChange={(o) => {
-        if (!o) onClose();
+        // Saving a copy is two requests (duplicate, then patch); stay open until it finishes.
+        if (!o && !savingCopy) onClose();
       }}
       size="lg"
+      confirmDiscard={{ when: result !== null && !savingCopy }}
       title="Tailor to job description"
       description="Paste a job description — we'll score the match and suggest stronger, role-specific bullets."
     >
@@ -253,7 +257,12 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-            <Button variant="ghost" size="sm" onClick={() => setResult(null)} disabled={savingCopy}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => discard.confirm(true, () => setResult(null))}
+              disabled={savingCopy}
+            >
               New analysis
             </Button>
             <div className="flex gap-2">
@@ -267,6 +276,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
+      {discard.dialog}
     </Modal>
   );
 }

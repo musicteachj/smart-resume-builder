@@ -20,7 +20,7 @@ ATS-safe PDF.
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Hook Form + Zod |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Hook Form + Zod |
 | Backend | Django 5, Django REST Framework, SimpleJWT, drf-spectacular (OpenAPI) |
 | Database | PostgreSQL 15 (Docker locally, AWS RDS in production) |
 | AI | Anthropic Claude (Python SDK) |
@@ -39,7 +39,7 @@ CHANGELOG.md  Phase-by-phase change history
 
 ## Local development
 
-Prereqs: Node 18+, Python 3.12, Docker.
+Prereqs: Node 22 (see `.nvmrc`), Python 3.12, Docker.
 
 ```bash
 # 1. Install everything (root + client deps, server venv)

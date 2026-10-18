@@ -49,4 +49,38 @@ describe("ImportResumeModal", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open in editor/i })).not.toBeInTheDocument();
   });
+
+  it("asks before Start over discards the parsed résumé", async () => {
+    parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/paste/i), { target: { value: "Maya Chen\nSenior Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+    await screen.findByRole("button", { name: /open in editor/i });
+
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+    expect(await screen.findByText(/discard imported résumé/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /open in editor/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("ignores a parse that finishes after the user discarded it", async () => {
+    let finish: (v: unknown) => void = () => {};
+    parseMutate.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const onOpenChange = vi.fn();
+    render(<ImportResumeModal open onOpenChange={onOpenChange} />);
+    fireEvent.change(screen.getByLabelText(/paste/i), { target: { value: "Maya Chen\nSenior Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+    await screen.findByText(/parsing with ai/i);
+
+    // Closing mid-parse asks first; discarding resets the modal.
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    finish({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
+    await waitFor(() => expect(screen.queryByText(/parsing with ai/i)).not.toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /open in editor/i })).not.toBeInTheDocument();
+  });
 });

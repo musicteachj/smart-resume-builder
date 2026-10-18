@@ -4,6 +4,13 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { useDiscardConfirm, type DiscardCopy } from "./useDiscardConfirm";
+
+/** Ask before a user-initiated close (X, Esc, overlay) while `when` is true. */
+export interface ConfirmDiscard extends DiscardCopy {
+  when: boolean;
+}
+
 /** Generic Radix dialog shell for richer modals (AI assist, tailor-to-JD). */
 export function Modal({
   open,
@@ -11,6 +18,7 @@ export function Modal({
   title,
   description,
   size = "md",
+  confirmDiscard,
   children,
 }: {
   open: boolean;
@@ -18,10 +26,20 @@ export function Modal({
   title: string;
   description?: string;
   size?: "md" | "lg";
+  confirmDiscard?: ConfirmDiscard;
   children: ReactNode;
 }) {
+  const discard = useDiscardConfirm(confirmDiscard);
+
+  // Programmatic closes (the parent flipping `open`) bypass this; only Radix's
+  // own close requests are intercepted.
+  const requestOpenChange = (o: boolean) => {
+    if (o) onOpenChange(true);
+    else discard.confirm(!!confirmDiscard?.when, () => onOpenChange(false));
+  };
+
   return (
-    <D.Root open={open} onOpenChange={onOpenChange}>
+    <D.Root open={open} onOpenChange={requestOpenChange}>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-modal bg-foreground/50 backdrop-blur-[1px]" />
         <D.Content
@@ -51,6 +69,7 @@ export function Modal({
           {children}
         </D.Content>
       </D.Portal>
+      {discard.dialog}
     </D.Root>
   );
 }

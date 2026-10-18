@@ -147,3 +147,34 @@ describe("TailorModal destinations", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 });
+
+describe("TailorModal discard guard", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("closes without asking before any analysis", () => {
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("asks before discarding an analysis", async () => {
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} />);
+    await analyzeTo();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("asks before New analysis throws the result away", async () => {
+    render(<Harness />);
+    await analyzeTo();
+    fireEvent.click(screen.getByRole("button", { name: /new analysis/i }));
+    expect(screen.getByText(/suggested rewrites/i)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(screen.queryByText(/suggested rewrites/i)).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /analyze match/i })).toBeInTheDocument();
+  });
+});
