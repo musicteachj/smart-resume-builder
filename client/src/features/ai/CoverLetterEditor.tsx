@@ -1,5 +1,5 @@
-import { Check, Copy, Download } from "lucide-react";
-import { useState } from "react";
+import { Check, Copy, Download, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useGenerateCoverLetter } from "@/api/generated/ai/ai";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
+import { useDiscardConfirm } from "@/components/ui/useDiscardConfirm";
 import type { EditorValues } from "@/features/editor/editorSchema";
 import { downloadBlob, safeFileName } from "@/lib/download";
 import { extractFileText } from "@/lib/extractFileText";
@@ -24,10 +25,12 @@ interface Props {
   /** Parent invalidates the list + returns to it. */
   onSaved: () => void;
   onBack: () => void;
+  /** Reports whether there are unsaved changes, so the parent can guard closing. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** Generate a new cover letter from a JD, or edit an existing saved one, then save it. */
-export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) {
+export function CoverLetterEditor({ resumeId, letter, onSaved, onBack, onDirtyChange }: Props) {
   const { getValues } = useFormContext<EditorValues>();
   const gen = useGenerateCoverLetter();
   const create = useCreateCoverLetter();
@@ -39,6 +42,28 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
   const [copied, setCopied] = useState(false);
+  // The last body that came from the server or the AI, to tell hand edits apart.
+  const [baseline, setBaseline] = useState<string | null>(letter?.body ?? null);
+
+  const discardBack = useDiscardConfirm({
+    title: "Discard changes?",
+    description: "This cover letter has unsaved changes. You'll lose them if you go back.",
+  });
+  const discardEdits = useDiscardConfirm({
+    title: "Replace your edits?",
+    description: "Regenerating replaces the letter, including the edits you've made to it.",
+    confirmLabel: "Regenerate",
+  });
+
+  // Unsaved: a generation in flight, a new letter's generated body, or edits to a saved letter.
+  const dirty =
+    gen.isPending || (letter ? body !== letter.body || title !== letter.title : body !== null);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Clear the parent's flag when the editor goes away (saved or backed out).
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const readFile = async (file: File | undefined) => {
     if (!file) return;
@@ -61,6 +86,7 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
       });
       applyAiUsage(res.ai_usage);
       setBody(res.cover_letter);
+      setBaseline(res.cover_letter);
     } catch (err) {
       setError(aiErrorMessage(err));
     }
@@ -120,7 +146,7 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
               "Uses 1 of your daily AI credits."
             )}
           </span>
-          <Button variant="ghost" size="sm" onClick={onBack}>Back</Button>
+          <Button variant="ghost" size="sm" onClick={onBack} disabled={gen.isPending}>Back</Button>
           <Button onClick={() => void generate()} loading={gen.isPending} disabled={reading || jd.trim().length < 20}>
             Generate
           </Button>
@@ -131,6 +157,7 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
 
   // Have a body (generated or existing): title + editable body + save/export.
   const saving = create.isPending || patch.isPending;
+  const canRegenerate = jd.trim().length >= 20;
   return (
     <div className="space-y-4">
       <Input aria-label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -141,9 +168,33 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
           <p className="mt-2 whitespace-pre-wrap">{jd}</p>
         </details>
       )}
+      {canRegenerate && (
+        <p className="text-xs text-muted-foreground">Regenerating uses 1 of your daily AI credits.</p>
+      )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-        <Button variant="ghost" size="sm" onClick={onBack} disabled={saving}>Back</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => discardBack.confirm(dirty, onBack)}
+            disabled={saving || gen.isPending}
+          >
+            Back
+          </Button>
+          {canRegenerate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => discardEdits.confirm(body !== baseline, () => void generate())}
+              loading={gen.isPending}
+              disabled={saving}
+            >
+              <RefreshCw className="h-4 w-4" /> Regenerate
+            </Button>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => void copy()}>
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -152,9 +203,18 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack }: Props) 
           <Button variant="secondary" size="sm" className="gap-1.5" onClick={download}>
             <Download className="h-4 w-4" /> Download .txt
           </Button>
-          <Button size="sm" onClick={() => void save()} loading={saving} disabled={!body.trim() || !title.trim()}>Save</Button>
+          <Button
+            size="sm"
+            onClick={() => void save()}
+            loading={saving}
+            disabled={gen.isPending || !body.trim() || !title.trim()}
+          >
+            Save
+          </Button>
         </div>
       </div>
+      {discardBack.dialog}
+      {discardEdits.dialog}
     </div>
   );
 }

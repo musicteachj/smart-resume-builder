@@ -161,10 +161,13 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     # Scoped throttles applied per-view (not globally): "auth" blunts login/register
     # brute force (keyed by IP); "ai-burst" is a per-user burst guard on the AI
-    # endpoints that complements the per-user daily/monthly quota in apps/ai/usage.py.
+    # endpoints that complements the per-user daily/monthly quota in apps/ai/usage.py;
+    # "writes" caps résumé/cover-letter writes per user (autosave debounces at 800ms,
+    # so continuous typing stays well under it).
     "DEFAULT_THROTTLE_RATES": {
         "auth": "10/min",
         "ai-burst": "20/hour",
+        "writes": "120/min",
     },
     # One trusted proxy hop (the ALB). Without this, DRF keys IP throttles on the
     # whole client-supplied X-Forwarded-For header, which an attacker can rotate

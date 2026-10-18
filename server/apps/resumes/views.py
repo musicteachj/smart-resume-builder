@@ -16,6 +16,7 @@ from .serializers import (
     ResumeListSerializer,
     ResumeSerializer,
 )
+from .throttles import WriteRateThrottle
 
 
 @extend_schema_view(
@@ -33,6 +34,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
     serializer_class = ResumeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [WriteRateThrottle]
 
     def get_serializer_class(self):
         # Dashboard list uses a trimmed serializer (no heavy content blob).
@@ -91,6 +93,7 @@ class CoverLetterViewSet(viewsets.ModelViewSet):
 
     serializer_class = CoverLetterSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [WriteRateThrottle]
     http_method_names = ["get", "post", "patch", "delete"]  # no PUT
 
     RETENTION = 25

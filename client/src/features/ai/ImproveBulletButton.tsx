@@ -52,7 +52,12 @@ export function ImproveBulletButton({
         <Wand2 className="h-4 w-4" />
       </button>
 
-      <Modal open={open} onOpenChange={setOpen} title="Improve with AI">
+      <Modal
+        open={open}
+        onOpenChange={setOpen}
+        confirmDiscard={{ when: !!suggestion && !improve.isPending }}
+        title="Improve with AI"
+      >
         <div className="space-y-4">
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</p>

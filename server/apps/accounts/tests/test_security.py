@@ -18,7 +18,7 @@ def client():
 def test_auth_endpoint_throttles_burst(client, monkeypatch):
     # Re-enable the "auth" scope (the suite disables throttling by default) and reset
     # the throttle cache so the count starts clean.
-    monkeypatch.setattr(SimpleRateThrottle, "THROTTLE_RATES", {"auth": "3/min", "ai-burst": None})
+    monkeypatch.setattr(SimpleRateThrottle, "THROTTLE_RATES", {"auth": "3/min", "ai-burst": None, "writes": None})
     cache.clear()
 
     creds = {"email": "nobody@example.com", "password": "whatever"}

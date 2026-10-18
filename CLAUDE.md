@@ -88,7 +88,9 @@ PLAN.md        implementation plan + phase list + build punch-list
 - DRF: serializers validate everything; viewsets thin, logic in services; OpenAPI via drf-spectacular.
 - Score bands: <50 `destructive`, 50–74 `warning`, ≥75 `success` — always paired with a text label,
   never color alone. `success` ≠ `accent` (accent = actions, success = outcomes).
-- Destructive actions get a confirm dialog. Modals: Esc + explicit close; warn on unsaved AI suggestions.
+- Destructive actions get a confirm dialog. Modals: Esc + explicit close; warn on unsaved AI suggestions
+  (pass `confirmDiscard={{ when: ... }}` to `Modal` for X/Esc/overlay closes, and use `useDiscardConfirm` from
+  `components/ui/` for in-modal actions that drop a result, like "New analysis" or "Start over").
 - Motion: transform/opacity only, 150–300ms, gated behind `prefers-reduced-motion`.
 - Python: Django app code under `apps.<name>`; pytest + pytest-django (`server/pytest.ini`).
 
@@ -113,6 +115,11 @@ HTTPS/HSTS. Still open:
   (`/health` is already exempt from the HTTPS redirect via `SECURE_REDIRECT_EXEMPT`, but the Host-header check
   is separate.) (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for
   >1 task run migrations as a separate one-off/release task to avoid a concurrent-migration race.
+  (3) There's no `CACHES` setting, so DRF throttles (`auth`, `ai-burst`, `writes`) count in a per-process
+  LocMemCache: each gunicorn worker (3 per task) and each ECS task keeps its own counters, so the real caps are
+  looser than configured. Configure a shared cache (Django's database cache, or Redis) before relying on them.
+- `useAutosave` doesn't retry failed saves: a `429` from the `writes` throttle leaves the status on "error" until
+  the next edit, and the final save on leaving the editor fails silently. Add a retry honoring `Retry-After`.
 
 ## Security invariants (preserve if you touch the code)
 
@@ -162,6 +169,14 @@ HTTPS/HSTS. Still open:
 - ✅ Feature B — import an existing résumé (`0.12.0`): client-side text extraction (`pdfjs-dist`/`mammoth`,
   lazy), Sonnet `parse-resume` tool-use endpoint → `ResumeContent` (entry UUIDs + email/URL normalization,
   usage-gated), and an `ImportResumeModal` (upload/paste → AI parse → in-modal review → create on confirm).
+- ✅ Pre-deploy batch (`0.13.0`): 6 templates + per-résumé `document_font`, drag-to-reorder sections
+  (`section_order`), DOCX/plain-text export (lazy `docx`), save a tailored copy (`applyTailoring`), AI cover
+  letter + ATS health check, saved cover letters (`CoverLetter` model + `/api/cover-letters/`, editor manager
+  with regenerate-from-stored-JD), httpOnly refresh cookie + rotation, security audit fixes, per-user `writes`
+  throttle on résumé/cover-letter CRUD, the discard-AI-suggestions guard (`Modal` `confirmDiscard` prop), and
+  CI (GitHub Actions PR checks + CodeQL, required on `dev`/`main` via branch protection).
+- ⬜ Résumé version history / snapshots (next; needs its own brainstorm → spec → plan). Streaming AI
+  responses after that (needs async-capable gunicorn workers, so it's tied to the deploy setup).
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
   + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
   (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.

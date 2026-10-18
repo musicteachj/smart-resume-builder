@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useParseResume } from "@/api/generated/ai/ai";
@@ -8,12 +8,18 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
+import { useDiscardConfirm } from "@/components/ui/useDiscardConfirm";
 import { aiErrorMessage } from "@/features/ai/aiError";
 import { applyAiUsage } from "@/features/ai/aiUsage";
 import { ResumeDocument } from "@/features/templates/ResumeDocument";
 import { extractFileText } from "@/lib/extractFileText";
 
 type Step = "input" | "parsing" | "review";
+
+const DISCARD_COPY = {
+  title: "Discard imported résumé?",
+  description: "You'll lose the parsed résumé and need to import it again. AI credits already used aren't refunded.",
+};
 
 export function ImportResumeModal({
   open,
@@ -30,8 +36,12 @@ export function ImportResumeModal({
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState("");
   const [parsedContent, setParsedContent] = useState<ResumeContent | null>(null);
+  // Bumped on reset so a parse that finishes after the user discarded it is ignored.
+  const runId = useRef(0);
+  const discard = useDiscardConfirm(DISCARD_COPY);
 
   const reset = () => {
+    runId.current += 1;
     setStep("input");
     setFile(null);
     setPasted("");
@@ -40,6 +50,7 @@ export function ImportResumeModal({
   };
 
   const runParse = async () => {
+    const run = runId.current;
     setError("");
     setStep("parsing");
     try {
@@ -47,9 +58,11 @@ export function ImportResumeModal({
       if (text.length < 30) throw new Error("Add a file or paste your résumé text first.");
       const res = await parse.mutateAsync({ data: { text } });
       applyAiUsage(res.ai_usage);
+      if (run !== runId.current) return;
       setParsedContent(res.content);
       setStep("review");
     } catch (err) {
+      if (run !== runId.current) return;
       setError(aiErrorMessage(err));
       setStep("input");
     }
@@ -71,6 +84,7 @@ export function ImportResumeModal({
         onOpenChange(o);
       }}
       size="lg"
+      confirmDiscard={{ when: step !== "input", ...DISCARD_COPY }}
       title="Import a resume"
       description="Upload a PDF or DOCX, or paste the text. Claude structures it — you review before anything is created."
     >
@@ -82,7 +96,7 @@ export function ImportResumeModal({
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={reset}>
+            <Button variant="ghost" size="sm" onClick={() => discard.confirm(true, reset)}>
               Start over
             </Button>
             <Button size="sm" disabled={create.isPending} onClick={confirm}>
@@ -128,6 +142,7 @@ export function ImportResumeModal({
           </div>
         </div>
       )}
+      {discard.dialog}
     </Modal>
   );
 }
