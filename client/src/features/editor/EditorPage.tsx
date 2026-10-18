@@ -1,13 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { arrayMove } from "@dnd-kit/sortable";
 import { ArrowLeft } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { Link, useParams } from "react-router-dom";
 import { useReactToPrint } from "react-to-print";
 
 import type { Resume } from "@/api/generated/model";
-import { useGetResume } from "@/api/generated/resumes/resumes";
+import {
+  getGetResumeQueryKey,
+  getListResumesQueryKey,
+  useGetResume,
+} from "@/api/generated/resumes/resumes";
 import { SortableList } from "@/components/ui/SortableList";
 import { Spinner } from "@/components/ui/Spinner";
 import { downloadBlob, safeFileName } from "@/lib/download";
@@ -19,6 +24,7 @@ import { docxFontName, resumeToDocxBlob } from "./exportDocx";
 import type { ExportFormat } from "./exportFormats";
 import { resumeToText } from "./exportText";
 
+import { EditorSessionProvider, type EditorSession } from "./EditorSession";
 import { EditorTopBar } from "./EditorTopBar";
 import { CollapsibleSection } from "./components/CollapsibleSection";
 import { editorSchema, toFormValues, type EditorValues } from "./editorSchema";
@@ -45,6 +51,9 @@ const SECTION_PANELS: Record<
 export function EditorPage() {
   const { id } = useParams();
   const { data: resume, isLoading, isError } = useGetResume(id!);
+  // Bumped after a restore to remount the form with the restored values.
+  const [revision, setRevision] = useState(0);
+  const remount = useCallback(() => setRevision((r) => r + 1), []);
 
   if (isLoading) {
     return (
@@ -67,17 +76,38 @@ export function EditorPage() {
   }
 
   // Key by id so navigating editor→editor (e.g. opening a freshly saved tailored copy)
-  // remounts the form with the new résumé's values rather than keeping the old ones.
-  return <EditorForm key={resume.id} resume={resume} />;
+  // remounts the form with the new résumé's values rather than keeping the old ones;
+  // the revision does the same after a restore.
+  return (
+    <EditorForm
+      key={`${resume.id}:${revision}`}
+      resume={resume}
+      onRemount={remount}
+    />
+  );
 }
 
-function EditorForm({ resume }: { resume: Resume }) {
+function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => void }) {
   const methods = useForm<EditorValues>({
     resolver: zodResolver(editorSchema),
     defaultValues: toFormValues(resume),
     mode: "onChange",
   });
-  const status = useAutosave(resume.id, methods);
+  const { status, flush, abandonPending } = useAutosave(resume.id, methods);
+  const queryClient = useQueryClient();
+  const session = useMemo<EditorSession>(
+    () => ({
+      resumeId: resume.id,
+      flush,
+      onRestored: (restored) => {
+        queryClient.setQueryData(getGetResumeQueryKey(resume.id), restored);
+        void queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });
+        abandonPending(); // the form is about to be replaced; don't write it back
+        onRemount();
+      },
+    }),
+    [resume.id, flush, abandonPending, queryClient, onRemount],
+  );
   const content = useWatch({ control: methods.control, name: "content" });
   const template = useWatch({ control: methods.control, name: "template" });
   const documentFont = useWatch({ control: methods.control, name: "documentFont" });
@@ -108,54 +138,56 @@ function EditorForm({ resume }: { resume: Resume }) {
   };
 
   return (
-    <FormProvider {...methods}>
-      <div className="flex h-dvh flex-col bg-background">
-        <EditorTopBar status={status} onExport={exportAs} />
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-          {/* Form */}
-          <div className="min-h-0 space-y-3 overflow-y-auto border-border p-5 lg:border-r">
-            <CollapsibleSection title="Personal info" description="Name, title, and contact details">
-              <PersonalInfoSection />
-            </CollapsibleSection>
-            {/* Reorderable content sections — drag to change their order in the document. */}
-            <SortableList
-              items={sectionOrder}
-              getId={(key) => key}
-              onReorder={(from, to) =>
-                methods.setValue("sectionOrder", arrayMove(sectionOrder, from, to), { shouldDirty: true })
-              }
-            >
-              {(key, handle) => {
-                const panel = SECTION_PANELS[key as SectionKey];
-                return (
-                  <CollapsibleSection
-                    title={panel.title}
-                    description={panel.description}
-                    defaultOpen={panel.defaultOpen}
-                    handle={handle}
-                  >
-                    {panel.node}
-                  </CollapsibleSection>
-                );
-              }}
-            </SortableList>
-          </div>
+    <EditorSessionProvider value={session}>
+      <FormProvider {...methods}>
+        <div className="flex h-dvh flex-col bg-background">
+          <EditorTopBar status={status} onExport={exportAs} />
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+            {/* Form */}
+            <div className="min-h-0 space-y-3 overflow-y-auto border-border p-5 lg:border-r">
+              <CollapsibleSection title="Personal info" description="Name, title, and contact details">
+                <PersonalInfoSection />
+              </CollapsibleSection>
+              {/* Reorderable content sections: drag to change their order in the document. */}
+              <SortableList
+                items={sectionOrder}
+                getId={(key) => key}
+                onReorder={(from, to) =>
+                  methods.setValue("sectionOrder", arrayMove(sectionOrder, from, to), { shouldDirty: true })
+                }
+              >
+                {(key, handle) => {
+                  const panel = SECTION_PANELS[key as SectionKey];
+                  return (
+                    <CollapsibleSection
+                      title={panel.title}
+                      description={panel.description}
+                      defaultOpen={panel.defaultOpen}
+                      handle={handle}
+                    >
+                      {panel.node}
+                    </CollapsibleSection>
+                  );
+                }}
+              </SortableList>
+            </div>
 
-          {/* Live preview */}
-          <div className="min-h-0 overflow-y-auto bg-surface-variant p-6">
-            <div className="mx-auto max-w-[816px] shadow-medium">
-              <div ref={printRef}>
-                <ResumeDocument
-                  content={content}
-                  template={template}
-                  documentFont={documentFont}
-                  sectionOrder={sectionOrder}
-                />
+            {/* Live preview */}
+            <div className="min-h-0 overflow-y-auto bg-surface-variant p-6">
+              <div className="mx-auto max-w-[816px] shadow-medium">
+                <div ref={printRef}>
+                  <ResumeDocument
+                    content={content}
+                    template={template}
+                    documentFont={documentFont}
+                    sectionOrder={sectionOrder}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </FormProvider>
+      </FormProvider>
+    </EditorSessionProvider>
   );
 }

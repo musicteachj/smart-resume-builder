@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { useTailorJd } from "@/api/generated/ai/ai";
 import type { ResumeContent, TailorJDResponse, TailorSuggestion } from "@/api/generated/model";
+import { useCreateResumeVersion } from "@/api/generated/resume-versions/resume-versions";
 import { useDuplicateResume, usePatchResume } from "@/api/generated/resumes/resumes";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -12,6 +13,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
 import { useDiscardConfirm } from "@/components/ui/useDiscardConfirm";
 import type { EditorValues } from "@/features/editor/editorSchema";
+import { useEditorSession } from "@/features/editor/EditorSession";
 import { extractFileText } from "@/lib/extractFileText";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +36,14 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
   const tailor = useTailorJd();
   const duplicate = useDuplicateResume();
   const patch = usePatchResume();
+  const checkpoint = useCreateResumeVersion();
+  const session = useEditorSession();
+  // True from the Apply click until the change is in the form (covers the flush + checkpoint).
+  const [applying, setApplying] = useState(false);
   const discard = useDiscardConfirm();
 
   const savingCopy = duplicate.isPending || patch.isPending;
+  const busy = savingCopy || applying;
   const nothingPicked = pickedBullets.size === 0 && pickedKeywords.size === 0;
 
   const readFile = async (file: File | undefined) => {
@@ -79,8 +86,23 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
   const pickedSuggestions = (): TailorSuggestion[] =>
     result ? result.suggestions.filter((s) => pickedBullets.has(s.bullet_id)) : [];
 
-  /** Apply the picked changes to the current résumé via RHF (granular, so field arrays stay in sync). */
-  const applyHere = () => {
+  /** Apply the picked changes to the current résumé via RHF (granular, so field arrays stay in sync),
+   * after saving a "Before tailoring" version so the change can be undone from History. */
+  const applyHere = async () => {
+    if (busy) return;
+    setApplying(true);
+    if (id) {
+      try {
+        // Save pending edits so the checkpoint matches the screen. If they can't be saved
+        // (a field error), still checkpoint: rolling back the AI's rewrites matters most.
+        await session?.flush();
+        await checkpoint.mutateAsync({
+          data: { resume: id, kind: "ai", label: "Before tailoring to a job description" },
+        });
+      } catch {
+        // A missing checkpoint shouldn't block the change the user asked for.
+      }
+    }
     const work = getValues("content.workExperience");
     for (const s of pickedSuggestions()) {
       const [workId, idxStr] = s.bullet_id.split("::");
@@ -118,11 +140,12 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onOpenChange={(o) => {
-        // Saving a copy is two requests (duplicate, then patch); stay open until it finishes.
-        if (!o && !savingCopy) onClose();
+        // Saving a copy (duplicate, then patch) or applying (flush, checkpoint, then the
+        // change) is multi-step; stay open until it finishes.
+        if (!o && !busy) onClose();
       }}
       size="lg"
-      confirmDiscard={{ when: result !== null && !savingCopy }}
+      confirmDiscard={{ when: result !== null && !busy }}
       title="Tailor to job description"
       description="Paste a job description — we'll score the match and suggest stronger, role-specific bullets."
     >
@@ -261,15 +284,21 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
               variant="ghost"
               size="sm"
               onClick={() => discard.confirm(true, () => setResult(null))}
-              disabled={savingCopy}
+              disabled={busy}
             >
               New analysis
             </Button>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={applyHere} disabled={nothingPicked || savingCopy}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void applyHere()}
+                loading={applying}
+                disabled={nothingPicked || busy}
+              >
                 Apply to this résumé
               </Button>
-              <Button size="sm" onClick={() => void saveAsCopy()} loading={savingCopy} disabled={nothingPicked}>
+              <Button size="sm" onClick={() => void saveAsCopy()} loading={savingCopy} disabled={nothingPicked || applying}>
                 Save as tailored copy
               </Button>
             </div>

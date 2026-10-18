@@ -24,8 +24,18 @@ const DEBOUNCE_MS = 800;
  *  - on save success, write the saved resume into the `getResume` cache + invalidate the dashboard list;
  *  - on unmount, optimistically write current edits into the cache AND flush a final save, so navigating
  *    away mid-debounce never loses the last edits or shows stale data on return.
+ *
+ * `flush()` saves a pending edit right away (before a snapshot or restore reads the server copy) and
+ * resolves `true` when nothing is left unsaved. `abandonPending()` drops a pending edit so the unmount
+ * save/cache write is skipped (used when a restore is about to replace the form).
  */
-export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): SaveStatus {
+export interface Autosave {
+  status: SaveStatus;
+  flush: () => Promise<boolean>;
+  abandonPending: () => void;
+}
+
+export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): Autosave {
   const patch = usePatchResume();
   const queryClient = useQueryClient();
   const mutateRef = useRef(patch.mutateAsync);
@@ -36,6 +46,10 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): S
   const [status, setStatus] = useState<SaveStatus>("saved");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef(false);
+  // Bumped on every change. A save only clears `pending` if nothing changed while
+  // it was in flight, so edits typed during a PATCH are never marked as saved.
+  const edits = useRef(0);
+  const inFlight = useRef<Promise<void> | null>(null);
 
   const cacheLocalEdits = useCallback(() => {
     const v = methods.getValues();
@@ -53,38 +67,49 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): S
   }, [id, methods, queryClient]);
 
   const saveNow = useCallback(
-    async (announce: boolean) => {
-      const valid = await methods.trigger();
-      if (!valid) {
-        if (announce) setStatus("unsaved");
-        return;
-      }
-      const v = methods.getValues();
-      if (announce) setStatus("saving");
-      try {
-        const updated = await mutateRef.current({
-          id,
-          data: {
-            title: v.title,
-            template: v.template,
-            document_font: v.documentFont,
-            section_order: v.sectionOrder,
-            content: v.content,
-          },
-        });
-        queryClient.setQueryData(getGetResumeQueryKey(id), updated);
-        queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });
-        pending.current = false;
-        if (announce) setStatus("saved");
-      } catch {
-        if (announce) setStatus("error");
-      }
+    (announce: boolean): Promise<void> => {
+      const run = (async () => {
+        const valid = await methods.trigger();
+        if (!valid) {
+          if (announce) setStatus("unsaved");
+          return;
+        }
+        const at = edits.current;
+        const v = methods.getValues();
+        if (announce) setStatus("saving");
+        try {
+          const updated = await mutateRef.current({
+            id,
+            data: {
+              title: v.title,
+              template: v.template,
+              document_font: v.documentFont,
+              section_order: v.sectionOrder,
+              content: v.content,
+            },
+          });
+          queryClient.setQueryData(getGetResumeQueryKey(id), updated);
+          queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });
+          if (edits.current === at) {
+            pending.current = false;
+            if (announce) setStatus("saved");
+          }
+        } catch {
+          if (announce) setStatus("error");
+        }
+      })();
+      inFlight.current = run;
+      void run.finally(() => {
+        if (inFlight.current === run) inFlight.current = null;
+      });
+      return run;
     },
     [id, methods, queryClient],
   );
 
   useEffect(() => {
     const subscription = methods.watch(() => {
+      edits.current += 1;
       pending.current = true;
       setStatus("unsaved");
       if (timer.current) clearTimeout(timer.current);
@@ -101,5 +126,17 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): S
     };
   }, [methods, saveNow, cacheLocalEdits]);
 
-  return status;
+  const flush = useCallback(async () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (inFlight.current) await inFlight.current; // let a debounced save already underway finish
+    if (pending.current) await saveNow(true);
+    return !pending.current;
+  }, [saveNow]);
+
+  const abandonPending = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    pending.current = false;
+  }, []);
+
+  return { status, flush, abandonPending };
 }

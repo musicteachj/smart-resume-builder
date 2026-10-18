@@ -175,8 +175,15 @@ HTTPS/HSTS. Still open:
   with regenerate-from-stored-JD), httpOnly refresh cookie + rotation, security audit fixes, per-user `writes`
   throttle on résumé/cover-letter CRUD, the discard-AI-suggestions guard (`Modal` `confirmDiscard` prop), and
   CI (GitHub Actions PR checks + CodeQL, required on `dev`/`main` via branch protection).
-- ⬜ Résumé version history / snapshots (next; needs its own brainstorm → spec → plan). Streaming AI
-  responses after that (needs async-capable gunicorn workers, so it's tied to the deploy setup).
+- ✅ Résumé version history (`0.14.0`): `ResumeVersion` model + `apps/resumes/versions.py` (automatic
+  checkpoint before the first change of an editing session, saved versions capped at 20, undoable restore,
+  newest 30 automatic kept; row-locked), `/api/resume-versions/`, and the editor **History** modal
+  (`VersionHistoryModal`, preview + save/rename/delete/restore). Restore remounts the form via the
+  `EditorPage` revision key; top-bar modals reach autosave through the `EditorSession` context
+  (`flush` before any snapshot). Tailor "Apply" saves a "Before tailoring" checkpoint.
+  Spec/plan: `docs/superpowers/{specs,plans}/2026-10-18-resume-version-history*`.
+- ⬜ Streaming AI responses (last of the post-audit batch; needs async-capable gunicorn workers, so it's tied to
+  the deploy setup).
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
   + Secrets Manager (SECRET_KEY/DATABASE_URL/ANTHROPIC_API_KEY) + GitHub Actions (build→push→deploy) + Route 53
   (`resume.jameslittlefield.net`). Mirror `employee-management-system/.github/workflows/`. Run `check --deploy`.
