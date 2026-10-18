@@ -45,6 +45,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - **Primary buttons glowed on hover**: `hover:shadow-accent` collided with the `accent` color name, so
   Tailwind painted the shadow in solid accent (a wide halo, bright green in dark mode). The shadow is now
   `shadow-cta`, a small 12% lift, and hover also shifts the fill to `accent/90` so the change is visible.
+- **Template previews ignored the section order**: the gallery thumbnails always used the default order, so
+  a résumé with reordered sections previewed differently from how it renders. They now use the résumé's order.
 
 ## [0.14.0] - 2026-10-18
 

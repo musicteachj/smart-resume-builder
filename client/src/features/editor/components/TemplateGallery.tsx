@@ -14,13 +14,14 @@ interface TemplateGalleryProps {
   onSelect: (id: string) => void;
   fontValue: string;
   onSelectFont: (id: string) => void;
+  sectionOrder?: string[];
 }
 
 /**
  * Template + font picker modal. Each card is a live, scaled-down ResumeDocument of the
  * user's actual content (DRY — the preview is the real document), so previews are always
- * accurate and reflect the currently selected font. Picking a template closes the modal;
- * picking a font keeps it open so the change is visible in every preview.
+ * accurate and reflect the currently selected font and section order. Picking a template
+ * closes the modal; picking a font keeps it open so the change is visible in every preview.
  */
 export function TemplateGallery({
   open,
@@ -30,6 +31,7 @@ export function TemplateGallery({
   onSelect,
   fontValue,
   onSelectFont,
+  sectionOrder,
 }: TemplateGalleryProps) {
   return (
     <Modal
@@ -68,7 +70,12 @@ export function TemplateGallery({
                   style={{ width: 816, zoom: 0.23 }}
                   aria-hidden
                 >
-                  <ResumeDocument content={content} template={t.id} documentFont={fontValue} />
+                  <ResumeDocument
+                    content={content}
+                    template={t.id}
+                    documentFont={fontValue}
+                    sectionOrder={sectionOrder}
+                  />
                 </div>
                 {selected && (
                   <span className="m-2 flex h-6 w-6 items-center justify-center self-start justify-self-end rounded-full bg-accent text-accent-foreground [grid-area:1/1]">
