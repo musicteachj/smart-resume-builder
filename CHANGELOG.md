@@ -9,6 +9,26 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- **Continuous integration** (GitHub Actions, on PRs and pushes to `dev`/`main`): client lint, typecheck,
+  tests, and build; server system checks, production `check --deploy`, missing-migration check, and pytest
+  on Postgres 15; OpenAPI schema validation plus a check that the committed Orval client is up to date;
+  a Docker image build with a boot-and-curl smoke test; and a dependency audit (`npm audit` on production
+  deps, `pip-audit`). CodeQL scans JavaScript/TypeScript, Python, and the workflows on every PR and weekly.
+- `.nvmrc` (Node 22), used by CI and local `nvm use`.
+
+### Security
+- **Dependency updates** from the new audit: Django 5.2.15 → 5.2.18 and Django REST framework
+  3.17.1 → 3.17.2 (security patch releases); `npm audit fix` updates client transitive dependencies,
+  including axios and `@xmldom/xmldom`. Remaining advisories are moderate or dev-only (Tailwind 3's build
+  tooling; fixing them means Tailwind 4).
+- The deliberate no-HSTS-preload `check --deploy` warning (`security.W021`) is now silenced in production
+  settings, so CI can fail on any new deploy warning.
+
+### Changed
+- Orval 8.20 → 8.43 (via `npm audit fix`); the regenerated API client adds named mutation-variable types
+  and mutation-key helpers. No API or behavior change.
+
 ### Security
 - **Refresh token moved to an `httpOnly` cookie; access token is memory-only.** The long-lived refresh
   JWT is now set as an `HttpOnly`/`Secure`(prod)/`SameSite=Lax` cookie scoped to `/api/auth` — no longer

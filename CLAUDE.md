@@ -53,6 +53,14 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 
 Server health check: `GET http://localhost:8000/health` → `{"status": "ok"}`.
 
+**CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has five jobs: client
+(lint, typecheck, Vitest, build), server (`check`, `check --deploy`, `makemigrations --check`, pytest on
+Postgres 15), API schema (`spectacular --validate --fail-on-warn`, then fails if the committed Orval client
+differs from a fresh `gen:api`), Docker (build the image, boot it against Postgres, curl `/health` and the SPA),
+and dependency audit (`npm audit --omit=dev --audit-level=high` + `pip-audit`). `codeql.yml` scans
+JS/TS, Python, and the workflows (also weekly). Node version comes from `.nvmrc`. If the API schema job fails,
+run `npm run gen:api` in `client/` and commit the result.
+
 ## Repo map
 
 ```
@@ -67,6 +75,7 @@ server/
   config/      settings.py urls.py wsgi.py — env-driven
   apps/        accounts/ resumes/ ai/ (Django apps, Phase 2+)
 docs/DESIGN.md design system (truth)   docs/DEPLOYMENT.md (Phase 10)
+.github/       workflows/ci.yml (PR checks) + codeql.yml
 screens/       mockup references (1 editor, 2 tailor-JD modal, 3 dashboard, 4 template, 5 landing+auth)
 PLAN.md        implementation plan + phase list + build punch-list
 ```
