@@ -103,6 +103,9 @@ if not DEBUG:
     SECURE_REDIRECT_EXEMPT = [r"^health$"]
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 days; no preload (deliberate)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # covers *.resume.…; other apps live on the parent domain
+    # Preload is off on purpose (see above), so silence its warning; CI runs
+    # `check --deploy --fail-level WARNING` and should fail only on new issues.
+    SILENCED_SYSTEM_CHECKS = ["security.W021"]
     # Sessions/CSRF cookies only exist for the Django admin, but the site is
     # HTTPS-only so they should never travel in the clear.
     SESSION_COOKIE_SECURE = True
