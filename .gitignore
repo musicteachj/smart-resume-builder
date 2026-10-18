@@ -35,3 +35,6 @@ npm-debug.log*
 
 # Superpowers visual-companion scratch
 .superpowers/
+
+# Claude Design upload bundle (regenerated; see docs/design/logo-brief.md)
+docs/design/claude-design-upload/

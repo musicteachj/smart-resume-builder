@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Smart Resume Builder API
+  title: ResumeIQ API
   version: 0.1.0
-  description: AI-powered resume builder — resumes, auth, and Claude-assisted content.
+  description: 'AI resume builder: resumes, auth, and Claude-assisted content.'
 paths:
   /api/ai/ats-check:
     post:

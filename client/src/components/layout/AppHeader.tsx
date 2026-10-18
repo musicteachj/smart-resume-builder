@@ -1,6 +1,7 @@
-import { FileText, LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { Brand } from "@/components/layout/Brand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,11 +35,8 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-header border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link to="/dashboard" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
-            <FileText className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="font-semibold text-foreground">Resume Builder</span>
+        <Link to="/dashboard">
+          <Brand />
         </Link>
 
         <div className="flex items-center gap-4">

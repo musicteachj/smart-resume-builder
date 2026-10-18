@@ -1,6 +1,6 @@
-# Smart Resume Builder
+# ResumeIQ
 
-An AI-powered resume builder. Create multiple resumes in a split-screen editor with live preview,
+ResumeIQ is an AI resume builder. Create multiple resumes in a split-screen editor with live preview,
 sharpen bullets and tailor your resume to any job description with Claude, and export a clean,
 ATS-safe PDF.
 

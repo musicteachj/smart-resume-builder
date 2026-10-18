@@ -1,4 +1,4 @@
-# Smart Resume Builder — Implementation Plan
+# ResumeIQ: Implementation Plan
 
 > Design system lives in [`docs/DESIGN.md`](docs/DESIGN.md) ("Editorial Ink").
 
