@@ -18,6 +18,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   Brand section (the mark's spark is the only sparkle in the product).
 
 ### Changed
+- **README refreshed for release**: the feature list now covers import, cover letters, the ATS health check, version
+  history, six templates and fonts, and DOCX/text export; adds CI badges, a security summary, the production-image
+  command, and `gen:api`; drops the not-yet-written `DEPLOYMENT.md` link and the stale Swagger note.
 - **Faster asset delivery**: the built SPA is precompressed (gzip + Brotli, main bundle 429 kB → 120 kB) at image
   build, Vite's hashed `/assets/` are cached for a year, the SPA shell is `no-cache`, and `site.webmanifest` is
   served as `application/manifest+json`.
