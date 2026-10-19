@@ -7,7 +7,9 @@ import Axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
  * Vite proxies `/api` to Django in dev, and Django serves the SPA in prod.
  */
 // withCredentials so the httpOnly refresh cookie is sent/received (flows are same-origin).
-export const AXIOS_INSTANCE = Axios.create({ baseURL: "", withCredentials: true });
+// timeout: the last link of the chain Anthropic (100s) < ALB idle (120s) < here, so a
+// request never hangs forever but the server always gets to answer first.
+export const AXIOS_INSTANCE = Axios.create({ baseURL: "", withCredentials: true, timeout: 125_000 });
 
 export const customAxios = <T>(
   config: AxiosRequestConfig,

@@ -86,9 +86,12 @@ class ResumeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def duplicate(self, request, pk=None):
         original = self.get_object()
+        suffix = " (Copy)"
+        # Trim so "<title> (Copy)" still fits the column (a 100-char title would 500).
+        room = Resume._meta.get_field("title").max_length - len(suffix)
         copy = Resume.objects.create(
             user=request.user,
-            title=f"{original.title} (Copy)",
+            title=f"{original.title[:room]}{suffix}",
             template=original.template,
             document_font=original.document_font,
             section_order=original.section_order,

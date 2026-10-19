@@ -212,7 +212,6 @@ paths:
       tags:
       - auth
       security:
-      - jwtAuth: []
       - {}
       responses:
         '204':
@@ -240,7 +239,6 @@ paths:
       tags:
       - auth
       security:
-      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -269,7 +267,6 @@ paths:
               $ref: '#/components/schemas/Register'
         required: true
       security:
-      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -918,9 +915,8 @@ components:
       - id
     EmailTokenObtainPair:
       type: object
-      description: |-
-        Login via email/password; returns the user alongside the token pair and
-        keeps the admin flag in sync with ADMIN_EMAILS.
+      description: Login via email/password; returns the user alongside the token
+        pair.
       properties:
         email:
           type: string

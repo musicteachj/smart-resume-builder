@@ -9,7 +9,7 @@
     "build": "npm run build:client",
     "build:client": "npm run build --prefix client",
     "install:all": "npm install && npm install --prefix client && npm run install:server",
-    "install:server": "python3.12 -m venv server/.venv && server/.venv/bin/pip install -r server/requirements.txt",
+    "install:server": "python3.12 -m venv server/.venv && server/.venv/bin/pip install --require-hashes -r server/requirements.txt",
     "test": "npm run test:client && npm run test:server",
     "test:client": "npm run test --prefix client",
     "test:server": "cd server && .venv/bin/python -m pytest",

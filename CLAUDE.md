@@ -38,7 +38,8 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
   Local apps live in `server/apps/` (`accounts`, `resumes`, `ai` — added Phase 2+).
 - **DB** — Postgres 15: `docker compose up -d` locally, AWS RDS in prod.
 - **AI** — Anthropic Python SDK (Phase 7); key via `ANTHROPIC_API_KEY`; limits 10/day & 50/month
-  (constants `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` in settings; admins + DEBUG bypass).
+  (constants `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` in settings; admins + DEBUG bypass; admin is granted only
+  with `manage.py set_admin <email>`, never by email at signup).
 - **Python**: use `python3.12` / `server/.venv`. System python3 is 3.9 — too old; never use it.
 
 ## Commands (run from repo root)
@@ -49,11 +50,14 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 | `npm run install:all` | root + client npm deps, server venv + pip |
 | `docker compose up -d` | local Postgres (user/pass/db: resume_user/resume_pass/resume_builder) |
 | `server/.venv/bin/python server/manage.py migrate` | migrations |
+| `server/.venv/bin/python server/manage.py set_admin <email>` | grant admin (unlimited AI); `--revoke` removes it |
 | `npm run build` | production client build |
 | `npm run test` / `test:client` / `test:server` | Vitest (Phase 8) / pytest |
 | `npm run lint` / `npm run typecheck` | client ESLint / tsc |
 
 Server health check: `GET http://localhost:8000/health` → `{"status": "ok"}`.
+Python deps: edit `server/requirements.in` (direct pins), then regenerate the hashed lock `server/requirements.txt`
+with the `uv pip compile` command in its header. Everything installs from the lock with `--require-hashes`.
 
 **CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has five jobs: client
 (lint, typecheck, Vitest, build), server (`check`, `check --deploy`, `makemigrations --check`, pytest on
@@ -108,18 +112,29 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 
 The big pre-deploy security items are **done** (see the CHANGELOG `[Unreleased]` Security section):
 refresh token in an `httpOnly` cookie + memory-only access token, refresh-token rotation/revocation,
-login/register throttling, production CSP, prod AI-`502` masking, fail-closed `DEBUG`, and prod
-HTTPS/HSTS. Still open:
+login/register throttling (shared database cache), production CSP, prod AI-`502` masking, fail-closed `DEBUG`,
+prod HTTPS/HSTS, `/health` answered before host validation, a 100s/no-retry Anthropic timeout, gthread workers,
+stdout logging, and admin granted only by `manage.py set_admin`. Still open:
 
 - Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
-- **Phase 10 deploy gotchas:** (1) with `DEBUG=False`, the ALB health check hits the container with the task IP
-  as `Host`, which Django rejects (400) unless allowed — set `ALLOWED_HOSTS` to include it (or exempt `/health`).
-  (`/health` is already exempt from the HTTPS redirect via `SECURE_REDIRECT_EXEMPT`, but the Host-header check
-  is separate.) (2) `docker-entrypoint.sh` runs `migrate` on every start; fine for a single ECS task, but for
-  >1 task run migrations as a separate one-off/release task to avoid a concurrent-migration race.
-  (3) There's no `CACHES` setting, so DRF throttles (`auth`, `ai-burst`, `writes`) count in a per-process
-  LocMemCache: each gunicorn worker (3 per task) and each ECS task keeps its own counters, so the real caps are
-  looser than configured. Configure a shared cache (Django's database cache, or Redis) before relying on them.
+- Deferred from the 2026-10-18 pre-deploy review: account/data deletion, real Privacy/Terms pages, password reset,
+  email verification, a per-user résumé cap, AI quota reserve (check-then-increment isn't atomic), server-side
+  normalization of tailor suggestions, Django admin reachable in prod, accessibility audit, Safari QA pass.
+- **Phase 10 infra checklist** (config, not code):
+  - ALB (`portfolio-alb`): **idle timeout 120s** (the chain is Anthropic 100s < ALB 120s < axios 125s; gunicorn
+    `--keep-alive 185` must stay above it), Host rule for `resume.jameslittlefield.net`, HTTP→HTTPS redirect.
+  - Target group: path `/health`, interval 15s, timeout 5s, healthy 2 / unhealthy 3, deregistration delay ~120s.
+  - ECS: health-check grace 60s, `stopTimeout` 120, task SG ingress only from the ALB SG. `migrate` runs on start
+    (also creates the cache table); with more than one task set `RUN_MIGRATIONS=0` on the service and run
+    `migrate` as a one-off task before `update-service`.
+  - RDS: `rds.force_ssl=1`, and `?sslmode=require` in the `DATABASE_URL` secret. Connections are 2 workers × 8
+    threads per task.
+  - Secrets Manager: `SECRET_KEY`, `DATABASE_URL`, `ANTHROPIC_API_KEY`. Task env: `ALLOWED_HOSTS`,
+    `CLIENT_URL=https://resume.jameslittlefield.net`.
+  - Anthropic console: a **monthly spend limit** (open signup; per-user limits don't bound the total).
+  - CloudWatch: log retention 14-30 days, alarm on `ERROR|CRITICAL|WORKER TIMEOUT`, ALB 5xx and unhealthy-host.
+  - GitHub: enable Dependabot alerts + security updates; dismiss the 3 false-positive CodeQL alerts on `dev`.
+  - Right after the first deploy: register your account, then `python manage.py set_admin <email>` in a one-off task.
 
 ## Security invariants (preserve if you touch the code)
 

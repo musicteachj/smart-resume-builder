@@ -2,14 +2,9 @@
 
 from django.conf import settings
 from django.contrib import admin
-from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
+from django.http import HttpResponse, HttpResponseNotFound
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
-
-def health(_request):
-    """Health check for the ALB (and local sanity checks)."""
-    return JsonResponse({"status": "ok"})
 
 
 # Built SPA index, read once at startup (present only in the production image).
@@ -21,11 +16,14 @@ def spa_index(_request):
     """Serve the SPA shell for any client-side route (deep links / hard reloads)."""
     if _INDEX_HTML is None:
         return HttpResponseNotFound("SPA build not present — use the Vite dev server in development.")
-    return HttpResponse(_INDEX_HTML, content_type="text/html")
+    response = HttpResponse(_INDEX_HTML, content_type="text/html")
+    # Always revalidate: the shell names the current hashed bundles, and a stale copy
+    # after a deploy would request chunks that no longer exist.
+    response["Cache-Control"] = "no-cache"
+    return response
 
 
 urlpatterns = [
-    path("health", health),
     path("admin/", admin.site.urls),
     # API
     path("api/auth/", include("apps.accounts.urls")),

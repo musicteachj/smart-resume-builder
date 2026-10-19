@@ -15,12 +15,16 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
+# The hash-checked lock pins every transitive dependency too (see its header).
 COPY server/requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install --require-hashes -r requirements.txt
 
 COPY server/ ./
 # Built SPA → server/spa (WhiteNoise serves assets; config.urls serves index.html)
 COPY --from=client-build /app/client/dist ./spa
+# Precompress (gzip + brotli) so WhiteNoise can serve them: it only compresses
+# STATIC_ROOT itself, and the ALB doesn't compress. Roughly 3x fewer bytes.
+RUN python -m whitenoise.compress spa
 
 # Collect Django/admin/DRF/Swagger static. SECRET_KEY/DEBUG here are throwaway
 # build-time values (real ones come from the environment at runtime).
@@ -36,5 +40,13 @@ USER app
 
 EXPOSE 8000
 ENTRYPOINT ["docker-entrypoint.sh"]
-# --timeout 120: AI requests (Claude) can exceed gunicorn's 30s default. Log to stdout for CloudWatch.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "--access-logfile", "-"]
+# gthread: AI calls block for up to ~100s, and with sync workers three of them left
+# nothing to answer /health, so the ALB would replace the task. 2 workers x 8 threads
+# = 16 requests in flight per task (the Anthropic client is thread-safe).
+# --keep-alive must exceed the ALB idle timeout (120s) or the ALB sees stray 502s.
+# --graceful-timeout lets in-flight AI calls finish on deploy (ECS stopTimeout 120).
+# Log to stdout for CloudWatch.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
+     "--worker-class", "gthread", "--workers", "2", "--threads", "8", \
+     "--timeout", "120", "--keep-alive", "185", "--graceful-timeout", "110", \
+     "--access-logfile", "-"]

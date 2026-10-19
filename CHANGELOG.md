@@ -18,6 +18,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   Brand section (the mark's spark is the only sparkle in the product).
 
 ### Changed
+- **Faster asset delivery**: the built SPA is precompressed (gzip + Brotli, main bundle 429 kB → 120 kB) at image
+  build, Vite's hashed `/assets/` are cached for a year, the SPA shell is `no-cache`, and `site.webmanifest` is
+  served as `application/manifest+json`.
+- **Database connections are health-checked** before reuse, so an RDS restart or failover doesn't cost a 500.
+- **`RUN_MIGRATIONS=0`** turns off the migrate-on-start in `docker-entrypoint.sh` (for multi-task deploys).
 - **Renamed to ResumeIQ** (descriptor: "AI resume builder"). The header, auth and landing lockups now
   share one `Brand` component, the page title reads "ResumeIQ: AI resume builder", the API schema title is
   "ResumeIQ API" (Orval client regenerated), the root package is `resumeiq`, and the theme preference is
@@ -27,7 +32,35 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   chunk, so visitors download only the page they open. The main bundle drops from ~698 kB to ~426 kB
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
 
+### Security
+Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
+- **Sessions survive past 15 minutes, and logout always revokes**: refresh and logout ran DRF authentication, so
+  the SPA's expired in-memory Bearer made them 401 before the view ran. The silent refresh failed (users were
+  logged out mid-session) and logout left the 7-day refresh cookie valid. The public auth views now skip
+  authentication, and the client never sends the Bearer to `/api/auth/*`.
+- **Admin is granted only by `manage.py set_admin <email>`**: it was granted to whoever registered an
+  `ADMIN_EMAILS` address, unverified. `ADMIN_EMAILS` is removed.
+- **Throttles are shared**: DRF throttles use Django's database cache (table created by a migration) instead of
+  per-process LocMemCache, so the configured limits hold across gunicorn workers and ECS tasks.
+- **AI cost bounded per call**: résumé text sent to Claude is capped at 20k characters.
+- **Python dependencies fully locked**: `server/requirements.in` holds the direct pins; `server/requirements.txt` is
+  now a generated lock of every transitive dependency with hashes, installed with `--require-hashes` (Docker, CI,
+  `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
+
 ### Fixed
+- **ALB health checks**: `/health` is answered by the first middleware, before `ALLOWED_HOSTS` validation and the
+  SSL redirect. The ALB sends the task IP as `Host`, which Django rejected with a 400, so the first deploy would
+  never have gone healthy.
+- **Long AI calls no longer stall the server or time out silently**: gunicorn runs `gthread` workers (2 × 8
+  threads, `--keep-alive 185`, `--graceful-timeout 110`), so a few slow AI calls can't starve `/health`. The
+  Anthropic client times out at 100s with no retries (Haiku: 30s, 2 retries) instead of the SDK's 10 minutes, the
+  client's axios timeout is 125s, and a 504 or timeout shows "That took too long. Please try again."
+- **Production errors are logged**: a console `LOGGING` config sends 5xx tracebacks to stdout (CloudWatch), and
+  every AI failure logs its feature, error type, status, and request id (never prompts or résumé text).
+- **Duplicating a résumé with a 100-character title** no longer fails with a 500 (the title is trimmed to fit
+  " (Copy)").
+- **Importing a résumé with more than 10 education entries** no longer fails: parse-resume caps each list at the
+  résumé serializer's limits.
 - **Autosave retries failed saves**: a rate-limited (`429`, honoring `Retry-After` up to 2 minutes),
   server-error, or offline save is retried with backoff (2s doubling to 30s) and the editor shows "Couldn't
   save, retrying…" instead of stopping at "Couldn't save". A newer edit's save always supersedes a retry.

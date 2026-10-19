@@ -12,6 +12,10 @@ export function aiErrorMessage(err: unknown): string {
   const data = ax?.response?.data;
   applyAiUsage(data?.ai_usage);
 
+  // 504: the load balancer gave up; ECONNABORTED/ETIMEDOUT: axios's own timeout.
+  if (status === 504 || ax?.code === "ECONNABORTED" || ax?.code === "ETIMEDOUT") {
+    return "That took too long. Please try again.";
+  }
   if (status === 429) {
     return data?.detail ?? "You've reached your AI usage limit. Try again later.";
   }

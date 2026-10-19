@@ -1,6 +1,7 @@
 """Custom HTTP middleware for config-level concerns (security headers)."""
 
 from django.conf import settings
+from django.http import JsonResponse
 
 # Content-Security-Policy for the SPA + API served from one origin.
 #
@@ -25,6 +26,25 @@ CSP_POLICY = "; ".join(
         "form-action 'self'",
     ]
 )
+
+
+class HealthCheckMiddleware:
+    """Answer GET /health before anything else runs.
+
+    ALB health checks send the task's private IP as the Host header, which
+    ALLOWED_HOSTS (rightly) rejects with a 400, and they arrive over plain HTTP,
+    which the SSL redirect would bounce. Answering here, first in the stack,
+    skips both. It never touches the database: a DB blip shouldn't make ECS
+    replace healthy tasks.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path == "/health":
+            return JsonResponse({"status": "ok"})
+        return self.get_response(request)
 
 
 class ContentSecurityPolicyMiddleware:

@@ -1,0 +1,30 @@
+# Direct dependencies, exact-pinned. This is the input to requirements.txt, the
+# generated lock that pins every transitive dependency with hashes; installs
+# (Docker, CI, install:server) use that. Upgrade deliberately: bump a pin here,
+# regenerate the lock (command in its header), run the suite, commit both.
+
+# Web framework
+Django==5.2.18
+djangorestframework==3.17.2
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.29.0
+django-cors-headers==4.9.0
+
+# Database
+psycopg[binary]==3.3.4
+dj-database-url==3.1.2
+
+# Config / env
+python-dotenv==1.2.2
+
+# Static serving (prod container)
+whitenoise==6.12.0
+Brotli==1.2.0  # WhiteNoise .br variants of the SPA bundle
+gunicorn==26.0.0
+
+# AI (Phase 7)
+anthropic==0.109.1
+
+# Testing
+pytest==9.0.3
+pytest-django==4.12.0

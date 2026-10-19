@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -29,6 +31,8 @@ from .usage import (
     usage_snapshot,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _gate(user):
     """Reset counters and enforce the limit. Returns a 429 Response if over, else None."""
@@ -43,9 +47,25 @@ def _gate(user):
     return None
 
 
-def _ai_error(exc):
+def _ai_error(exc, feature):
     """502 for an upstream/AI failure. The raw message is handy in dev but may expose
-    internals, so it's only surfaced under DEBUG; production gets a generic message."""
+    internals, so it's only surfaced under DEBUG; production gets a generic message.
+
+    Logs the failure for CloudWatch: the upstream error type, HTTP status, and
+    Anthropic request id, never the message text (it can echo the prompt) or any
+    résumé content. Our own errors (e.g. missing API key) have no upstream cause and
+    their message is safe to log."""
+    cause = exc.__cause__
+    if cause is None:
+        logger.warning("AI call failed: feature=%s error=%s", feature, exc)
+    else:
+        logger.warning(
+            "AI call failed: feature=%s error=%s status=%s request_id=%s",
+            feature,
+            type(cause).__name__,
+            getattr(cause, "status_code", None),
+            getattr(cause, "request_id", None),
+        )
     detail = str(exc) if settings.DEBUG else "The AI service is temporarily unavailable. Please try again."
     return Response({"detail": detail}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -79,7 +99,7 @@ class ImproveBulletView(_AIView):
             suggestion = service.improve_bullet(text, role)
         except AIServiceError as exc:
             record_usage(user, "improve-bullet", input_length=len(text), output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "improve-bullet")
 
         record_usage(user, "improve-bullet", input_length=len(text), output_length=len(suggestion), success=True)
         return Response({"suggestion": suggestion, "ai_usage": usage_snapshot(user)})
@@ -104,7 +124,7 @@ class GenerateSummaryView(_AIView):
             summary = service.generate_summary(content)
         except AIServiceError as exc:
             record_usage(user, "generate-summary", input_length=len(str(content)), output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "generate-summary")
 
         record_usage(user, "generate-summary", input_length=len(str(content)), output_length=len(summary), success=True)
         return Response({"summary": summary, "ai_usage": usage_snapshot(user)})
@@ -131,7 +151,7 @@ class TailorJDView(_AIView):
             result = service.tailor_to_jd(content, jd)
         except AIServiceError as exc:
             record_usage(user, "tailor-jd", input_length=in_len, output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "tailor-jd")
 
         record_usage(user, "tailor-jd", input_length=in_len, output_length=len(str(result)), success=True)
         return Response({**result, "ai_usage": usage_snapshot(user)})
@@ -156,7 +176,7 @@ class ParseResumeView(_AIView):
             content = service.parse_resume(text)
         except AIServiceError as exc:
             record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "parse-resume")
 
         record_usage(user, "parse-resume", input_length=len(text), output_length=len(str(content)), success=True)
         return Response({"content": content, "ai_usage": usage_snapshot(user)})
@@ -183,7 +203,7 @@ class CoverLetterView(_AIView):
             letter = service.generate_cover_letter(content, jd)
         except AIServiceError as exc:
             record_usage(user, "cover-letter", input_length=in_len, output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "cover-letter")
 
         record_usage(user, "cover-letter", input_length=in_len, output_length=len(letter), success=True)
         return Response({"cover_letter": letter, "ai_usage": usage_snapshot(user)})
@@ -209,7 +229,7 @@ class AtsCheckView(_AIView):
             result = service.ats_health_check(content)
         except AIServiceError as exc:
             record_usage(user, "ats-check", input_length=in_len, output_length=0, success=False)
-            return _ai_error(exc)
+            return _ai_error(exc, "ats-check")
 
         record_usage(user, "ats-check", input_length=in_len, output_length=len(str(result)), success=True)
         return Response({**result, "ai_usage": usage_snapshot(user)})

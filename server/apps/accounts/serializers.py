@@ -71,21 +71,15 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=email,
             name=validated_data["name"],
             password=validated_data["password"],
-            is_admin=email in settings.ADMIN_EMAILS,
         )
         return user
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Login via email/password; returns the user alongside the token pair and
-    keeps the admin flag in sync with ADMIN_EMAILS."""
+    """Login via email/password; returns the user alongside the token pair."""
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        should_be_admin = self.user.email.lower() in settings.ADMIN_EMAILS
-        if should_be_admin != self.user.is_admin:
-            self.user.is_admin = should_be_admin
-            self.user.save(update_fields=["is_admin"])
         data["user"] = UserSerializer(self.user).data
         return data
 
