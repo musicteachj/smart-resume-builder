@@ -13,6 +13,8 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from config.static import immutable_file_test
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
 
@@ -71,6 +73,8 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
+    # /health for ALB checks: answered before host validation and the SSL redirect.
+    "config.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Sets a Content-Security-Policy on every response in production (no-op under
     # DEBUG so Vite's dev server keeps working). Cheap response-header middleware.
@@ -88,7 +92,7 @@ MIDDLEWARE = [
 if not DEBUG:
     # In dev, Django's runserver serves static; WhiteNoise is only needed in
     # the production container (after collectstatic).
-    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+    MIDDLEWARE.insert(2, "whitenoise.middleware.WhiteNoiseMiddleware")
 
     # HTTPS hardening — TLS terminates at the ALB, which forwards plain HTTP with
     # X-Forwarded-Proto. Trusting that header makes request.is_secure() correct.
@@ -98,9 +102,6 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() in (
         "true", "1", "yes",
     )
-    # ALB health checks arrive over plain HTTP from inside the VPC — a redirect
-    # would fail the check and cycle the task.
-    SECURE_REDIRECT_EXEMPT = [r"^health$"]
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # 30 days; no preload (deliberate)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # covers *.resume.…; other apps live on the parent domain
     # Preload is off on purpose (see above), so silence its warning; CI runs
@@ -137,6 +138,10 @@ DATABASES = {
     "default": dj_database_url.config(
         default="postgres://resume_user:resume_pass@localhost:5432/resume_builder",
         conn_max_age=600,
+        # Re-check a persistent connection before reuse, so an RDS restart or failover
+        # doesn't cost each worker one 500. (TLS to RDS: `sslmode=require` in the
+        # DATABASE_URL secret plus `rds.force_ssl=1` on the instance.)
+        conn_health_checks=True,
     )
 }
 
@@ -239,17 +244,51 @@ SPA_ROOT = BASE_DIR / "spa"
 if SPA_ROOT.exists():
     WHITENOISE_ROOT = str(SPA_ROOT)
     WHITENOISE_INDEX_FILE = False  # Django's catch-all owns HTML routing
+# Cache Vite's content-hashed /assets/ for a year (WhiteNoise only knows STATIC_URL's).
+# Must be the function itself: WhiteNoise reads a string here as a regex.
+WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
+# Not in Python's mimetypes; with nosniff, octet-stream would make browsers ignore it.
+WHITENOISE_MIMETYPES = {".webmanifest": "application/manifest+json"}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# App constants
+# Cache: backs the DRF throttles (auth, ai-burst, writes). The database cache is shared
+# by every gunicorn worker and ECS task; the default LocMemCache is per-process, which
+# made the real limits workers x tasks times looser and reset them on every deploy.
+# The table is created by accounts migration 0002, so no extra deploy step is needed.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        "OPTIONS": {"MAX_ENTRIES": 10000},
+    }
+}
 
-ADMIN_EMAILS = [
-    e.strip().lower()
-    for e in os.environ.get("ADMIN_EMAILS", "").split(",")
-    if e.strip()
-]
+# Logging: everything to stdout (CloudWatch reads the container's stdout). Without
+# this, Django sends 500 tracebacks only to mail_admins (unconfigured) under
+# DEBUG=False, so production errors would be invisible.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        # 4xx (401s, 404s) are routine; log only 5xx tracebacks.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        # Scanners probing with bogus Host headers; not actionable.
+        "django.security.DisallowedHost": {"handlers": [], "propagate": False},
+    },
+}
+
+
+# App constants
 
 AI_DAILY_LIMIT = 10
 AI_MONTHLY_LIMIT = 50
@@ -259,3 +298,8 @@ AI_MONTHLY_LIMIT = 50
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-4-5")
 AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-4-6")
+# Timeout chain: Anthropic (100s, no retry) < ALB idle (120s) < client axios (125s).
+AI_TIMEOUT_SECONDS = 100
+AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, with 2 retries
+# Résumé text sent to the model is capped to bound per-call cost.
+AI_MAX_PROMPT_CHARS = 20000

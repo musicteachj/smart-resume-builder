@@ -106,6 +106,19 @@ def test_duplicate(auth_client, user, content):
 
 
 @pytest.mark.django_db
+def test_duplicate_of_a_max_length_title_stays_valid(auth_client, content):
+    # Regression: "<100-char title> (Copy)" overflowed varchar(100) and 500'd.
+    long_title = "T" * 100
+    rid = auth_client.post(
+        LIST, {"title": long_title, "template": "classic", "content": content}, format="json"
+    ).json()["id"]
+    res = auth_client.post(duplicate_url(rid), format="json")
+    assert res.status_code == 201
+    assert len(res.json()["title"]) == 100
+    assert res.json()["title"].endswith(" (Copy)")
+
+
+@pytest.mark.django_db
 def test_ownership_isolation(auth_client, other_user, content):
     """A user cannot see or touch another user's resume (404)."""
     others = Resume.objects.create(

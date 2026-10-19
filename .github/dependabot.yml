@@ -1,0 +1,46 @@
+# Weekly dependency updates, as PRs into `dev` (the integration branch; `main` is
+# production). Security updates are separate: enable "Dependabot alerts" and
+# "Dependabot security updates" in Settings > Code security.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /client
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+
+  # requirements.txt is the hashed lock generated from requirements.in (pip-compile
+  # layout). If a Dependabot PR can't regenerate the lock, regenerate it with the
+  # command in the lock's header.
+  - package-ecosystem: pip
+    directory: /server
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly

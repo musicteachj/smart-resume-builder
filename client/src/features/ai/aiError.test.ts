@@ -29,6 +29,15 @@ describe("aiErrorMessage", () => {
     expect(aiErrorMessage(axiosErr(502, { detail: "AI is not configured." }))).toBe("AI is not configured.");
   });
 
+  it("explains a timeout from the load balancer (504, HTML body)", () => {
+    expect(aiErrorMessage(axiosErr(504, "<html>Gateway Timeout</html>"))).toMatch(/took too long/i);
+  });
+
+  it("explains a client-side timeout (no response)", () => {
+    const err = { isAxiosError: true, code: "ECONNABORTED" } as AxiosError;
+    expect(aiErrorMessage(err)).toMatch(/took too long/i);
+  });
+
   it("falls back to a generic message when there's no detail", () => {
     expect(aiErrorMessage(axiosErr(500, {}))).toMatch(/something went wrong/i);
   });

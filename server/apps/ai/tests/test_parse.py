@@ -96,3 +96,20 @@ def test_parse_ai_down_returns_502(auth_client, monkeypatch):
     res = auth_client.post(PARSE, {"text": "some resume text"}, format="json")
     assert res.status_code == 502
     assert AIUsageLog.objects.filter(feature="parse-resume", success=False).count() == 1
+
+
+def test_normalize_caps_lists_at_the_resume_serializer_limits():
+    # Regression: education was capped at 20 here but the résumé serializer allows 10,
+    # so importing a résumé with 11+ education entries failed with a 400.
+    from apps.resumes.serializers import ResumeContentSerializer
+
+    many = {
+        "workExperience": [{"company": f"C{i}"} for i in range(30)],
+        "education": [{"school": f"S{i}"} for i in range(30)],
+        "projects": [{"name": f"P{i}"} for i in range(30)],
+    }
+    out = _normalize_parsed(many)
+    for field, cap in ResumeContentSerializer.MAX_ITEMS.items():
+        assert len(out[field]) == cap
+    assert ResumeContentSerializer(data=out).is_valid()
+

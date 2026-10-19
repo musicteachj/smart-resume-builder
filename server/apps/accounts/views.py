@@ -30,6 +30,8 @@ class RegisterView(generics.CreateAPIView):
     """Create an account; return the user + access token, set the refresh cookie."""
 
     serializer_class = RegisterSerializer
+    # Never authenticate: a stale Bearer would otherwise 401 before the view runs.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
@@ -58,6 +60,8 @@ class LoginView(TokenObtainPairView):
     """Obtain an access token via email + password; set the refresh cookie."""
 
     serializer_class = EmailTokenObtainPairSerializer
+    # Never authenticate: a stale Bearer would otherwise 401 before the view runs.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
@@ -81,6 +85,8 @@ class LoginView(TokenObtainPairView):
 class CookieTokenRefreshView(APIView):
     """Issue a new access token from the refresh cookie, rotating the cookie."""
 
+    # Never authenticate: a stale Bearer would otherwise 401 before the view runs.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
@@ -109,6 +115,8 @@ class CookieTokenRefreshView(APIView):
 class LogoutView(APIView):
     """Blacklist the refresh token from the cookie, then clear the cookie."""
 
+    # Never authenticate: a stale Bearer would otherwise 401 before the view runs.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"

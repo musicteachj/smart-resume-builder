@@ -26,7 +26,19 @@ def _client():
         raise AIServiceError("AI is not configured (missing ANTHROPIC_API_KEY).")
     import anthropic
 
-    return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    # One attempt, cut before the ALB's idle timeout: a slow Sonnet call fails
+    # cleanly (and uncharged, so the user can retry) rather than the ALB 504ing a
+    # call that still completes and bills the quota. The SDK default is 10 min + 2 retries.
+    return anthropic.Anthropic(
+        api_key=settings.ANTHROPIC_API_KEY,
+        timeout=settings.AI_TIMEOUT_SECONDS,
+        max_retries=0,
+    )
+
+
+def _simple_client():
+    """Haiku calls are quick: a short timeout with retries still fits the budget."""
+    return _client().with_options(timeout=settings.AI_SIMPLE_TIMEOUT_SECONDS, max_retries=2)
 
 
 def _text_from(message) -> str:
@@ -75,7 +87,9 @@ def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
         for p in projects:
             lines.append(f"- {p.get('name', '')}: {p.get('description', '')}".rstrip())
 
-    return "\n".join(lines).strip()
+    # Bound the input cost per call: valid content can reach ~160k characters, far more
+    # than any real résumé (typically 3-8k).
+    return "\n".join(lines).strip()[: settings.AI_MAX_PROMPT_CHARS]
 
 
 # --- features ---------------------------------------------------------------
@@ -86,7 +100,7 @@ def improve_bullet(text: str, role: str = "") -> str:
     context = f"Target role: {role}\n\n" if role else ""
     user = f"{context}Rewrite this resume bullet:\n\n{text}"
     try:
-        resp = _client().messages.create(
+        resp = _simple_client().messages.create(
             model=settings.AI_MODEL_SIMPLE,
             max_tokens=256,
             system=IMPROVE_BULLET,
@@ -107,7 +121,7 @@ def generate_summary(content: dict) -> str:
 
     user = "Write a professional summary for this resume:\n\n" + _content_to_text(content)
     try:
-        resp = _client().messages.create(
+        resp = _simple_client().messages.create(
             model=settings.AI_MODEL_SIMPLE,
             max_tokens=512,
             system=GENERATE_SUMMARY,
@@ -382,13 +396,17 @@ def _normalize_parsed(data: dict) -> dict:
             "technologies": _clean_list(p.get("technologies"), 50, 20),
         }
 
+    # The same caps the résumé serializer enforces, so an import is always saveable.
+    from apps.resumes.serializers import ResumeContentSerializer
+
+    cap = ResumeContentSerializer.MAX_ITEMS
     return {
         "personalInfo": personal,
         "summary": _clean_str(data.get("summary"), 1000),
-        "workExperience": [work(w) for w in (data.get("workExperience") or [])][:20],
-        "education": [edu(e) for e in (data.get("education") or [])][:20],
+        "workExperience": [work(w) for w in (data.get("workExperience") or [])][: cap["workExperience"]],
+        "education": [edu(e) for e in (data.get("education") or [])][: cap["education"]],
         "skills": _clean_list(data.get("skills"), 60, 60),
-        "projects": [proj(p) for p in (data.get("projects") or [])][:20],
+        "projects": [proj(p) for p in (data.get("projects") or [])][: cap["projects"]],
     }
 
 

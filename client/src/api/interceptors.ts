@@ -20,13 +20,17 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/register"];
+// Public auth endpoints: they never get the Bearer (an expired one would make the server
+// 401 the refresh/logout itself) and a 401 from them never triggers a refresh.
+const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/register", "/api/auth/logout"];
+
+const isAuthEndpoint = (url: string | undefined) => AUTH_ENDPOINTS.some((p) => (url ?? "").includes(p));
 
 /** Attach the JWT to every request and transparently refresh it on 401. */
 export function installAuthInterceptors() {
   AXIOS_INSTANCE.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
-    if (token) config.headers.set("Authorization", `Bearer ${token}`);
+    if (token && !isAuthEndpoint(config.url)) config.headers.set("Authorization", `Bearer ${token}`);
     return config;
   });
 
@@ -36,7 +40,7 @@ export function installAuthInterceptors() {
       const original = error.config as
         | (InternalAxiosRequestConfig & { _retry?: boolean })
         | undefined;
-      const isAuthCall = AUTH_ENDPOINTS.some((p) => (original?.url ?? "").includes(p));
+      const isAuthCall = isAuthEndpoint(original?.url);
 
       if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
         original._retry = true;

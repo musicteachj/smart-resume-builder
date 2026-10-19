@@ -7,8 +7,7 @@
  */
 
 /**
- * Login via email/password; returns the user alongside the token pair and
- * keeps the admin flag in sync with ADMIN_EMAILS.
+ * Login via email/password; returns the user alongside the token pair.
  */
 export interface EmailTokenObtainPair {
   email: string;

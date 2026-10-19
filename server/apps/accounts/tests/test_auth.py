@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import AccessToken
 
 User = get_user_model()
 
@@ -107,6 +110,47 @@ def test_logout_revokes_the_refresh_token(client):
     assert client.post("/api/auth/refresh").status_code == 401
 
 
+def _send_expired_bearer(client, user):
+    """The SPA sends its in-memory access token on every request; after 15 minutes it's expired."""
+    expired = AccessToken.for_user(user)
+    expired.set_exp(lifetime=-timedelta(minutes=1))
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {expired}")
+
+
+@pytest.mark.django_db
+def test_refresh_works_with_an_expired_bearer(client):
+    # Regression: the expired Bearer made DRF 401 before the view ran, so the
+    # silent refresh failed and users were logged out ~15 minutes in.
+    client.post(REGISTER, VALID, format="json")
+    _send_expired_bearer(client, User.objects.get(email=VALID["email"]))
+    res = client.post("/api/auth/refresh")
+    assert res.status_code == 200
+    assert res.json()["access"]
+
+
+@pytest.mark.django_db
+def test_logout_with_an_expired_bearer_still_revokes_the_cookie(client):
+    reg = client.post(REGISTER, VALID, format="json")
+    token = reg.cookies["refresh_token"].value
+    _send_expired_bearer(client, User.objects.get(email=VALID["email"]))
+
+    assert client.post("/api/auth/logout").status_code == 204
+
+    client.credentials()
+    client.cookies["refresh_token"] = token
+    assert client.post("/api/auth/refresh").status_code == 401
+
+
+@pytest.mark.django_db
+def test_register_and_login_ignore_a_stale_bearer(client):
+    client.post(REGISTER, VALID, format="json")
+    _send_expired_bearer(client, User.objects.get(email=VALID["email"]))
+    other = {**VALID, "email": "other@example.com"}
+    assert client.post(REGISTER, other, format="json").status_code == 201
+    creds = {"email": VALID["email"], "password": VALID["password"]}
+    assert client.post(LOGIN, creds, format="json").status_code == 200
+
+
 @pytest.mark.django_db
 def test_logout_clears_the_cookie(client):
     client.post(REGISTER, VALID, format="json")
@@ -140,9 +184,25 @@ def test_me_returns_current_user_with_token(client):
 
 
 @pytest.mark.django_db
-def test_admin_email_sets_is_admin(client, settings):
-    settings.ADMIN_EMAILS = ["maya@example.com"]
-    res = client.post(REGISTER, VALID, format="json")
-    assert res.status_code == 201
-    assert res.json()["user"]["is_admin"] is True
+def test_set_admin_command_grants_and_revokes(client):
+    # Admin is never granted by email at register/login (anyone could register the
+    # admin's address first, unverified); only this command, run by the operator, grants it.
+    from django.core.management import call_command
+
+    client.post(REGISTER, VALID, format="json")
+    assert User.objects.get(email="maya@example.com").is_admin is False
+
+    call_command("set_admin", "MAYA@example.com")
     assert User.objects.get(email="maya@example.com").is_admin is True
+
+    call_command("set_admin", "maya@example.com", "--revoke")
+    assert User.objects.get(email="maya@example.com").is_admin is False
+
+
+@pytest.mark.django_db
+def test_set_admin_command_rejects_unknown_email():
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    with pytest.raises(CommandError):
+        call_command("set_admin", "nobody@example.com")
