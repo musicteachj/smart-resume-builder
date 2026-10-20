@@ -36,6 +36,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
 
 ### Security
+- **`follow-redirects` 1.16.0 → 1.16.1** (pulled in by axios) for two high-severity advisories where credential
+  headers could survive a cross-origin redirect (GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c). Lockfile-only change.
+
 Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
 - **Sessions survive past 15 minutes, and logout always revokes**: refresh and logout ran DRF authentication, so
   the SPA's expired in-memory Bearer made them 401 before the view ran. The silent refresh failed (users were
