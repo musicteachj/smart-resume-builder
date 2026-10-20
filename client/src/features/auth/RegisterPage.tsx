@@ -45,7 +45,7 @@ export function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Start building a recruiter-ready resume — free."
+      subtitle="Start building a recruiter-ready resume for free."
       footer={
         <>
           Already have an account?{" "}

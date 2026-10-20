@@ -53,9 +53,19 @@ export function ImportResumeModal({
     const run = runId.current;
     setError("");
     setStep("parsing");
+    let text: string;
     try {
-      const text = file ? await extractFileText(file) : pasted.trim();
+      text = file ? await extractFileText(file) : pasted.trim();
       if (text.length < 30) throw new Error("Add a file or paste your résumé text first.");
+    } catch (err) {
+      // File problems (unsupported type, too large, no text) carry a user-facing message.
+      // aiErrorMessage only understands API errors, so it would replace them with a generic one.
+      if (run !== runId.current) return;
+      setError(err instanceof Error ? err.message : String(err));
+      setStep("input");
+      return;
+    }
+    try {
       const res = await parse.mutateAsync({ data: { text } });
       applyAiUsage(res.ai_usage);
       if (run !== runId.current) return;
@@ -86,7 +96,7 @@ export function ImportResumeModal({
       size="lg"
       confirmDiscard={{ when: step !== "input", ...DISCARD_COPY }}
       title="Import a resume"
-      description="Upload a PDF or DOCX, or paste the text. Claude structures it — you review before anything is created."
+      description="Upload a PDF or DOCX, or paste the text. Claude structures it, and you review it before anything is created."
     >
       {step === "review" && parsedContent ? (
         <div className="space-y-4">

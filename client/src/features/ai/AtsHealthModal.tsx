@@ -41,7 +41,7 @@ export function AtsHealthModal({ onClose }: { onClose: () => void }) {
       }}
       size="lg"
       title="ATS health check"
-      description="An ATS-readiness score for your résumé, with specific fixes — no job description needed."
+      description="An ATS-readiness score for your résumé, with specific fixes. No job description needed."
     >
       <div className="space-y-5">
         {check.isPending ? (

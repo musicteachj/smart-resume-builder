@@ -51,6 +51,18 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **Import shows why a file couldn't be read**: an unsupported, too-large, or text-less file now shows its own
+  message (for example "Unsupported file type. Upload a PDF or DOCX, or paste the text instead.") instead of the
+  generic "Something went wrong generating that." The file read and the AI call are handled separately, so AI
+  failures still show the server's message.
+- **Dragged sections and entries keep their shape**: drag to reorder translated the dragged item and also scaled
+  it to the item it was over, so a short section stretched when it passed a tall one (always visible with
+  keyboard dragging). `SortableList` now applies the translate only.
+- **No em dashes in the interface**: the register subtitle, the import, tailor, and ATS modal descriptions, the
+  empty cover-letter list, the six template descriptions, the file-upload errors, and the score meter's
+  screen-reader label now use commas, colons, or periods. New cover letters default to "{résumé title} cover
+  letter", and the Word and plain-text exports separate the role from the company with " | " (shared
+  `experienceTitle` helper).
 - **ALB health checks**: `/health` is answered by the first middleware, before `ALLOWED_HOSTS` validation and the
   SSL redirect. The ALB sends the task IP as `Host`, which Django rejected with a 400, so the first deploy would
   never have gone healthy.

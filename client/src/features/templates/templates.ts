@@ -22,7 +22,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "classic",
     label: "Classic",
-    description: "Centered serif — editorial and timeless.",
+    description: "Centered serif, editorial and timeless.",
     font: "serif",
     headerAlign: "center",
     header: "plain",
@@ -31,7 +31,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "modern",
     label: "Modern",
-    description: "Left-aligned sans — clean and contemporary.",
+    description: "Left-aligned sans, clean and contemporary.",
     font: "sans",
     headerAlign: "left",
     header: "plain",
@@ -40,7 +40,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "banner",
     label: "Banner",
-    description: "Bold navy header band — confident and distinct.",
+    description: "Bold navy header band, confident and distinct.",
     font: "sans",
     headerAlign: "left",
     header: "banner",
@@ -49,7 +49,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "executive",
     label: "Executive",
-    description: "Left-aligned serif with quiet headings — senior and formal.",
+    description: "Left-aligned serif with quiet headings, senior and formal.",
     font: "serif",
     headerAlign: "left",
     header: "plain",
@@ -58,7 +58,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "minimal",
     label: "Minimal",
-    description: "Airy sans, understated headings — modern and quiet.",
+    description: "Airy sans with understated headings, modern and quiet.",
     font: "sans",
     headerAlign: "left",
     header: "plain",
@@ -67,7 +67,7 @@ export const TEMPLATES: TemplateStyle[] = [
   {
     id: "editorial",
     label: "Editorial",
-    description: "Centered serif, refined headings — magazine-like.",
+    description: "Centered serif with refined headings, magazine-like.",
     font: "serif",
     headerAlign: "center",
     header: "plain",

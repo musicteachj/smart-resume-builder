@@ -41,12 +41,12 @@ async function extractDocx(file: File): Promise<string> {
  */
 export async function extractFileText(file: File): Promise<string> {
   if (file.size > MAX_BYTES) {
-    throw new Error("File is too large (max 10 MB) — paste the text instead.");
+    throw new Error("File is too large (max 10 MB). Paste the text instead.");
   }
   let text: string;
   if (isPdf(file)) text = await extractPdf(file);
   else if (isDocx(file)) text = await extractDocx(file);
-  else throw new Error("Unsupported file type — upload a PDF or DOCX, or paste text instead.");
+  else throw new Error("Unsupported file type. Upload a PDF or DOCX, or paste the text instead.");
 
   text = text.trim();
   if (text.length < MIN_CHARS) {

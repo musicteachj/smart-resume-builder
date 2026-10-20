@@ -37,6 +37,12 @@ describe("resumeToText", () => {
     expect(t).toContain("Figma, Sketch");
   });
 
+  it("separates the role from the company with a pipe, never an em dash", () => {
+    const t = resumeToText(content);
+    expect(t).toContain("Designer | Acme, NYC  (Jan 2022 – Present)");
+    expect(t).not.toContain("—");
+  });
+
   it("orders sections per sectionOrder", () => {
     const t = resumeToText(content, ["skills", "summary", "experience"]);
     expect(t.indexOf("SKILLS")).toBeLessThan(t.indexOf("SUMMARY"));

@@ -1,5 +1,5 @@
 import type { ResumeContent } from "@/api/generated/model";
-import { dateRange, formatMonth, joinTruthy } from "@/features/templates/documentFormat";
+import { dateRange, experienceTitle, formatMonth, joinTruthy } from "@/features/templates/documentFormat";
 import { normalizeSectionOrder, type SectionKey } from "@/features/templates/sections";
 
 /** Map a document-font slug to a Word font name. Blank/unknown → undefined (caller picks a default). */
@@ -58,7 +58,7 @@ export async function resumeToDocxBlob(
       if (items.length === 0) return;
       heading("Experience");
       items.forEach((w) => {
-        const title = joinTruthy([w.position ?? "", joinTruthy([w.company ?? "", w.location ?? ""], ", ")], " — ");
+        const title = experienceTitle(w);
         const range = dateRange(w.startDate ?? undefined, w.endDate);
         children.push(line(range ? `${title}   (${range})` : title, { bold: true, before: 80 }));
         (w.bullets ?? []).filter(Boolean).forEach((b) => children.push(line(`• ${b}`, { indent: 280 })));

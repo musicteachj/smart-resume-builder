@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { AxiosError } from "axios";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportResumeModal } from "./ImportResumeModal";
 
@@ -25,6 +26,8 @@ const parsed = {
 };
 
 describe("ImportResumeModal", () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it("parses pasted text, shows the review, and creates on confirm", async () => {
     parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
     createMutate.mockResolvedValue({ id: "new-id" });
@@ -48,6 +51,29 @@ describe("ImportResumeModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /parse/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open in editor/i })).not.toBeInTheDocument();
+  });
+
+  it("shows why a file couldn't be read instead of the generic AI error", async () => {
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    const notes = new File(["Maya Chen, Senior Product Designer"], "notes.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("Upload résumé file"), { target: { files: [notes] } });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/unsupported file type/i);
+    expect(parseMutate).not.toHaveBeenCalled();
+  });
+
+  it("still shows the server's message when the AI call itself fails", async () => {
+    const aiDown = new AxiosError("Request failed with status code 502", "ERR_BAD_RESPONSE");
+    aiDown.response = { status: 502, data: { detail: "AI down" } } as AxiosError["response"];
+    parseMutate.mockRejectedValue(aiDown);
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/paste/i), {
+      target: { value: "some resume text long enough to clear the minimum length" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("AI down");
   });
 
   it("asks before Start over discards the parsed résumé", async () => {
