@@ -38,6 +38,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ### Security
 - **`follow-redirects` 1.16.0 → 1.16.1** (pulled in by axios) for two high-severity advisories where credential
   headers could survive a cross-origin redirect (GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c). Lockfile-only change.
+- **`certifi` 2026.10.18 → 2026.10.19** (pulled in by the HTTP clients) for PYSEC-2026-4320. Only that pin and its
+  hashes change in `server/requirements.txt`.
 
 Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
 - **Sessions survive past 15 minutes, and logout always revokes**: refresh and logout ran DRF authentication, so
