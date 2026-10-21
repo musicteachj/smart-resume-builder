@@ -181,6 +181,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
               )}
             </span>
             <Button
+              size="sm"
               onClick={() => void analyze()}
               loading={tailor.isPending}
               disabled={reading || jd.trim().length < 20}
