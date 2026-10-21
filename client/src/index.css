@@ -59,6 +59,14 @@
     @apply font-display tracking-[-0.02em];
   }
 
+  /* The résumé is a document, not app UI (DESIGN.md §2): its headings use the document's own
+     font (the template's, or the one picked in the Document font picker). :where() keeps this at
+     class specificity, so each template's tracking utilities on its headings still win. */
+  .resume-document :where(h1, h2, h3) {
+    font-family: inherit;
+    letter-spacing: normal;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

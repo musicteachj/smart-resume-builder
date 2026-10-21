@@ -166,7 +166,8 @@ export function ResumeDocument({
       // Tailwind font class; otherwise the class (Georgia/Arial) applies.
       style={fontFamily ? { fontFamily } : undefined}
       className={cn(
-        "bg-white p-[var(--doc-pad)] text-[#1a1a1a] [--doc-pad:clamp(28px,4vw,52px)] print:[--doc-pad:0px]",
+        // resume-document: keeps the app's heading font out of the document (see index.css).
+        "resume-document bg-white p-[var(--doc-pad)] text-[#1a1a1a] [--doc-pad:clamp(28px,4vw,52px)] print:[--doc-pad:0px]",
         style.font === "sans" ? "font-document-sans" : "font-document",
         className,
       )}
