@@ -56,6 +56,12 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **Résumé headings use the résumé's font**: a global style set every `h1`/`h2`/`h3` in the app's Newsreader,
+  including the résumé's name, section headings, and job, school, and project titles. Serif templates showed
+  Newsreader instead of Georgia, the sans templates (Modern, Banner, Minimal) mixed serif headings with Arial
+  text, a font picked in the Document font picker only changed body text, and exported PDFs carried the app's web
+  font. Headings inside the document (`.resume-document`) now inherit its font, so the preview, gallery, history
+  and import previews, and PDF all match DESIGN.md §2; app headings are unchanged.
 - **Import shows why a file couldn't be read**: an unsupported, too-large, or text-less file now shows its own
   message (for example "Unsupported file type. Upload a PDF or DOCX, or paste the text instead.") instead of the
   generic "Something went wrong generating that." The file read and the AI call are handled separately, so AI
