@@ -35,7 +35,7 @@ export function ScoreMeter({ score }: { score: number }) {
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`ATS match score ${pct} of 100 — ${b.label}`}
+        aria-label={`ATS match score ${pct} of 100: ${b.label}`}
       >
         <div className={cn("h-full rounded-full transition-[width] duration-300", b.bar)} style={{ width: `${pct}%` }} />
       </div>

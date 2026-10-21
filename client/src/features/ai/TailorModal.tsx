@@ -147,7 +147,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
       size="lg"
       confirmDiscard={{ when: result !== null && !busy }}
       title="Tailor to job description"
-      description="Paste a job description — we'll score the match and suggest stronger, role-specific bullets."
+      description="Paste a job description, and we'll score the match and suggest stronger, role-specific bullets."
     >
       {!result ? (
         <div className="space-y-4">

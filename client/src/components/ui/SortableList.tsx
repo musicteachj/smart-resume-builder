@@ -79,7 +79,9 @@ function prefersReducedMotion(): boolean {
 function SortableItem({ id, children }: { id: string; children: (handle: ReactNode) => ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // Translate only: dnd-kit scales the dragged item to the item it's over, which
+    // stretches it when the list's items differ in height (sections, entries).
+    transform: CSS.Translate.toString(transform),
     transition: prefersReducedMotion() ? undefined : transition,
   };
   const handle = (

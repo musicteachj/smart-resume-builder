@@ -1,5 +1,5 @@
 import type { ResumeContent } from "@/api/generated/model";
-import { dateRange, formatMonth, joinTruthy } from "@/features/templates/documentFormat";
+import { dateRange, experienceTitle, formatMonth, joinTruthy } from "@/features/templates/documentFormat";
 import { normalizeSectionOrder, type SectionKey } from "@/features/templates/sections";
 
 /**
@@ -32,7 +32,7 @@ export function resumeToText(content: ResumeContent, sectionOrder?: string[]): s
       heading("Experience");
       items.forEach((w, i) => {
         if (i > 0) out.push("");
-        const title = joinTruthy([w.position ?? "", joinTruthy([w.company ?? "", w.location ?? ""], ", ")], " — ");
+        const title = experienceTitle(w);
         const range = dateRange(w.startDate ?? undefined, w.endDate);
         out.push(range ? `${title}  (${range})` : title);
         (w.bullets ?? []).filter(Boolean).forEach((b) => out.push(`  • ${b}`));

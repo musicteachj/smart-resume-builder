@@ -26,3 +26,8 @@ export function dateRange(start?: string, end?: string | null): string {
 export function joinTruthy(parts: (string | undefined)[], sep: string): string {
   return parts.filter((p) => p && p.trim()).join(sep);
 }
+
+/** Export heading for a job: "Designer | Acme, NYC". Blank parts drop out. */
+export function experienceTitle(w: { position?: string | null; company?: string | null; location?: string | null }): string {
+  return joinTruthy([w.position ?? "", joinTruthy([w.company ?? "", w.location ?? ""], ", ")], " | ");
+}

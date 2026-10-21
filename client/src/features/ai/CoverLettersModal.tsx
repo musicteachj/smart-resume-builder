@@ -92,7 +92,7 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
               </div>
             ) : letters.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No saved cover letters yet — generate one.
+                No saved cover letters yet. Generate one to get started.
               </p>
             ) : (
               <ul className="divide-y divide-border">

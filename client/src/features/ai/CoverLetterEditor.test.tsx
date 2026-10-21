@@ -60,7 +60,7 @@ describe("CoverLetterEditor", () => {
     await waitFor(() => expect(create).toHaveBeenCalledOnce());
     expect(create.mock.calls[0][0].data).toMatchObject({
       resume: "r1",
-      title: "PM résumé — cover letter",
+      title: "PM résumé cover letter",
       body: "Dear team…",
     });
   });

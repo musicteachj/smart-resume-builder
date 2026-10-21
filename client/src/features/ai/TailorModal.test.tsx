@@ -92,7 +92,7 @@ describe("TailorModal upload", () => {
   });
 
   it("shows the extraction error and leaves the textarea unchanged", async () => {
-    extractFileText.mockRejectedValue(new Error("Unsupported file type — upload a PDF or DOCX, or paste text instead."));
+    extractFileText.mockRejectedValue(new Error("Unsupported file type. Upload a PDF or DOCX, or paste the text instead."));
     render(<Harness />);
     uploadPdf();
     expect(await screen.findByRole("alert")).toHaveTextContent(/unsupported file type/i);
