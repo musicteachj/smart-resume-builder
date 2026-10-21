@@ -147,7 +147,7 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack, onDirtyCh
             )}
           </span>
           <Button variant="ghost" size="sm" onClick={onBack} disabled={gen.isPending}>Back</Button>
-          <Button onClick={() => void generate()} loading={gen.isPending} disabled={reading || jd.trim().length < 20}>
+          <Button size="sm" onClick={() => void generate()} loading={gen.isPending} disabled={reading || jd.trim().length < 20}>
             Generate
           </Button>
         </div>

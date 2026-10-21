@@ -79,6 +79,11 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 - **Buttons:** primary = solid `accent` + `accent-foreground`, `radius-md`, hover shifts to `accent/90` + `shadow-cta`,
   press scale `0.98`; secondary = `surface` + `border`; ghost = transparent; destructive = `destructive`.
   One primary per view. Disabled = opacity 0.5 + `cursor-not-allowed`. Async = spinner + disabled.
+- **Button sizes:** two heights, chosen by where the button lives, never mixed within one row.
+  - `md` **40px**: page actions (dashboard header and empty state, sign-in and register, page error states).
+  - `sm` **32px**: toolbars (editor top bar, landing header) and **every button inside a modal or dialog**,
+    including confirm dialogs and the AI modals' primary actions (Analyze match, Generate, Parse résumé).
+  - `lg` 44px for the landing hero CTA only; `icon` 36px square for icon-only buttons anywhere.
 - **Inputs:** outlined (`border`), `radius-md`, visible label above (never placeholder-only), helper text below,
   error text below in `destructive` + `role="alert"`; focus = 2px `ring`. Validate on blur, focus first invalid on submit.
 - **Cards (dashboard resume cards):** `surface` + 1px `border` + `shadow-light`; hover `translateY(-4px)` +

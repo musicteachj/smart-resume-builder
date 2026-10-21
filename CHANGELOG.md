@@ -56,6 +56,10 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **One button height inside dialogs**: Generate (new cover letter), Analyze match (Tailor), and both buttons in
+  every confirm dialog fell back to the 40px default while the rest of each dialog used 32px, so Generate sat
+  next to a shorter Back and confirm dialogs looked heavier than the modals they open over. They're now 32px,
+  and DESIGN.md §4 records the rule: 40px for page actions, 32px for toolbars and everything inside dialogs.
 - **Résumé headings use the résumé's font**: a global style set every `h1`/`h2`/`h3` in the app's Newsreader,
   including the résumé's name, section headings, and job, school, and project titles. Serif templates showed
   Newsreader instead of Georgia, the sans templates (Modern, Banner, Minimal) mixed serif headings with Arial

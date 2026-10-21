@@ -39,11 +39,12 @@ export function ConfirmDialog({
             </D.Description>
           )}
           <div className="mt-6 flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)} disabled={loading}>
               {cancelLabel}
             </Button>
             <Button
               variant={destructive ? "destructive" : "primary"}
+              size="sm"
               loading={loading}
               onClick={onConfirm}
             >
