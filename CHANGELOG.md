@@ -36,6 +36,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
 
 ### Security
+- **`follow-redirects` 1.16.1 → 1.16.2 and `zod` 4.4.3 → 4.6.7** for two new high-severity advisories
+  (GHSA-mrwp-f3q8-3g9p: custom credentials could follow redirects; GHSA-mrhx-c7xc-m3w5: memory exhaustion
+  validating oversized constrained collections). Lockfile-only change.
 - **`follow-redirects` 1.16.0 → 1.16.1** (pulled in by axios) for two high-severity advisories where credential
   headers could survive a cross-origin redirect (GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c). Lockfile-only change.
 - **`certifi` 2026.10.18 → 2026.10.19** (pulled in by the HTTP clients) for PYSEC-2026-4320. Only that pin and its
