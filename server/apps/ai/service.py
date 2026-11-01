@@ -48,12 +48,38 @@ def _text_from(message) -> str:
 
 # --- content formatting -----------------------------------------------------
 
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+# Contact fields Claude is told exist (by name only: their values aren't needed to judge the résumé).
+_CONTACT_FIELDS = [("email", "email"), ("phone", "phone"), ("linkedin", "LinkedIn"), ("github", "GitHub"),
+                   ("website", "website")]
+
+
+def _month(value) -> str:
+    """'2022-03' -> 'Mar 2022'; anything else passes through."""
+    if isinstance(value, str) and len(value) == 7 and value[4] == "-" and value[5:].isdigit():
+        month = int(value[5:])
+        if 1 <= month <= 12:
+            return f"{_MONTHS[month - 1]} {value[:4]}"
+    return value or ""
+
+
 def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
-    """Render resume content as compact plain text for the prompt."""
+    """Render resume content as compact plain text for the prompt.
+
+    Includes dates, locations, and the headline (the ATS check, summary, and tailoring all depend on them),
+    and says which contact details exist without sending their values.
+    """
     pi = content.get("personalInfo") or {}
     lines: list[str] = []
     if pi.get("name"):
         lines.append(f"Name: {pi['name']}")
+    if pi.get("headline"):
+        lines.append(f"Headline: {pi['headline']}")
+    if pi.get("location"):
+        lines.append(f"Location: {pi['location']}")
+    present = [label for key, label in _CONTACT_FIELDS if pi.get(key)]
+    lines.append(f"Contact details on the résumé: {', '.join(present) or 'none'}")
     if content.get("summary"):
         lines.append(f"Summary: {content['summary']}")
 
@@ -61,13 +87,16 @@ def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
     if work:
         lines.append("\nExperience:")
         for w in work:
-            header = " — ".join(p for p in [w.get("position"), w.get("company")] if p)
+            where = ", ".join(p for p in [w.get("company"), w.get("location")] if p)
+            header = " at ".join(p for p in [w.get("position"), where] if p)
+            if w.get("startDate"):
+                header += f" ({_month(w['startDate'])} to {_month(w.get('endDate')) or 'Present'})"
             lines.append(f"- {header}".rstrip())
-            for b in w.get("bullets") or []:
+            for index, b in enumerate(w.get("bullets") or []):
                 if not b:
                     continue
                 if with_bullet_ids:
-                    lines.append(f"    [{w.get('id')}::{(w.get('bullets') or []).index(b)}] {b}")
+                    lines.append(f"    [{w.get('id')}::{index}] {b}")
                 else:
                     lines.append(f"    • {b}")
 
@@ -75,7 +104,10 @@ def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
     if edu:
         lines.append("\nEducation:")
         for e in edu:
-            lines.append(f"- {' , '.join(p for p in [e.get('degree'), e.get('field'), e.get('school')] if p)}")
+            entry = ", ".join(p for p in [e.get("degree"), e.get("field"), e.get("school")] if p)
+            if e.get("graduationDate"):
+                entry += f" ({_month(e['graduationDate'])})"
+            lines.append(f"- {entry}")
 
     skills = content.get("skills") or []
     if skills:

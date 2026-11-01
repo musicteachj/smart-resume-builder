@@ -36,6 +36,12 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
 
 ### Security
+- **`djangorestframework` 3.17.2 → 3.18.2 and `Brotli` 1.2.0 → 1.2.1** for newly published advisories
+  (CVE-2026-114136, CVE-2026-114137, CVE-2026-114138; PYSEC-2026-4322). Only those two pins and their hashes
+  change; the API schema and generated client are unchanged.
+- **`follow-redirects` 1.16.1 → 1.16.2 and `zod` 4.4.3 → 4.6.7** for two new high-severity advisories
+  (GHSA-mrwp-f3q8-3g9p: custom credentials could follow redirects; GHSA-mrhx-c7xc-m3w5: memory exhaustion
+  validating oversized constrained collections). Lockfile-only change.
 - **`follow-redirects` 1.16.0 → 1.16.1** (pulled in by axios) for two high-severity advisories where credential
   headers could survive a cross-origin redirect (GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c). Lockfile-only change.
 - **`certifi` 2026.10.18 → 2026.10.19** (pulled in by the HTTP clients) for PYSEC-2026-4320. Only that pin and its
@@ -56,6 +62,11 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **The AI now sees the whole résumé**: the text sent to Claude (summary, tailor, cover letter, ATS check)
+  left out every date, location, the headline, and contact details, so the ATS check reported dates and
+  contact info as missing when they were on the page, and generated summaries guessed the years of experience.
+  It now includes employment and graduation dates ("Mar 2022 to Present"), locations, and the headline, and
+  says which contact details exist without sending their values. Duplicate bullets also get their own IDs.
 - **One button height inside dialogs**: Generate (new cover letter), Analyze match (Tailor), and both buttons in
   every confirm dialog fell back to the 40px default while the rest of each dialog used 32px, so Generate sat
   next to a shorter Back and confirm dialogs looked heavier than the modals they open over. They're now 32px,
