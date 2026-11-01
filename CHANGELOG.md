@@ -56,6 +56,11 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **The AI now sees the whole résumé**: the text sent to Claude (summary, tailor, cover letter, ATS check)
+  left out every date, location, the headline, and contact details, so the ATS check reported dates and
+  contact info as missing when they were on the page, and generated summaries guessed the years of experience.
+  It now includes employment and graduation dates ("Mar 2022 to Present"), locations, and the headline, and
+  says which contact details exist without sending their values. Duplicate bullets also get their own IDs.
 - **One button height inside dialogs**: Generate (new cover letter), Analyze match (Tailor), and both buttons in
   every confirm dialog fell back to the 40px default while the rest of each dialog used 32px, so Generate sat
   next to a shorter Back and confirm dialogs looked heavier than the modals they open over. They're now 32px,
