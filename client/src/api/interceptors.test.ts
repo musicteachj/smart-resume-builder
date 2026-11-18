@@ -42,10 +42,22 @@ describe("auth interceptors", () => {
 
   it("never sends the Bearer to the public auth endpoints", async () => {
     // An expired Bearer made the server 401 refresh/logout, logging users out after 15 minutes.
-    for (const url of ["/api/auth/refresh", "/api/auth/logout", "/api/auth/login", "/api/auth/register"]) {
+    for (const url of [
+      "/api/auth/refresh",
+      "/api/auth/logout",
+      "/api/auth/login",
+      "/api/auth/register",
+      "/api/auth/password-reset",
+      "/api/auth/password-reset/confirm",
+    ]) {
       await AXIOS_INSTANCE.post(url);
       expect(authHeader(url)).toBeNull();
     }
+  });
+
+  it("sends the Bearer to delete-account, which is authenticated", async () => {
+    await AXIOS_INSTANCE.post("/api/auth/delete-account", { password: "x" });
+    expect(authHeader("/api/auth/delete-account")).toBe("Bearer stale-token");
   });
 
   it("refreshes an expired token and retries the call", async () => {

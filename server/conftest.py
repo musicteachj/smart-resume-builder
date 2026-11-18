@@ -15,5 +15,7 @@ def _disable_throttling(monkeypatch):
     with a real rate and clear the cache.
     """
     monkeypatch.setattr(
-        SimpleRateThrottle, "THROTTLE_RATES", {"auth": None, "ai-burst": None, "writes": None}
+        SimpleRateThrottle,
+        "THROTTLE_RATES",
+        {"auth": None, "ai-burst": None, "writes": None, "password-reset": None},
     )

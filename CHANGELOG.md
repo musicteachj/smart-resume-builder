@@ -16,6 +16,23 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   favicon is replaced by a pixel-drawn `favicon.svg` that switches ink for dark tab bars, plus a PNG fallback,
   touch icon, `site.webmanifest`, and a 1200 × 630 link-preview image with Open Graph tags. DESIGN.md gains a
   Brand section (the mark's spark is the only sparkle in the product).
+- **Password reset**: "Forgot?" on the sign-in page now leads to `/forgot-password`, which emails a one-hour,
+  single-use link to `/reset-password` (`POST /api/auth/password-reset` and `/password-reset/confirm`). The request
+  always answers the same way (even if sending fails), so it can't reveal whether an email has an account. A
+  successful reset revokes every refresh token, so other devices are signed out within 15 minutes. The link's
+  host comes only from `CLIENT_URL` (never the request's Host header; if it's unset, nothing is sent and an error is
+  logged), and the uid and token ride in its URL fragment, so they never reach server access logs; the reset page
+  also strips them from the address bar. Confirming locks the user row, so a link can't be used twice
+  concurrently. Requests have their own `password-reset` throttle (5/hour per IP); confirm uses the `auth` scope.
+  Email: `EMAIL_BACKEND` and `DEFAULT_FROM_EMAIL` come from env; dev prints mail to the runserver console, and
+  production defaults to the dummy backend (nothing sent, a warning logged) until a real provider is configured.
+- **Account deletion**: `POST /api/auth/delete-account` (password required) permanently deletes the user and all
+  of their résumés, versions, cover letters, and AI usage logs, revokes their refresh tokens, and clears the cookie.
+- **Account page** (`/account`, from the header menu): name and email, plus a password-confirmed "Delete account"
+  dialog.
+- **Privacy Policy and Terms of Use** pages (`/privacy`, `/terms`), written from the app's actual data flows
+  (plain-language drafts pending review). The landing and auth footers now link Privacy, Terms, and a Contact
+  email, and the register page notes that creating an account accepts them.
 
 ### Changed
 - **README refreshed for release**: the feature list now covers import, cover letters, the ATS health check, version
@@ -36,6 +53,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (216 kB to 139 kB gzipped) and the build no longer warns about oversized chunks.
 
 ### Security
+- **The password-similarity check now runs**: registration validated the password on its own, so Django's
+  `UserAttributeSimilarityValidator` never saw the user and a password like the email address was accepted. It now
+  compares against the email and name at registration and password reset.
+- **Sign-out clears cached data**: every sign-out path (header menu, failed session refresh, account deletion) now
+  clears the TanStack Query cache, so one person's résumés are never shown to the next person on the same browser.
 - **`djangorestframework` 3.17.2 → 3.18.2 and `Brotli` 1.2.0 → 1.2.1** for newly published advisories
   (CVE-2026-114136, CVE-2026-114137, CVE-2026-114138; PYSEC-2026-4322). Only those two pins and their hashes
   change; the API schema and generated client are unchanged.

@@ -149,11 +149,31 @@ DATABASES = {
 # Password validation
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        # Our User has `name`, not first_name/last_name, so list the attributes to compare.
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "OPTIONS": {"user_attributes": ("email", "name")},
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+
+# Email + password reset. Dev prints mail (reset links) to the runserver console.
+# Production defaults to the dummy backend (nothing is sent, and the reset view logs a
+# warning) until a real provider is configured through EMAIL_BACKEND and its settings.
+
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.dummy.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "ResumeIQ <no-reply@resume.jameslittlefield.net>"
+)
+PASSWORD_RESET_TIMEOUT = 3600  # seconds; reset links expire after 1 hour
 
 
 # REST framework / OpenAPI
@@ -173,6 +193,8 @@ REST_FRAMEWORK = {
         "auth": "10/min",
         "ai-burst": "20/hour",
         "writes": "120/min",
+        # Password-reset email requests, keyed by IP: limits reset-email spam.
+        "password-reset": "5/hour",
     },
     # One trusted proxy hop (the ALB). Without this, DRF keys IP throttles on the
     # whole client-supplied X-Forwarded-For header, which an attacker can rotate

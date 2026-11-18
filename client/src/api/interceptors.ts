@@ -22,7 +22,16 @@ async function refreshAccessToken(): Promise<string | null> {
 
 // Public auth endpoints: they never get the Bearer (an expired one would make the server
 // 401 the refresh/logout itself) and a 401 from them never triggers a refresh.
-const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/register", "/api/auth/logout"];
+// `/api/auth/delete-account` is deliberately NOT listed: it is authenticated, so it needs
+// the Bearer, and an expired token there should refresh and retry like any API call.
+const AUTH_ENDPOINTS = [
+  "/api/auth/login",
+  "/api/auth/refresh",
+  "/api/auth/register",
+  "/api/auth/logout",
+  "/api/auth/password-reset",
+  "/api/auth/password-reset/confirm",
+];
 
 const isAuthEndpoint = (url: string | undefined) => AUTH_ENDPOINTS.some((p) => (url ?? "").includes(p));
 

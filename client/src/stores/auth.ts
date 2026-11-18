@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { User } from "@/api/generated/model";
+import { queryClient } from "@/api/queryClient";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -24,7 +25,12 @@ export const useAuthStore = create<AuthState>()((set) => ({
   setSession: ({ user, access }) => set({ user, accessToken: access, status: "authenticated" }),
   setAccessToken: (access) => set({ accessToken: access }),
   setUser: (user) => set({ user }),
-  logout: () => set({ user: null, accessToken: null, status: "unauthenticated" }),
+  // Every sign-out path (menu, failed refresh, account deletion) also drops the query
+  // cache, so one user's résumés are never shown to the next person on this browser.
+  logout: () => {
+    set({ user: null, accessToken: null, status: "unauthenticated" });
+    queryClient.clear();
+  },
 }));
 
 /** Non-reactive auth check for interceptors outside React. */

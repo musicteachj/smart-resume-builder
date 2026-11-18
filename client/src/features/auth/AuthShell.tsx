@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Brand } from "@/components/layout/Brand";
+import { FooterLinks } from "@/components/layout/FooterLinks";
 
 interface AuthShellProps {
   title: string;
@@ -35,8 +36,9 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
         {footer && <div className="mt-5 text-center text-sm text-muted-foreground">{footer}</div>}
       </main>
 
-      <footer className="px-6 py-5 text-center text-sm text-muted-foreground">
-        © 2026 ResumeIQ
+      <footer className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-5 text-sm text-muted-foreground">
+        <span>© 2026 ResumeIQ</span>
+        <FooterLinks />
       </footer>
     </div>
   );
