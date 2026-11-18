@@ -63,3 +63,34 @@ def test_duplicate_bullets_each_get_their_own_id():
     text = service._content_to_text(content, with_bullet_ids=True)
     assert "[w1::0] Same." in text
     assert "[w1::1] Same." in text
+
+
+def _freeze_today(monkeypatch, year, month, day):
+    from datetime import datetime, timezone as dt_timezone
+
+    monkeypatch.setattr(service.timezone, "now", lambda: datetime(year, month, day, 15, 0, tzinfo=dt_timezone.utc))
+
+
+def test_prompt_starts_with_todays_date(monkeypatch):
+    # Without it the model guesses the current year, and "years of experience" comes out wrong
+    # for any role that runs to the present.
+    _freeze_today(monkeypatch, 2026, 11, 18)
+    text = service._content_to_text(CONTENT)
+    assert text.splitlines()[0] == "Today's date: November 18, 2026"
+
+
+def test_todays_date_survives_the_length_cap(monkeypatch, settings):
+    _freeze_today(monkeypatch, 2026, 1, 5)
+    settings.AI_MAX_PROMPT_CHARS = 200
+    content = {**CONTENT, "summary": "x" * 5000}
+    text = service._content_to_text(content)
+    assert len(text) == 200
+    assert text.startswith("Today's date: January 5, 2026")
+
+
+def test_summary_and_cover_letter_count_years_from_todays_date():
+    from apps.ai import prompts
+
+    for prompt in (prompts.GENERATE_SUMMARY, prompts.COVER_LETTER):
+        assert "today's date" in prompt
+        assert "years of experience" in prompt

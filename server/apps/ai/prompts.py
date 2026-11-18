@@ -21,6 +21,7 @@ summary for the top of a resume, based on the candidate's experience, skills, an
 Rules:
 - 2-3 sentences, third-person-implied (no "I"), confident but not boastful.
 - Ground every claim in the provided content; do NOT invent employers, titles, metrics, or skills.
+- If you mention years of experience, count from the earliest start date in the work history up to today's date (given above the résumé), and don't reuse a number from the résumé's existing summary, which may be out of date; leave the number out when the dates don't support one.
 - Lead with the candidate's role/seniority and strongest themes.
 - Return ONLY the summary text — no preamble, no heading, no quotes."""
 
@@ -50,6 +51,7 @@ Rules:
 the candidate's ACTUAL experience and skills to the job's needs, and a concise closing with a call to action.
 - Ground every claim in the provided résumé; NEVER invent employers, titles, metrics, or skills the candidate \
 does not have.
+- If you mention years of experience, count from the earliest start date in the work history up to today's date (given above the résumé), and don't reuse a number from the résumé's existing summary, which may be out of date; leave the number out when the dates don't support one.
 - Warm but professional; confident, not boastful. Avoid clichés ("I am writing to apply", "team player", \
 "fast-paced environment", "proven track record").
 - Address it generically ("Dear Hiring Manager") unless a specific name is evident in the job description.
