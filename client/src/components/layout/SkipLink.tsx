@@ -10,9 +10,11 @@ export const MAIN_CONTENT_ID = "main";
  */
 export function SkipLink() {
   const skip = (event: MouseEvent<HTMLAnchorElement>) => {
+    // Never follow the href: a hash would replace one the page relies on (the reset
+    // link's #uid=...&token=...). With no <main> yet (still loading), do nothing.
+    event.preventDefault();
     const main = document.getElementById(MAIN_CONTENT_ID);
     if (!main) return;
-    event.preventDefault();
     main.focus();
     main.scrollIntoView({ block: "start" });
   };

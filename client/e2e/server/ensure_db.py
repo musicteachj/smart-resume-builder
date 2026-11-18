@@ -4,7 +4,7 @@ Usage: python ensure_db.py  (reads E2E_DATABASE_URL, same default as e2e_setting
 """
 
 import os
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import psycopg
 from psycopg import sql
@@ -16,11 +16,12 @@ url = urlparse(
     )
 )
 name = url.path.lstrip("/")
+# Credentials are percent-decoded, as dj_database_url does for the app's own connection.
 with psycopg.connect(
     host=url.hostname,
     port=url.port or 5432,
-    user=url.username,
-    password=url.password,
+    user=unquote(url.username or ""),
+    password=unquote(url.password or ""),
     dbname="postgres",
     autocommit=True,
 ) as conn:

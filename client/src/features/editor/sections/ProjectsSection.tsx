@@ -18,8 +18,12 @@ export function ProjectsSection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.projects" });
-  const projects = useWatch({ control, name: "content.projects" });
-  const projectLabel = (i: number) => entryLabel([projects?.[i]?.name], `project ${i + 1}`);
+  // Watch only each project's name (not the whole array).
+  const names = useWatch({
+    control,
+    name: fields.map((_, i) => `content.projects.${i}.name` as const),
+  }) as (string | undefined)[];
+  const projectLabel = (i: number) => entryLabel([names[i]], `project ${i + 1}`);
 
   return (
     <div className="space-y-4">

@@ -139,6 +139,8 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
     Platform role"); jobs, schools, and projects are named by company, school, or project name.
   - Drag-to-reorder announces the item's name and position instead of its internal ID.
   - The editor has a `<main>` landmark, a page `h1`, and section headings (`h2`) around its collapsible panels.
+- **A failed delete says so**: if deleting a résumé or a cover letter fails, the confirm dialog stays open with the
+  reason and the button re-enabled, instead of silently doing nothing.
 - **Form fields have visible borders**: inputs and text areas used the 1.2:1 hairline; a new `input-border` token
   (light `#878278`, dark `#7C776E`) gives at least 3:1 against page and card in both themes (WCAG 1.4.11).
 - **Signing out or deleting the account lands on the home page**: the route guard saw the session end before the

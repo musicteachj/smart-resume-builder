@@ -12,6 +12,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   destructive?: boolean;
   loading?: boolean;
+  /** Shown in the dialog (the action failed); the dialog stays open so the user can retry. */
+  error?: string;
   onConfirm: () => void;
 }
 
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = false,
   loading = false,
+  error,
   onConfirm,
 }: ConfirmDialogProps) {
   const returnFocus = useReturnFocus();
@@ -42,6 +45,11 @@ export function ConfirmDialog({
             <D.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {description}
             </D.Description>
+          )}
+          {error && (
+            <p role="alert" className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
           )}
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)} disabled={loading}>

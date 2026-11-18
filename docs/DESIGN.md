@@ -43,13 +43,13 @@ foreground/background pairs for contrast independently per theme.
 | `border` (hairline) | `--border` | `#E7E5E0` | `#3A3733` |
 | `input-border` (form fields) | `--input-border` | `#878278` | `#7C776E` |
 | `ring` (focus) | `--ring` | `#0F5132` | `#3DA572` |
+| `success` | `--success` | `#15803D` | `#4ADE80` |
+| `warning` | `--warning` | `#B45309` | `#F59E0B` |
+| `destructive` | `--destructive` | `#B42318` | `#F87171` |
 
 **Border rule:** form-field borders (Input, Textarea, and any field-like control) use `input-border`
 (`border-input-border`, at least 3:1 against page and card in both themes, WCAG 1.4.11); the hairline `border`
 token is for non-interactive dividers and card edges only.
-| `success` | `--success` | `#15803D` | `#4ADE80` |
-| `warning` | `--warning` | `#B45309` | `#F59E0B` |
-| `destructive` | `--destructive` | `#B42318` | `#F87171` |
 
 **Accent rule:** `accent` (forest green) is used *only* for the single primary CTA per view, active nav/tab,
 focused field ring, and selected state. Never for decoration, backgrounds, or body text. Distinguish it from

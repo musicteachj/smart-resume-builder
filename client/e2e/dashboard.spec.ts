@@ -70,6 +70,31 @@ test.describe("dashboard", () => {
     await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+$/);
   });
 
+  test("a failed delete keeps the dialog open with an error, and a retry works", async ({ page, user }) => {
+    await createResumeViaApi(page, user, "QA Engineer");
+    let failNext = true;
+    await page.route("**/api/resumes/*/", async (route) => {
+      if (route.request().method() === "DELETE" && failNext) {
+        failNext = false;
+        return route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
+      }
+      return route.fallback();
+    });
+    await page.goto("/dashboard");
+    const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
+    await card.getByRole("button", { name: /options/i }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    const dialog = page.getByRole("dialog", { name: "Delete resume?" });
+    await dialog.getByRole("button", { name: "Delete" }).click();
+    await expect(dialog.getByRole("alert")).toHaveText("We couldn't delete this resume. Please try again.");
+    await expect(dialog.getByRole("button", { name: "Delete" })).toBeEnabled();
+    await expectAccessible(page);
+
+    await dialog.getByRole("button", { name: "Delete" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("article")).toHaveCount(0);
+  });
+
   test("clicking the card while its menu is open only closes the menu", async ({ page, user }) => {
     await createResumeViaApi(page, user, "Frontend Engineer");
     await page.goto("/dashboard");

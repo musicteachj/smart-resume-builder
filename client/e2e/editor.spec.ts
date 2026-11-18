@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Download, Locator, Page } from "@playwright/test";
 
 import { IMPROVED_BULLET } from "./support/aiMocks";
 import { createResumeViaApi, expect, expectAccessible, test } from "./support/fixtures";
@@ -16,15 +16,24 @@ async function openEditor(page: Page, id: string) {
 }
 
 /**
- * ArrowDown once during a keyboard drag. The library measures the drop targets just after
- * pick-up, and an arrow pressed before that is a no-op ("is over position 1"), so retry
- * until the live region confirms the move. Each retry is still a single step down.
+ * Move the dragged item down one slot with the keyboard. Wait until dnd-kit announces the drag,
+ * then press ArrowDown. dnd-kit measures drop targets just after pick-up and silently drops an
+ * arrow pressed before that, so press again only while the announced slot is still the starting
+ * one. Once the item has moved, never press again (retrying on a mismatch overshot on a slow CI
+ * runner, landing on position 4 of 5).
  */
-async function moveDownOne(page: Page, live: Locator, expected: string) {
+async function moveDownOne(page: Page, live: Locator, name: string, expected: string) {
+  await expect(live).toHaveText(new RegExp(`^(Picked up ${name}, |${name} is over )position \\d+ of \\d+\\.$`));
+  const slot = async () => ((await live.textContent()) ?? "").match(/position (\d+) of/)?.[1];
+  const start = await slot();
   await expect(async () => {
-    if ((await live.textContent())?.trim() !== expected) await page.keyboard.press("ArrowDown");
-    await expect(live).toHaveText(expected, { timeout: 1000 });
-  }).toPass({ timeout: 10_000 });
+    if ((await slot()) === start) await page.keyboard.press("ArrowDown");
+    await expect(live).toHaveText(expected, { timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
+}
+
+function fileName(download: Download) {
+  return download.suggestedFilename().replace(/_/g, " ");
 }
 
 async function waitForSave(page: Page) {
@@ -80,7 +89,7 @@ test.describe("editor", () => {
     await expect(handle).toHaveAttribute("aria-pressed", "true");
     // Screen readers hear the section's name and place, not its internal id.
     const live = page.getByRole("status").filter({ hasText: /Summary/ });
-    await moveDownOne(page, live, "Summary is over position 2 of 5.");
+    await moveDownOne(page, live, "Summary", "Summary is over position 2 of 5.");
     await page.keyboard.press("Space");
     await expect(live).toHaveText("Dropped Summary at position 2 of 5.");
     await expect(sectionHeadings.nth(2)).toHaveText(/Summary/);
@@ -93,7 +102,7 @@ test.describe("editor", () => {
     await page.keyboard.press("Space");
     await expect(entryHandle).toHaveAttribute("aria-pressed", "true");
     const entryLive = page.getByRole("status").filter({ hasText: "Acme Corp" });
-    await moveDownOne(page, entryLive, "Acme Corp is over position 2 of 2.");
+    await moveDownOne(page, entryLive, "Acme Corp", "Acme Corp is over position 2 of 2.");
     await page.keyboard.press("Space");
     await expect(page.getByLabel("Company").first()).toHaveValue("Globex");
     await waitForSave(page);
@@ -134,12 +143,13 @@ test.describe("editor", () => {
 
     const download = page.waitForEvent("download");
     await menu.getByRole("menuitem", { name: "Plain text (.txt)" }).click();
-    expect((await download).suggestedFilename()).toBe("Software Engineer.txt");
+    // Linux WebKit replaces spaces in download names with underscores; macOS and Chromium keep them.
+    expect(fileName(await download)).toBe("Software Engineer.txt");
 
     await page.getByRole("button", { name: "Export" }).click();
     const docx = page.waitForEvent("download");
     await page.getByRole("menuitem", { name: "Word (.docx)" }).click();
-    expect((await docx).suggestedFilename()).toBe("Software Engineer.docx");
+    expect(fileName(await docx)).toBe("Software Engineer.docx");
     // PDF opens the browser's print dialog, which automation can't drive (see the manual checklist).
   });
 

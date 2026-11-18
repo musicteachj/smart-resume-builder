@@ -18,11 +18,12 @@ type DescribableProps = { "aria-describedby"?: string; "aria-invalid"?: boolean 
 export function Field({ label, htmlFor, error, hint, action, children }: FieldProps) {
   const messageId = error ? `${htmlFor}-error` : hint ? `${htmlFor}-hint` : undefined;
   // Tie the error (or hint) to the control, so a screen reader reads it with the field and
-  // announces the field as invalid. Props the control already sets win.
+  // announces the field as invalid. The control's own description ids are kept, with ours
+  // added after them; an explicit aria-invalid on the control wins.
   const control =
     isValidElement<DescribableProps>(children) && messageId
       ? cloneElement(children as ReactElement<DescribableProps>, {
-          "aria-describedby": children.props["aria-describedby"] ?? messageId,
+          "aria-describedby": [children.props["aria-describedby"], messageId].filter(Boolean).join(" "),
           "aria-invalid": children.props["aria-invalid"] ?? (error ? true : undefined),
         })
       : children;

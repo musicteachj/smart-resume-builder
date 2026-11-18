@@ -1,5 +1,5 @@
 import { LogOut, Moon, Sun, UserRound } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { Brand } from "@/components/layout/Brand";
 import {
@@ -11,24 +11,23 @@ import {
 } from "@/components/ui/DropdownMenu";
 import { AXIOS_INSTANCE } from "@/api/axios";
 import { UsagePill } from "@/components/ui/UsagePill";
+import { useSignOut } from "@/features/auth/useSignOut";
 import { initials } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth";
 import { useThemeStore } from "@/stores/theme";
 
 export function AppHeader() {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
-  const navigate = useNavigate();
+  const signOut = useSignOut();
 
-  // Clear the refresh cookie server-side, then clear the in-memory session.
+  // Clear the refresh cookie server-side, then go home and clear the in-memory session.
   const handleLogout = async () => {
     try {
       await AXIOS_INSTANCE.post("/api/auth/logout");
     } finally {
-      logout({ signedOut: true });
-      navigate("/");
+      signOut();
     }
   };
 

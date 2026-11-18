@@ -18,8 +18,16 @@ export function ExperienceSection() {
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.workExperience" });
   // Names for each job's controls ("Remove Acme Corp", "Bullet 1 from Acme Corp").
-  const work = useWatch({ control, name: "content.workExperience" });
-  const jobLabel = (i: number) => entryLabel([work?.[i]?.company, work?.[i]?.position], `job ${i + 1}`);
+  // Watch only each job's company and title (not the whole array), so typing in a bullet
+  // doesn't re-render the section.
+  const names = useWatch({
+    control,
+    name: fields.flatMap((_, i) => [
+      `content.workExperience.${i}.company` as const,
+      `content.workExperience.${i}.position` as const,
+    ]),
+  }) as (string | undefined)[];
+  const jobLabel = (i: number) => entryLabel([names[i * 2], names[i * 2 + 1]], `job ${i + 1}`);
 
   return (
     <div className="space-y-4">

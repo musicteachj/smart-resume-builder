@@ -33,9 +33,11 @@ describe("SkipLink", () => {
     expect(window.location.hash).toBe("");
   });
 
-  it("falls back to the plain anchor when a page has no main landmark", () => {
+  it("does nothing (and keeps the URL hash) when the page has no <main> yet", () => {
+    window.history.replaceState(null, "", "/reset-password#uid=abc&token=xyz");
     render(<SkipLink />);
     const notPrevented = fireEvent.click(screen.getByRole("link", { name: "Skip to main content" }));
-    expect(notPrevented).toBe(true);
+    expect(notPrevented).toBe(false);
+    expect(window.location.hash).toBe("#uid=abc&token=xyz");
   });
 });

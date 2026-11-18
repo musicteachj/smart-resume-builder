@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Spinner } from "@/components/ui/Spinner";
+import { fieldErrors } from "@/lib/apiError";
 import { useAuthStore } from "@/stores/auth";
 
 import { ImportResumeModal } from "./ImportResumeModal";
@@ -33,6 +34,7 @@ export function DashboardPage() {
   const [toDelete, setToDelete] = useState<ResumeList | null>(null);
   // Covers the delete and the list refresh after it (the dialog stays open for both).
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [importOpen, setImportOpen] = useState(false);
 
   const refreshList = () =>
@@ -64,12 +66,16 @@ export function DashboardPage() {
   const handleConfirmDelete = async () => {
     if (!toDelete || deleting) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await deleteResume.mutateAsync({ id: toDelete.id });
       // Close only once the card is gone, so the dialog's focus return sees its opener is
       // gone and moves focus to <main> rather than to a button about to unmount.
       await refreshList();
       setToDelete(null);
+    } catch (err) {
+      // Keep the dialog open with the reason, so the user can retry or cancel.
+      setDeleteError(fieldErrors(err).detail ?? "We couldn't delete this resume. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -142,7 +148,12 @@ export function DashboardPage() {
 
       <ConfirmDialog
         open={toDelete !== null}
-        onOpenChange={(open) => !open && !deleting && setToDelete(null)}
+        onOpenChange={(open) => {
+          if (open || deleting) return;
+          setToDelete(null);
+          setDeleteError("");
+        }}
+        error={deleteError}
         title="Delete resume?"
         description={
           toDelete

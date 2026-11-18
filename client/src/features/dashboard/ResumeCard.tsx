@@ -1,5 +1,5 @@
 import { Copy, FileText, MoreVertical, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 
 import type { ResumeList } from "@/api/generated/model";
@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/DropdownMenu";
 import { getTemplate } from "@/features/templates/templates";
 import { relativeTime } from "@/lib/format";
+
+/** A click this soon after a press that dismissed the card's menu belongs to that press. */
+const DISMISS_CLICK_WINDOW_MS = 500;
 
 interface ResumeCardProps {
   resume: ResumeList;
@@ -30,23 +33,21 @@ export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
   const extra = resume.skills.length - shownSkills.length;
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // When this card's menu was last dismissed by a press on the card itself.
+  const dismissedOnCardAt = useRef(0);
+
   // Menus are non-modal (see DropdownMenu), so a press outside the open menu also reaches
   // what's under it. On this card that's the stretched title link, and clicking the card
-  // to dismiss the menu would open the editor. Swallow that one click; the press only
-  // closes the menu.
-  const swallowNextClickInside = (event: Event) => {
-    if (!(event.target instanceof Node) || !cardRef.current?.contains(event.target)) return;
-    const swallow = (click: MouseEvent) => {
-      click.preventDefault();
-      click.stopPropagation();
-    };
-    document.addEventListener("click", swallow, { capture: true, once: true });
-    // If the press never becomes a click (dragged off, canceled), don't eat a later one.
-    document.addEventListener(
-      "pointerup",
-      () => setTimeout(() => document.removeEventListener("click", swallow, { capture: true }), 0),
-      { once: true },
-    );
+  // to dismiss the menu would open the editor. Remember the dismissal; the link ignores a
+  // click that follows it closely. No global listeners, so nothing can linger.
+  const noteDismissal = (event: Event) => {
+    if (event.target instanceof Node && cardRef.current?.contains(event.target)) {
+      dismissedOnCardAt.current = Date.now();
+    }
+  };
+  const openUnlessDismissing = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (Date.now() - dismissedOnCardAt.current < DISMISS_CLICK_WINDOW_MS) event.preventDefault();
+    dismissedOnCardAt.current = 0;
   };
 
   return (
@@ -72,7 +73,7 @@ export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
             >
               <MoreVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent onPointerDownOutside={swallowNextClickInside}>
+            <DropdownMenuContent onPointerDownOutside={noteDismissal}>
               <DropdownMenuItem onSelect={onDuplicate}>
                 <Copy className="h-4 w-4" /> Duplicate
               </DropdownMenuItem>
@@ -88,6 +89,7 @@ export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
       <h2 id={`resume-${resume.id}-title`} className="mt-4 font-display text-lg font-semibold text-foreground">
         <Link
           to={`/resumes/${resume.id}`}
+          onClick={openUnlessDismissing}
           className="after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
         >
           {resume.title}

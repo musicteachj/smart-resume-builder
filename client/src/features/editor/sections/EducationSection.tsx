@@ -16,9 +16,15 @@ export function EducationSection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.education" });
-  const education = useWatch({ control, name: "content.education" });
-  const schoolLabel = (i: number) =>
-    entryLabel([education?.[i]?.school, education?.[i]?.degree], `school ${i + 1}`);
+  // Watch only each entry's school and degree (not the whole array).
+  const names = useWatch({
+    control,
+    name: fields.flatMap((_, i) => [
+      `content.education.${i}.school` as const,
+      `content.education.${i}.degree` as const,
+    ]),
+  }) as (string | undefined)[];
+  const schoolLabel = (i: number) => entryLabel([names[i * 2], names[i * 2 + 1]], `school ${i + 1}`);
 
   return (
     <div className="space-y-4">

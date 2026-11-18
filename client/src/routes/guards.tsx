@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 
 import { Spinner } from "@/components/ui/Spinner";
@@ -16,22 +15,8 @@ export function LoadingSplash() {
 
 export function ProtectedRoute() {
   const status = useAuthStore((s) => s.status);
-  const signedOut = useAuthStore((s) => s.signedOut);
-  // `signedOut` is one-shot: it steers only the redirect right after signing out. Once
-  // that redirect has left the protected pages (this guard unmounts), clear it, so a later
-  // visit to a protected page while signed out goes to /login again.
-  useEffect(
-    () => () => {
-      if (useAuthStore.getState().signedOut) useAuthStore.setState({ signedOut: false });
-    },
-    [],
-  );
   if (status === "loading") return <LoadingSplash />;
-  if (status === "authenticated") return <Outlet />;
-  // Signing out (or deleting the account) re-renders this guard before the caller's own
-  // navigation lands, so the guard picks the destination: home after a deliberate
-  // sign-out, the sign-in form when the session simply isn't there.
-  return <Navigate to={signedOut ? "/" : "/login"} replace />;
+  return status === "authenticated" ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 export function PublicOnlyRoute() {

@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { capitalize, cn } from "@/lib/utils";
 
 interface SortableListProps<T> {
   items: T[];
@@ -95,8 +95,6 @@ export function SortableList<T>({
     </DndContext>
   );
 }
-
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** Respect prefers-reduced-motion: drop the transform transition when the user opts out. */
 function prefersReducedMotion(): boolean {
