@@ -5,6 +5,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type Announcements,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
@@ -18,13 +19,16 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { capitalize, cn } from "@/lib/utils";
 
 interface SortableListProps<T> {
   items: T[];
   getId: (item: T) => string;
   /** Called with the source and destination indices after a drag (compatible with RHF `move`). */
   onReorder: (oldIndex: number, newIndex: number) => void;
+  /** What each item is called in its handle's label and in screen-reader announcements
+   * (e.g. "Summary", "position 2"). Defaults to "item N". */
+  itemLabel?: (item: T, index: number) => string;
   children: (item: T, handle: ReactNode, index: number) => ReactNode;
 }
 
@@ -34,13 +38,36 @@ interface SortableListProps<T> {
  * render-prop that receives a labeled drag handle. One implementation, many call sites.
  * DndContext/SortableContext render no DOM nodes, so each item's wrapper is a direct
  * child of wherever <SortableList> is placed (parent `space-y-*` spacing is preserved).
+ * Keyboard: focus a handle, Space to pick up, arrows to move, Space to drop, Esc to cancel.
  */
-export function SortableList<T>({ items, getId, onReorder, children }: SortableListProps<T>) {
+export function SortableList<T>({
+  items,
+  getId,
+  onReorder,
+  itemLabel = (_item, index) => `item ${index + 1}`,
+  children,
+}: SortableListProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const ids = items.map(getId);
+  const labels = new Map(items.map((item, index) => [ids[index], itemLabel(item, index)]));
+
+  // The library's default announcements read out raw ids (UUIDs here); say the item's
+  // name and its position instead.
+  const nameOf = (id: string | number) => labels.get(String(id)) ?? "item";
+  const positionOf = (id: string | number) => `position ${ids.indexOf(String(id)) + 1} of ${ids.length}`;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Picked up ${nameOf(active.id)}, ${positionOf(active.id)}.`,
+    onDragOver: ({ active, over }) =>
+      capitalize(
+        over ? `${nameOf(active.id)} is over ${positionOf(over.id)}.` : `${nameOf(active.id)} is not over a position.`,
+      ),
+    onDragEnd: ({ active, over }) =>
+      over ? `Dropped ${nameOf(active.id)} at ${positionOf(over.id)}.` : `Dropped ${nameOf(active.id)}.`,
+    onDragCancel: ({ active }) => `Canceled. ${capitalize(nameOf(active.id))} stayed at ${positionOf(active.id)}.`,
+  };
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -55,11 +82,12 @@ export function SortableList<T>({ items, getId, onReorder, children }: SortableL
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+      accessibility={{ announcements }}
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         {items.map((item, index) => (
-          <SortableItem key={getId(item)} id={getId(item)}>
+          <SortableItem key={ids[index]} id={ids[index]} label={labels.get(ids[index]) ?? ""}>
             {(handle) => children(item, handle, index)}
           </SortableItem>
         ))}
@@ -76,7 +104,15 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function SortableItem({ id, children }: { id: string; children: (handle: ReactNode) => ReactNode }) {
+function SortableItem({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: (handle: ReactNode) => ReactNode;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     // Translate only: dnd-kit scales the dragged item to the item it's over, which
@@ -87,7 +123,7 @@ function SortableItem({ id, children }: { id: string; children: (handle: ReactNo
   const handle = (
     <button
       type="button"
-      aria-label="Drag to reorder"
+      aria-label={`Reorder ${label}`}
       className="flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
       {...attributes}
       {...listeners}

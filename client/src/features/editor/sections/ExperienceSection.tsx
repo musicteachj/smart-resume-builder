@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { SortableList } from "@/components/ui/SortableList";
 
 import { BulletEditor } from "../components/BulletEditor";
+import { entryLabel } from "../entryLabel";
 import { newWorkItem, type EditorValues } from "../editorSchema";
 
 export function ExperienceSection() {
@@ -16,13 +17,29 @@ export function ExperienceSection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.workExperience" });
+  // Names for each job's controls ("Remove Acme Corp", "Bullet 1 from Acme Corp").
+  // Watch only each job's company and title (not the whole array), so typing in a bullet
+  // doesn't re-render the section.
+  const names = useWatch({
+    control,
+    name: fields.flatMap((_, i) => [
+      `content.workExperience.${i}.company` as const,
+      `content.workExperience.${i}.position` as const,
+    ]),
+  }) as (string | undefined)[];
+  const jobLabel = (i: number) => entryLabel([names[i * 2], names[i * 2 + 1]], `job ${i + 1}`);
 
   return (
     <div className="space-y-4">
       {fields.length === 0 && (
         <p className="text-sm text-muted-foreground">No experience added yet.</p>
       )}
-      <SortableList items={fields} getId={(f) => f.id} onReorder={move}>
+      <SortableList
+        items={fields}
+        getId={(f) => f.id}
+        onReorder={move}
+        itemLabel={(_f, i) => jobLabel(i)}
+      >
         {(_f, handle, i) => {
           const e = errors.content?.workExperience?.[i];
           return (
@@ -37,10 +54,10 @@ export function ExperienceSection() {
                 <button
                   type="button"
                   onClick={() => remove(i)}
-                  aria-label="Remove position"
+                  aria-label={`Remove ${jobLabel(i)}`}
                   className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -76,7 +93,7 @@ export function ExperienceSection() {
                   control={control}
                   name={`content.workExperience.${i}.bullets`}
                   render={({ field }) => (
-                    <BulletEditor value={field.value} onChange={field.onChange} />
+                    <BulletEditor value={field.value} onChange={field.onChange} context={jobLabel(i)} />
                   )}
                 />
               </div>
@@ -91,7 +108,7 @@ export function ExperienceSection() {
         onClick={() => append(newWorkItem())}
         className="gap-1.5"
       >
-        <Plus className="h-4 w-4" /> Add experience
+        <Plus className="h-4 w-4" aria-hidden /> Add experience
       </Button>
     </div>
   );

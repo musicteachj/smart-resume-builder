@@ -1,5 +1,6 @@
 import { Copy, FileText, MoreVertical, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRef, type MouseEvent } from "react";
+import { Link } from "react-router-dom";
 
 import type { ResumeList } from "@/api/generated/model";
 import { Card } from "@/components/ui/Card";
@@ -13,47 +14,66 @@ import {
 import { getTemplate } from "@/features/templates/templates";
 import { relativeTime } from "@/lib/format";
 
+/** A click this soon after a press that dismissed the card's menu belongs to that press. */
+const DISMISS_CLICK_WINDOW_MS = 500;
+
 interface ResumeCardProps {
   resume: ResumeList;
   onDuplicate: () => void;
   onDelete: () => void;
 }
 
+/**
+ * One résumé on the dashboard. The whole card is clickable, but the only control that
+ * opens it is the title link (its ::after stretches over the card), so the options menu
+ * isn't nested inside another interactive element and the title stays a real heading.
+ */
 export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
-  const navigate = useNavigate();
-  const open = () => navigate(`/resumes/${resume.id}`);
   const shownSkills = resume.skills.slice(0, 3);
   const extra = resume.skills.length - shownSkills.length;
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // When this card's menu was last dismissed by a press on the card itself.
+  const dismissedOnCardAt = useRef(0);
+
+  // Menus are non-modal (see DropdownMenu), so a press outside the open menu also reaches
+  // what's under it. On this card that's the stretched title link, and clicking the card
+  // to dismiss the menu would open the editor. Remember the dismissal; the link ignores a
+  // click that follows it closely. No global listeners, so nothing can linger.
+  const noteDismissal = (event: Event) => {
+    if (event.target instanceof Node && cardRef.current?.contains(event.target)) {
+      dismissedOnCardAt.current = Date.now();
+    }
+  };
+  const openUnlessDismissing = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (Date.now() - dismissedOnCardAt.current < DISMISS_CLICK_WINDOW_MS) event.preventDefault();
+    dismissedOnCardAt.current = 0;
+  };
 
   return (
     <Card
-      role="button"
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      }}
-      className="group relative cursor-pointer overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-accent hover:shadow-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      ref={cardRef}
+      role="article"
+      aria-labelledby={`resume-${resume.id}-title`}
+      className="group relative overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-accent hover:shadow-medium"
     >
       {/* 3px accent left bar on hover */}
       <span className="pointer-events-none absolute inset-y-0 left-0 w-[3px] bg-accent opacity-0 transition-opacity group-hover:opacity-100" />
 
       <div className="flex items-start justify-between">
         <span className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-variant text-muted-foreground">
-          <FileText className="h-4 w-4" aria-hidden />
+          <FileText className="h-4 w-4" />
         </span>
-        <div onClick={(e) => e.stopPropagation()}>
+        {/* Above the stretched title link, so it gets its own clicks. */}
+        <div className="relative z-[1]">
           <DropdownMenu>
             <DropdownMenuTrigger
-              aria-label="Resume options"
+              aria-label={`Options for ${resume.title}`}
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <MoreVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent onPointerDownOutside={noteDismissal}>
               <DropdownMenuItem onSelect={onDuplicate}>
                 <Copy className="h-4 w-4" /> Duplicate
               </DropdownMenuItem>
@@ -66,7 +86,15 @@ export function ResumeCard({ resume, onDuplicate, onDelete }: ResumeCardProps) {
         </div>
       </div>
 
-      <h3 className="mt-4 font-display text-lg font-semibold text-foreground">{resume.title}</h3>
+      <h2 id={`resume-${resume.id}-title`} className="mt-4 font-display text-lg font-semibold text-foreground">
+        <Link
+          to={`/resumes/${resume.id}`}
+          onClick={openUnlessDismissing}
+          className="after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
+        >
+          {resume.title}
+        </Link>
+      </h2>
       <p className="mt-0.5 text-xs text-muted-foreground">
         Updated {relativeTime(resume.updated_at)} · {getTemplate(resume.template).label} template
       </p>

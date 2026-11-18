@@ -13,9 +13,12 @@ import { applyAiUsage } from "./aiUsage";
 export function ImproveBulletButton({
   value,
   onAccept,
+  label = "Improve with AI",
 }: {
   value: string;
   onAccept: (text: string) => void;
+  /** The button's accessible name; say which bullet when there are several. */
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [suggestion, setSuggestion] = useState("");
@@ -45,7 +48,7 @@ export function ImproveBulletButton({
         type="button"
         onClick={start}
         disabled={!value.trim()}
-        aria-label="Improve with AI"
+        aria-label={label}
         title={value.trim() ? "Improve with AI" : "Write a bullet first"}
         className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
       >

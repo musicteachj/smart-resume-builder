@@ -38,7 +38,7 @@ export function EditorTopBar({
   const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-header flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur">
+    <header className="sticky top-0 z-header flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur">
       <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
@@ -46,7 +46,7 @@ export function EditorTopBar({
           aria-label="Back to dashboard"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden />
         </button>
         <input
           {...register("title")}
@@ -72,7 +72,7 @@ export function EditorTopBar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="gap-1.5">
-              <Download className="h-4 w-4" /> Export
+              <Download className="h-4 w-4" aria-hidden /> Export
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
@@ -101,6 +101,6 @@ export function EditorTopBar({
         sectionOrder={sectionOrder}
       />
       {historyOpen && <VersionHistoryModal onClose={() => setHistoryOpen(false)} />}
-    </div>
+    </header>
   );
 }

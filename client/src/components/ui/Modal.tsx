@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 import { useDiscardConfirm, type DiscardCopy } from "./useDiscardConfirm";
+import { useReturnFocus } from "./useReturnFocus";
 
 /** Ask before a user-initiated close (X, Esc, overlay) while `when` is true. */
 export interface ConfirmDiscard extends DiscardCopy {
@@ -30,6 +31,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const discard = useDiscardConfirm(confirmDiscard);
+  const returnFocus = useReturnFocus();
 
   // Programmatic closes (the parent flipping `open`) bypass this; only Radix's
   // own close requests are intercepted.
@@ -43,6 +45,9 @@ export function Modal({
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-modal bg-foreground/50 backdrop-blur-[1px]" />
         <D.Content
+          {...returnFocus}
+          // No description: tell Radix not to point aria-describedby at one that doesn't exist.
+          {...(description ? {} : { "aria-describedby": undefined })}
           className={cn(
             "fixed left-1/2 top-1/2 z-modal max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface p-6 shadow-heavy focus:outline-none",
             size === "xl" ? "max-w-5xl" : size === "lg" ? "max-w-2xl" : "max-w-md",

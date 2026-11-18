@@ -15,10 +15,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Spinner } from "@/components/ui/Spinner";
+import { fieldErrors } from "@/lib/apiError";
 import { useAuthStore } from "@/stores/auth";
 
 import { ImportResumeModal } from "./ImportResumeModal";
 import { ResumeCard } from "./ResumeCard";
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -30,6 +32,9 @@ export function DashboardPage() {
   const duplicateResume = useDuplicateResume();
   const deleteResume = useDeleteResume();
   const [toDelete, setToDelete] = useState<ResumeList | null>(null);
+  // Covers the delete and the list refresh after it (the dialog stays open for both).
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [importOpen, setImportOpen] = useState(false);
 
   const refreshList = () =>
@@ -59,16 +64,27 @@ export function DashboardPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!toDelete) return;
-    await deleteResume.mutateAsync({ id: toDelete.id });
-    setToDelete(null);
-    await refreshList();
+    if (!toDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteResume.mutateAsync({ id: toDelete.id });
+      // Close only once the card is gone, so the dialog's focus return sees its opener is
+      // gone and moves focus to <main> rather than to a button about to unmount.
+      await refreshList();
+      setToDelete(null);
+    } catch (err) {
+      // Keep the dialog open with the reason, so the user can retry or cancel.
+      setDeleteError(fieldErrors(err).detail ?? "We couldn't delete this resume. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const list = resumes ?? [];
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mx-auto max-w-6xl px-6 py-10 focus:outline-none">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl font-semibold text-foreground">Your resumes</h1>
@@ -132,7 +148,12 @@ export function DashboardPage() {
 
       <ConfirmDialog
         open={toDelete !== null}
-        onOpenChange={(open) => !open && setToDelete(null)}
+        onOpenChange={(open) => {
+          if (open || deleting) return;
+          setToDelete(null);
+          setDeleteError("");
+        }}
+        error={deleteError}
         title="Delete resume?"
         description={
           toDelete
@@ -141,7 +162,7 @@ export function DashboardPage() {
         }
         confirmLabel="Delete"
         destructive
-        loading={deleteResume.isPending}
+        loading={deleting}
         onConfirm={handleConfirmDelete}
       />
 

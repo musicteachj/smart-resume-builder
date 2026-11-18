@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { AuthedLayout } from "@/components/layout/AuthedLayout";
+import { SkipLink } from "@/components/layout/SkipLink";
 import { PageErrorBoundary } from "@/components/PageErrorBoundary";
 import { bootstrapAuth } from "@/features/auth/bootstrap";
 import { LoadingSplash, ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
@@ -39,35 +40,39 @@ function App() {
   }, []);
 
   return (
-    // Last-resort boundary: resets on navigation, so other pages still work.
-    <PageErrorBoundary resetKey={pathname}>
-      <Suspense fallback={<LoadingSplash />}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          {/* Public for everyone, signed in or not. */}
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <>
+      {/* First tab stop on every page; each page's <main> carries the target id. */}
+      <SkipLink />
+      {/* Last-resort boundary: resets on navigation, so other pages still work. */}
+      <PageErrorBoundary resetKey={pathname}>
+        <Suspense fallback={<LoadingSplash />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            {/* Public for everyone, signed in or not. */}
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          <Route element={<PublicOnlyRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          </Route>
-
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AuthedLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/account" element={<AccountPage />} />
+            <Route element={<PublicOnlyRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
-            {/* Editor is full-screen with its own top bar (no app header). */}
-            <Route path="/resumes/:id" element={<EditorPage />} />
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </PageErrorBoundary>
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AuthedLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/account" element={<AccountPage />} />
+              </Route>
+              {/* Editor is full-screen with its own top bar (no app header). */}
+              <Route path="/resumes/:id" element={<EditorPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </PageErrorBoundary>
+    </>
   );
 }
 

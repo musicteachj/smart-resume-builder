@@ -34,7 +34,11 @@ export default {
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
         },
         border: "hsl(var(--border) / <alpha-value>)",
-        input: "hsl(var(--border) / <alpha-value>)",
+        input: {
+          DEFAULT: "hsl(var(--border) / <alpha-value>)",
+          // Form-field borders (Input, Textarea): 3:1 against the surfaces they sit on.
+          border: "hsl(var(--input-border) / <alpha-value>)",
+        },
         ring: "hsl(var(--ring) / <alpha-value>)",
         success: {
           DEFAULT: "hsl(var(--success) / <alpha-value>)",

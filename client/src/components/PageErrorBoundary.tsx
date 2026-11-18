@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 import { Button } from "@/components/ui/Button";
 
 interface Props {
@@ -39,16 +40,19 @@ export class PageErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.failed) return this.props.children;
     return (
-      <div
-        role="alert"
-        className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center"
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center focus:outline-none"
       >
-        <h1 className="font-display text-2xl font-semibold text-foreground">This page didn't load</h1>
-        <p className="max-w-sm text-muted-foreground">
-          Reload to try again. If the app was just updated, reloading also picks up the new version.
-        </p>
+        <div role="alert" className="flex flex-col items-center gap-3">
+          <h1 className="font-display text-2xl font-semibold text-foreground">This page didn't load</h1>
+          <p className="max-w-sm text-muted-foreground">
+            Reload to try again. If the app was just updated, reloading also picks up the new version.
+          </p>
+        </div>
         <Button onClick={() => window.location.reload()}>Reload</Button>
-      </div>
+      </main>
     );
   }
 }

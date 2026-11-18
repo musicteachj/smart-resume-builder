@@ -132,6 +132,7 @@ export function CoverLetterEditor({ resumeId, letter, onSaved, onBack, onDirtyCh
         />
         <div className="text-center text-xs text-muted-foreground">or paste below</div>
         <Textarea
+          aria-label="Job description"
           value={jd}
           onChange={(e) => setJd(e.target.value)}
           rows={9}

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
+import { fieldErrors } from "@/lib/apiError";
 import { downloadBlob, safeFileName } from "@/lib/download";
 
 import { CoverLetterEditor } from "./CoverLetterEditor";
@@ -27,6 +28,8 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<CoverLetter | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CoverLetter | null>(null);
+  const [deleting, setDeleting] = useState(false); // the delete plus the list refresh
+  const [deleteError, setDeleteError] = useState("");
   const [editorDirty, setEditorDirty] = useState(false);
 
   const invalidate = () =>
@@ -40,10 +43,21 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
   const showList = () => setView("list");
 
   const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    await del.mutateAsync({ id: pendingDelete.id });
-    setPendingDelete(null);
-    void invalidate();
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await del.mutateAsync({ id: pendingDelete.id });
+      // Close only once the row is gone, so focus returns into this modal rather than to
+      // the row's Delete button just before it unmounts.
+      await invalidate();
+      setPendingDelete(null);
+    } catch (err) {
+      // Keep the dialog open with the reason, so the user can retry or cancel.
+      setDeleteError(fieldErrors(err).detail ?? "We couldn't delete this cover letter. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const copy = (letter: CoverLetter) => void navigator.clipboard.writeText(letter.body);
@@ -98,20 +112,25 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
               <ul className="divide-y divide-border">
                 {letters.map((l) => (
                   <li key={l.id} className="flex items-center gap-3 py-2.5">
-                    <button className="min-w-0 flex-1 text-left" onClick={() => open(l)}>
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => open(l)}
+                    >
                       <div className="truncate font-medium">{l.title}</div>
                       <div className="truncate text-xs text-muted-foreground">{l.body.split("\n")[0]}</div>
                     </button>
-                    <Button variant="ghost" size="icon" aria-label="Copy" onClick={() => copy(l)}>
+                    {/* Each row's icon buttons name their letter, so they're distinct out of context. */}
+                    <Button variant="ghost" size="icon" aria-label={`Copy ${l.title}`} onClick={() => copy(l)}>
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" aria-label="Download" onClick={() => download(l)}>
+                    <Button variant="ghost" size="icon" aria-label={`Download ${l.title}`} onClick={() => download(l)}>
                       <Download className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Delete this cover letter"
+                      aria-label={`Delete ${l.title}`}
                       onClick={() => setPendingDelete(l)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -127,13 +146,16 @@ export function CoverLettersModal({ onClose }: { onClose: () => void }) {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(o) => {
-          if (!o) setPendingDelete(null);
+          if (o || deleting) return;
+          setPendingDelete(null);
+          setDeleteError("");
         }}
         title="Delete cover letter?"
         description={pendingDelete ? `"${pendingDelete.title}" will be permanently removed.` : undefined}
         confirmLabel="Delete"
         destructive
-        loading={del.isPending}
+        loading={deleting}
+        error={deleteError}
         onConfirm={() => void confirmDelete()}
       />
     </>

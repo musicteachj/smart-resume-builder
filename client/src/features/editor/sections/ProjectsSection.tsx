@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/Textarea";
 
 import { TagInput } from "../components/TagInput";
 import { newProjectItem, type EditorValues } from "../editorSchema";
+import { entryLabel } from "../entryLabel";
 
 export function ProjectsSection() {
   const {
@@ -17,13 +18,24 @@ export function ProjectsSection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.projects" });
+  // Watch only each project's name (not the whole array).
+  const names = useWatch({
+    control,
+    name: fields.map((_, i) => `content.projects.${i}.name` as const),
+  }) as (string | undefined)[];
+  const projectLabel = (i: number) => entryLabel([names[i]], `project ${i + 1}`);
 
   return (
     <div className="space-y-4">
       {fields.length === 0 && (
         <p className="text-sm text-muted-foreground">No projects added yet.</p>
       )}
-      <SortableList items={fields} getId={(f) => f.id} onReorder={move}>
+      <SortableList
+        items={fields}
+        getId={(f) => f.id}
+        onReorder={move}
+        itemLabel={(_f, i) => projectLabel(i)}
+      >
         {(_f, handle, i) => {
           const e = errors.content?.projects?.[i];
           return (
@@ -38,10 +50,10 @@ export function ProjectsSection() {
                 <button
                   type="button"
                   onClick={() => remove(i)}
-                  aria-label="Remove project"
+                  aria-label={`Remove ${projectLabel(i)}`}
                   className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <div className="space-y-3">
@@ -80,7 +92,7 @@ export function ProjectsSection() {
         onClick={() => append(newProjectItem())}
         className="gap-1.5"
       >
-        <Plus className="h-4 w-4" /> Add project
+        <Plus className="h-4 w-4" aria-hidden /> Add project
       </Button>
     </div>
   );

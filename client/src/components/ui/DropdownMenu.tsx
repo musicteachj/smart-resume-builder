@@ -4,7 +4,17 @@ import type { ComponentPropsWithoutRef } from "react";
 
 import { cn } from "@/lib/utils";
 
-export const DropdownMenu = DM.Root;
+/**
+ * Non-modal: a menu isn't a dialog (WAI-ARIA menu button pattern). Radix's default modal
+ * mode sets aria-hidden on the whole app while a menu is open, hiding still-focusable
+ * content from screen readers (axe: aria-hidden-focus). Esc, Tab, and outside clicks still
+ * close it, and focus still returns to the trigger. The catch: the press that dismisses
+ * the menu also reaches whatever is under it; where that would act (ResumeCard's
+ * stretched link), the caller ignores the click that follows the dismissal.
+ */
+export function DropdownMenu(props: ComponentPropsWithoutRef<typeof DM.Root>) {
+  return <DM.Root modal={false} {...props} />;
+}
 export const DropdownMenuTrigger = DM.Trigger;
 
 export function DropdownMenuContent({

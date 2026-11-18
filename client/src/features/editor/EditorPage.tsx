@@ -13,6 +13,7 @@ import {
   getListResumesQueryKey,
   useGetResume,
 } from "@/api/generated/resumes/resumes";
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 import { SortableList } from "@/components/ui/SortableList";
 import { Spinner } from "@/components/ui/Spinner";
 import { downloadBlob, safeFileName } from "@/lib/download";
@@ -65,13 +66,20 @@ export function EditorPage() {
 
   if (isError || !resume) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-6 text-center focus:outline-none"
+      >
         <h1 className="font-display text-2xl font-semibold text-foreground">Resume not found</h1>
         <p className="text-muted-foreground">It may have been deleted, or it isn’t yours.</p>
-        <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
-          <ArrowLeft className="h-4 w-4" /> Back to dashboard
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-1.5 rounded-sm text-sm font-semibold text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden /> Back to dashboard
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -142,7 +150,13 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
       <FormProvider {...methods}>
         <div className="flex h-dvh flex-col bg-background">
           <EditorTopBar status={status} onExport={exportAs} />
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+          <main
+            id={MAIN_CONTENT_ID}
+            tabIndex={-1}
+            className="grid min-h-0 flex-1 grid-cols-1 focus:outline-none lg:grid-cols-2"
+          >
+            {/* The visible title is the editable input in the top bar; this names the page. */}
+            <h1 className="sr-only">Edit resume: {title || "Untitled resume"}</h1>
             {/* Form */}
             <div className="min-h-0 space-y-3 overflow-y-auto border-border p-5 lg:border-r">
               <CollapsibleSection title="Personal info" description="Name, title, and contact details">
@@ -152,6 +166,7 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
               <SortableList
                 items={sectionOrder}
                 getId={(key) => key}
+                itemLabel={(key) => SECTION_PANELS[key as SectionKey].title}
                 onReorder={(from, to) =>
                   methods.setValue("sectionOrder", arrayMove(sectionOrder, from, to), { shouldDirty: true })
                 }
@@ -172,8 +187,8 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
               </SortableList>
             </div>
 
-            {/* Live preview */}
-            <div className="min-h-0 overflow-y-auto bg-surface-variant p-6">
+            {/* Live preview. Its headings are the résumé's own (name, sections). */}
+            <section aria-label="Resume preview" className="min-h-0 overflow-y-auto bg-surface-variant p-6">
               <div className="mx-auto max-w-[816px] shadow-medium">
                 <div ref={printRef}>
                   <ResumeDocument
@@ -184,8 +199,8 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
                   />
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
+          </main>
         </div>
       </FormProvider>
     </EditorSessionProvider>

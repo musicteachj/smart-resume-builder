@@ -54,16 +54,18 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 | `npm run build` | production client build |
 | `npm run test` / `test:client` / `test:server` | Vitest (Phase 8) / pytest |
 | `npm run lint` / `npm run typecheck` | client ESLint / tsc |
+| `npm run test:e2e` | Playwright (Chromium + WebKit) with axe accessibility scans in light and dark; boots Django 8012 + Vite 5181, AI mocked |
 
 Server health check: `GET http://localhost:8000/health` → `{"status": "ok"}`.
 Python deps: edit `server/requirements.in` (direct pins), then regenerate the hashed lock `server/requirements.txt`
 with the `uv pip compile` command in its header. Everything installs from the lock with `--require-hashes`.
 
-**CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has five jobs: client
+**CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has six jobs: client
 (lint, typecheck, Vitest, build), server (`check`, `check --deploy`, `makemigrations --check`, pytest on
 Postgres 15), API schema (`spectacular --validate --fail-on-warn`, then fails if the committed Orval client
 differs from a fresh `gen:api`), Docker (build the image, boot it against Postgres, curl `/health` and the SPA),
-and dependency audit (`npm audit --omit=dev --audit-level=high` + `pip-audit`). `codeql.yml` scans
+dependency audit (`npm audit --omit=dev --audit-level=high` + `pip-audit`), and e2e (Playwright + axe on
+Chromium and WebKit; not a required check). `codeql.yml` scans
 JS/TS, Python, and the workflows (also weekly). Node version comes from `.nvmrc`. If the API schema job fails,
 run `npm run gen:api` in `client/` and commit the result.
 
@@ -73,10 +75,11 @@ run `npm run gen:api` in `client/` and commit the result.
 client/src/
   api/         axios + generated OpenAPI client + TanStack Query hooks (Phase 4)
   components/  shared UI (shadcn-style in components/ui/)
-  features/    auth/ dashboard/ editor/ templates/ ai/
+  features/    auth/ account/ dashboard/ editor/ templates/ ai/ legal/ marketing/
   lib/         utils (cn), zod schemas, print/export
   stores/      zustand (auth/session)
   routes/      React Router config
+client/e2e/   Playwright specs + support (axe, AI mocks) + server/ (e2e settings, DB setup, reset-link helper)
 server/
   config/      settings.py urls.py wsgi.py — env-driven
   apps/        accounts/ resumes/ ai/ (Django apps, Phase 2+)
@@ -84,6 +87,7 @@ docs/DESIGN.md design system (truth)   docs/DEPLOYMENT.md (Phase 10)
 .github/       workflows/ci.yml (PR checks) + codeql.yml
 screens/       mockup references (1 editor, 2 tailor-JD modal, 3 dashboard, 4 template, 5 landing+auth)
 PLAN.md        implementation plan + phase list + build punch-list
+docs/qa/      manual pre-launch checklist (real Safari, VoiceOver, zoom, keyboard)
 ```
 
 ## Conventions
@@ -98,6 +102,8 @@ PLAN.md        implementation plan + phase list + build punch-list
   (pass `confirmDiscard={{ when: ... }}` to `Modal` for X/Esc/overlay closes, and use `useDiscardConfirm` from
   `components/ui/` for in-modal actions that drop a result, like "New analysis" or "Start over").
 - Motion: transform/opacity only, 150–300ms, gated behind `prefers-reduced-motion`.
+- Form-field borders use the `input-border` token (3:1, WCAG 1.4.11); the hairline `border` token is for
+  non-interactive dividers only. Every page renders inside `<main id="main">` (the skip link targets it).
 - Python: Django app code under `apps.<name>`; pytest + pytest-django (`server/pytest.ini`).
 
 ## Definition of done (per phase)
@@ -110,16 +116,21 @@ links at the file bottom. Then STOP — James reviews and commits himself.
 
 ## Future hardening (tech debt)
 
-The big pre-deploy security items are **done** (see the CHANGELOG `[Unreleased]` Security section):
+The big pre-deploy security items are **done** (see the CHANGELOG Security sections):
 refresh token in an `httpOnly` cookie + memory-only access token, refresh-token rotation/revocation,
 login/register throttling (shared database cache), production CSP, prod AI-`502` masking, fail-closed `DEBUG`,
 prod HTTPS/HSTS, `/health` answered before host validation, a 100s/no-retry Anthropic timeout, gthread workers,
-stdout logging, and admin granted only by `manage.py set_admin`. Still open:
+stdout logging, and admin granted only by `manage.py set_admin`. The pre-launch batch (`0.15.0`) closed
+account deletion, Privacy/Terms, password reset, the atomic AI quota, fail-closed CORS/`DATABASE_URL`, admin
+off in prod, the accessibility audit, and automated WebKit coverage. Still open:
 
-- Auth errors allow email enumeration ("email already exists") — acceptable for now; revisit if needed.
-- Deferred from the 2026-10-18 pre-deploy review: account/data deletion, real Privacy/Terms pages, password reset,
-  email verification, a per-user résumé cap, AI quota reserve (check-then-increment isn't atomic), server-side
-  normalization of tailor suggestions, Django admin reachable in prod, accessibility audit, Safari QA pass.
+- Auth errors allow email enumeration ("email already exists"); acceptable for now, revisit if needed.
+- Deferred from the 2026-10-18 pre-deploy review: email verification, a per-user résumé cap, server-side
+  normalization of tailor suggestions.
+- Two tabs restoring a session at the same moment can sign the user out (strict refresh rotation, no reuse grace
+  window). Bootstrap is single-flight within one tab; the cross-tab fix needs a short server-side grace window.
+- James's manual pass: `docs/qa/2026-11-prelaunch-checklist.md` (real Safari print/file picker/trackpad drag,
+  VoiceOver, 200% zoom).
 - **Phase 10 infra checklist** (config, not code):
   - ALB (`portfolio-alb`): **idle timeout 120s** (the chain is Anthropic 100s < ALB 120s < axios 125s; gunicorn
     `--keep-alive 185` must stay above it), Host rule for `resume.jameslittlefield.net`, HTTP→HTTPS redirect.
@@ -130,7 +141,13 @@ stdout logging, and admin granted only by `manage.py set_admin`. Still open:
   - RDS: `rds.force_ssl=1`, and `?sslmode=require` in the `DATABASE_URL` secret. Connections are 2 workers × 8
     threads per task.
   - Secrets Manager: `SECRET_KEY`, `DATABASE_URL`, `ANTHROPIC_API_KEY`. Task env: `ALLOWED_HOSTS`,
-    `CLIENT_URL=https://resume.jameslittlefield.net`.
+    `CLIENT_URL=https://resume.jameslittlefield.net` (required: password reset links are built only from it; unset
+    means no reset email is sent). `DATABASE_URL` is required when `DEBUG` is off. `DJANGO_ADMIN_ENABLED=True`
+    only if you want `/admin/` in prod (off by default, 404).
+  - Email for password reset: set `EMAIL_BACKEND` (for example SES via SMTP or `django-ses`), its credentials, and
+    `DEFAULT_FROM_EMAIL` (verified sender). Without it prod uses the dummy backend and logs a warning per request.
+  - Set up forwarding for `privacy@jameslittlefield.net` (the contact address on the Privacy page,
+    `client/src/lib/site.ts`).
   - Anthropic console: a **monthly spend limit** (open signup; per-user limits don't bound the total).
   - CloudWatch: log retention 14-30 days, alarm on `ERROR|CRITICAL|WORKER TIMEOUT`, ALB 5xx and unhealthy-host.
   - GitHub: enable Dependabot alerts + security updates; dismiss the 3 false-positive CodeQL alerts on `dev`.
@@ -144,6 +161,11 @@ stdout logging, and admin granted only by `manage.py set_admin`. Still open:
   (LinkedIn / GitHub / Website) via the `DocumentLinks` helper, which links **only** `http(s)` URLs
   (validated with `new URL()`); any other scheme (`javascript:`/`data:`) falls back to plain label text —
   a stored-XSS guard. The server-side `URLField` is a second check. Keep both if this code is touched.
+- **Password reset links** are built only from `settings.CLIENT_URL` (never the request `Host`, which would allow
+  reset poisoning), and the uid/token travel in the URL **fragment** (`/reset-password#uid=...&token=...`) so they
+  never reach access logs; the reset page strips them from history. The request endpoint always answers 202.
+- **WhiteNoise must stay just inside `ContentSecurityPolicyMiddleware`** (inserted right after it in settings), so
+  files it serves itself (`index.html`, assets, SVGs) still get the CSP header.
 
 ## Phase status
 
@@ -197,6 +219,12 @@ stdout logging, and admin granted only by `manage.py set_admin`. Still open:
   `EditorPage` revision key; top-bar modals reach autosave through the `EditorSession` context
   (`flush` before any snapshot). Tailor "Apply" saves a "Before tailoring" checkpoint.
   Spec/plan: `docs/superpowers/{specs,plans}/2026-10-18-resume-version-history*`.
+- ✅ Pre-launch batch (`0.15.0`): password reset (Django token generator, console email in dev), password-confirmed
+  account deletion + `/account` page, `/privacy` + `/terms` with real footer links, similarity validator on email
+  and name, query cache cleared on sign-out; production settings fail closed (CORS, `DATABASE_URL`, admin, JSON-only
+  DRF, `section_order` choices, CSP on WhiteNoise responses) and an atomic AI quota reserve with scoped refunds;
+  Playwright + axe e2e on Chromium and WebKit (`client/e2e/`, CI `e2e` job) with the a11y fixes it found (skip link,
+  focus return, labels, `input-border` token). PRs #42, #43, and the QA PR.
 - ⬜ Streaming AI responses (last of the post-audit batch; needs async-capable gunicorn workers, so it's tied to
   the deploy setup).
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres

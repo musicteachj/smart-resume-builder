@@ -6,13 +6,14 @@ import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/stores/auth";
 
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 
 export function AccountPage() {
   const user = useAuthStore((s) => s.user);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mx-auto max-w-3xl px-6 py-10 focus:outline-none">
       <h1 className="font-display text-4xl font-semibold text-foreground">Account</h1>
       <p className="mt-1 text-sm text-muted-foreground">Your sign-in details and your data.</p>
 

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Brand } from "@/components/layout/Brand";
 import { FooterLinks } from "@/components/layout/FooterLinks";
 import { LEGAL_LAST_UPDATED } from "@/lib/site";
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 
 /** Shell for the long-form legal pages (Privacy, Terms): brand header, one readable column. */
 export function LegalLayout({ title, intro, children }: { title: string; intro: ReactNode; children: ReactNode }) {
@@ -31,7 +32,11 @@ export function LegalLayout({ title, intro, children }: { title: string; intro: 
         </Link>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16 pt-10">
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16 pt-10 focus:outline-none"
+      >
         <h1 className="font-display text-4xl font-semibold tracking-[-0.01em] text-foreground">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Last updated: {LEGAL_LAST_UPDATED}</p>
         <div className="mt-6 text-base leading-relaxed text-foreground">{intro}</div>
