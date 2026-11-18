@@ -1,4 +1,4 @@
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Brand } from "@/components/layout/Brand";
@@ -61,6 +61,12 @@ export function AppHeader() {
             <DropdownMenuContent>
               <div className="px-2.5 py-1.5 text-xs text-muted-foreground">{user?.email}</div>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/account">
+                  <UserRound className="h-4 w-4" aria-hidden />
+                  Account
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void handleLogout()}>
                 <LogOut className="h-4 w-4" aria-hidden />
                 Sign out

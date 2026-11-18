@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { queryClient } from "@/api/queryClient";
+
 import { useAuthStore, isAuthenticated } from "./auth";
 
 const user = { id: "u1", email: "a@b.c", name: "A", is_admin: false } as never;
@@ -26,5 +28,12 @@ describe("auth store", () => {
     expect(s.accessToken).toBeNull();
     expect(s.user).toBeNull();
     expect(s.status).toBe("unauthenticated");
+  });
+
+  it("logout clears the query cache, so the next user never sees cached data", () => {
+    useAuthStore.getState().setSession({ user, access: "tok" });
+    queryClient.setQueryData(["/api/resumes/"], [{ id: "r1" }]);
+    useAuthStore.getState().logout();
+    expect(queryClient.getQueryData(["/api/resumes/"])).toBeUndefined();
   });
 });

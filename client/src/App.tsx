@@ -15,6 +15,17 @@ const LoginPage = lazy(() => import("@/features/auth/LoginPage").then((m) => ({ 
 const RegisterPage = lazy(() =>
   import("@/features/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })),
 );
+const ForgotPasswordPage = lazy(() =>
+  import("@/features/auth/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/features/auth/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })),
+);
+const AccountPage = lazy(() =>
+  import("@/features/account/AccountPage").then((m) => ({ default: m.AccountPage })),
+);
+const PrivacyPage = lazy(() => import("@/features/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import("@/features/legal/TermsPage").then((m) => ({ default: m.TermsPage })));
 const DashboardPage = lazy(() =>
   import("@/features/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
@@ -33,15 +44,21 @@ function App() {
       <Suspense fallback={<LoadingSplash />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          {/* Public for everyone, signed in or not. */}
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           </Route>
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthedLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/account" element={<AccountPage />} />
             </Route>
             {/* Editor is full-screen with its own top bar (no app header). */}
             <Route path="/resumes/:id" element={<EditorPage />} />

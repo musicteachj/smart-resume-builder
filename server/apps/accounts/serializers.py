@@ -1,6 +1,9 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import get_user_model, password_validation
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -55,15 +58,23 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
         ]
     )
-    password = serializers.CharField(
-        write_only=True,
-        validators=[validate_password],
-        style={"input_type": "password"},
-    )
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     class Meta:
         model = User
         fields = ["name", "email", "password"]
+
+    def validate_password(self, value):
+        # Field-level, so strength errors arrive together with email errors. The candidate
+        # user lets the similarity check compare against the submitted email and name.
+        candidate = User(
+            email=self.initial_data.get("email", ""), name=self.initial_data.get("name", "")
+        )
+        try:
+            password_validation.validate_password(value, user=candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages)) from exc
+        return value
 
     def create(self, validated_data):
         email = validated_data["email"].lower()
@@ -73,6 +84,39 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
         )
         return user
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """The uid + token from the emailed link, and the new password. The view checks the
+    link first, then validates the password against that user (so similarity counts)."""
+
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+
+def user_from_reset_link(uid: str, token: str, *, for_update: bool = False):
+    """The active user a reset link belongs to, or None if the link is bad, used, or expired.
+    `for_update` locks the user row (call inside a transaction)."""
+    users = User.objects.select_for_update() if for_update else User.objects
+    try:
+        user = users.get(pk=force_str(urlsafe_base64_decode(uid)), is_active=True)
+    except (TypeError, ValueError, OverflowError, DjangoValidationError, User.DoesNotExist):
+        return None
+    return user if default_token_generator.check_token(user, token) else None
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("Incorrect password.")
+        return value
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -97,3 +141,9 @@ class AuthResponseSerializer(serializers.Serializer):
 
 class TokenRefreshResponseSerializer(serializers.Serializer):
     access = serializers.CharField(read_only=True)
+
+
+class DetailResponseSerializer(serializers.Serializer):
+    """A plain `{"detail": "..."}` message."""
+
+    detail = serializers.CharField(read_only=True)

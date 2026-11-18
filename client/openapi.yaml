@@ -178,6 +178,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/TailorJDResponse'
           description: ''
+  /api/auth/delete-account:
+    post:
+      operationId: delete_account
+      description: |-
+        Permanently delete the signed-in user and everything they own (résumés, versions,
+        cover letters, and AI usage logs all cascade). Requires the current password.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeleteAccount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeleteAccount'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/auth/login:
     post:
       operationId: login
@@ -231,6 +256,60 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/auth/password-reset:
+    post:
+      operationId: request_password_reset
+      description: |-
+        Email a password-reset link. Always answers the same way, so it can't reveal
+        whether an email has an account.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/password-reset/confirm:
+    post:
+      operationId: confirm_password_reset
+      description: |-
+        Set a new password from an emailed reset link, then revoke every refresh token
+        (other devices are signed out once their 15-minute access token expires).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+        required: true
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/auth/refresh:
     post:
       operationId: refresh_token
@@ -891,6 +970,23 @@ components:
       required:
       - ai_usage
       - cover_letter
+    DeleteAccount:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+    DetailResponse:
+      type: object
+      description: 'A plain `{"detail": "..."}` message.'
+      properties:
+        detail:
+          type: string
+          readOnly: true
+      required:
+      - detail
     Education:
       type: object
       properties:
@@ -983,6 +1079,31 @@ components:
       required:
       - ai_usage
       - content
+    PasswordResetConfirm:
+      type: object
+      description: |-
+        The uid + token from the emailed link, and the new password. The view checks the
+        link first, then validates the password against that user (so similarity counts).
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+        new_password:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - token
+      - uid
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
     PatchedCoverLetter:
       type: object
       description: A saved cover letter attached to one of the caller's résumés.

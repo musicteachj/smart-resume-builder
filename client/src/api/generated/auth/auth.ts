@@ -26,7 +26,11 @@ import type {
 
 import type {
   AuthResponse,
+  DeleteAccount,
+  DetailResponse,
   EmailTokenObtainPair,
+  PasswordResetConfirm,
+  PasswordResetRequest,
   Register,
   TokenRefreshResponse,
   User
@@ -55,6 +59,71 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
+ * Permanently delete the signed-in user and everything they own (résumés, versions,
+ * cover letters, and AI usage logs all cascade). Requires the current password.
+ */
+export const deleteAccount = (
+    deleteAccountBody: DeleteAccount,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<void>(
+      {url: `/api/auth/delete-account`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: deleteAccountBody, signal
+    },
+      options);
+    }
+
+
+
+
+export const getDeleteAccountMutationKey = () => ['deleteAccount'] as const;
+
+export const getDeleteAccountMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, DeleteAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
+    export type DeleteAccountMutationBody = DeleteAccount
+    export type DeleteAccountMutationError = unknown
+    export type DeleteAccountMutationVariables = {data: DeleteAccount}
+
+    export const useDeleteAccount = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAccount>>,
+        TError,
+        DeleteAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAccountMutationOptions(options), queryClient);
+    }
+    /**
  * Obtain an access token via email + password; set the refresh cookie.
  */
 export const login = (
@@ -270,6 +339,136 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
 
 
 /**
+ * Email a password-reset link. Always answers the same way, so it can't reveal
+ * whether an email has an account.
+ */
+export const requestPasswordReset = (
+    passwordResetRequest: PasswordResetRequest,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<DetailResponse>(
+      {url: `/api/auth/password-reset`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: passwordResetRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getRequestPasswordResetMutationKey = () => ['requestPasswordReset'] as const;
+
+export const getRequestPasswordResetMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,RequestPasswordResetMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,RequestPasswordResetMutationVariables, TContext> => {
+
+const mutationKey = getRequestPasswordResetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestPasswordReset>>, RequestPasswordResetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestPasswordReset(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestPasswordResetMutationResult = NonNullable<Awaited<ReturnType<typeof requestPasswordReset>>>
+    export type RequestPasswordResetMutationBody = PasswordResetRequest
+    export type RequestPasswordResetMutationError = unknown
+    export type RequestPasswordResetMutationVariables = {data: PasswordResetRequest}
+
+    export const useRequestPasswordReset = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,RequestPasswordResetMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestPasswordReset>>,
+        TError,
+        RequestPasswordResetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestPasswordResetMutationOptions(options), queryClient);
+    }
+    /**
+ * Set a new password from an emailed reset link, then revoke every refresh token
+ * (other devices are signed out once their 15-minute access token expires).
+ */
+export const confirmPasswordReset = (
+    passwordResetConfirm: PasswordResetConfirm,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<void>(
+      {url: `/api/auth/password-reset/confirm`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: passwordResetConfirm, signal
+    },
+      options);
+    }
+
+
+
+
+export const getConfirmPasswordResetMutationKey = () => ['confirmPasswordReset'] as const;
+
+export const getConfirmPasswordResetMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,ConfirmPasswordResetMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,ConfirmPasswordResetMutationVariables, TContext> => {
+
+const mutationKey = getConfirmPasswordResetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPasswordReset>>, ConfirmPasswordResetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmPasswordReset(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPasswordResetMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPasswordReset>>>
+    export type ConfirmPasswordResetMutationBody = PasswordResetConfirm
+    export type ConfirmPasswordResetMutationError = unknown
+    export type ConfirmPasswordResetMutationVariables = {data: PasswordResetConfirm}
+
+    export const useConfirmPasswordReset = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,ConfirmPasswordResetMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPasswordReset>>,
+        TError,
+        ConfirmPasswordResetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmPasswordResetMutationOptions(options), queryClient);
+    }
+    /**
  * Issue a new access token from the refresh cookie, rotating the cookie.
  */
 export const refreshToken = (

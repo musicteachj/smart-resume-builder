@@ -2,6 +2,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Brand } from "@/components/layout/Brand";
+import { FooterLinks } from "@/components/layout/FooterLinks";
 import { Button } from "@/components/ui/Button";
 
 const BENEFITS: [string, string][] = [
@@ -63,11 +64,7 @@ export function LandingPage() {
 
       <footer className="mx-auto flex w-full max-w-6xl items-center justify-between border-t border-border px-6 py-5 text-sm text-muted-foreground">
         <span>© 2026 ResumeIQ</span>
-        <div className="flex gap-5">
-          <span>Privacy</span>
-          <span>Terms</span>
-          <span>Contact</span>
-        </div>
+        <FooterLinks />
       </footer>
     </div>
   );
