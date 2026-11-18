@@ -352,11 +352,12 @@ LOGGING = {
 AI_DAILY_LIMIT = 10
 AI_MONTHLY_LIMIT = 50
 
-# AI (Claude) — Opus/Fable are deliberately NOT used. Haiku for the simple
-# rewrites, Sonnet for the reasoning-heavy tailor-to-JD. Env-overridable.
+# AI (Claude): Haiku 5.5 for the short rewrites, Sonnet 5.5 for tailoring, cover letters,
+# the ATS check, and import (Opus/Fable aren't needed). Env-overridable, but the service sends
+# `effort` and structured outputs, so an override must be a model that supports both.
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-4-5")
-AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-4-6")
+AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-5-5")
+AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-5-5")
 # Timeout chain: Anthropic (100s, no retry) < ALB idle (120s) < client axios (125s).
 AI_TIMEOUT_SECONDS = 100
 AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, with 2 retries

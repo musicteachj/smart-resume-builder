@@ -9,7 +9,21 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Changed
+- **AI features run on Claude Haiku 5.5 and Claude Sonnet 5.5** (were Haiku 4.5 and Sonnet 4.6). In a live
+  side-by-side run of all six features on two sample résumés, the new models answered tailoring, cover letters,
+  and the ATS check in about half the time, cost about 30% less overall, and stuck to the candidate's real
+  experience when suggesting tailored bullets (the old model added tools and achievements the résumé didn't have).
+  - Tailoring, the ATS check, and import get JSON through structured outputs instead of a forced tool call,
+    which these models don't accept.
+  - Every call sets an explicit effort level (low, or medium for tailoring) and leaves room for thinking in
+    `max_tokens`.
+  - Import uses normal capitalization for names and bullets even when the source is all caps.
+
 ### Fixed
+- **A request Claude declines now says so**: it returns a clear "Claude couldn't help with this request" message
+  (422) instead of "AI service unavailable", and doesn't count against the AI limit. Sonnet requests fall back to
+  Claude Sonnet 5 on a decline, server side. A reply cut off at its token limit is an error, never partial output.
 - **Keyboard reordering moves one slot per arrow press**: moving a short item past a tall one (for example
   Summary past Work experience) could jump two slots, because the library lined up edges rather than centers.
   Up and Down now center the item on the next slot, and keyboard drags are no longer clamped to the list's

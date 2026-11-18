@@ -45,7 +45,7 @@ cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text fil
 | API client | Orval: a typed axios + TanStack Query client generated from the backend's OpenAPI schema |
 | Backend | Django 5.2, Django REST Framework, SimpleJWT, drf-spectacular (OpenAPI) |
 | Database | PostgreSQL 15 (Docker locally, AWS RDS in production) |
-| AI | Anthropic Claude via the Python SDK: Haiku for quick edits, Sonnet for tailoring, parsing, and cover letters |
+| AI | Anthropic Claude via the Python SDK: Claude Haiku 5.5 for quick edits, Claude Sonnet 5.5 for tailoring, parsing, cover letters, and the ATS check |
 | CI | GitHub Actions (lint, typecheck, tests, schema drift, Docker smoke test, dependency audit) and CodeQL |
 | Hosting | One Docker image (gunicorn serves the API and the built SPA) on AWS ECS Fargate behind an ALB, with ECR, RDS, Secrets Manager, and Route 53 |
 
