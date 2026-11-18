@@ -24,26 +24,30 @@ export function CollapsibleSection({
     <div className="rounded-lg border border-border bg-surface">
       <div className="flex items-center">
         {handle && <span className="pl-2">{handle}</span>}
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className="flex flex-1 items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <span>
-            <span className="block text-sm font-semibold text-foreground">{title}</span>
-            {description && (
-              <span className="block text-xs text-muted-foreground">{description}</span>
-            )}
-          </span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-              open && "rotate-180",
-            )}
-            aria-hidden
-          />
-        </button>
+        {/* Accordion pattern: the toggle sits in a heading so screen-reader users can jump
+            between sections. App type, not the display serif the global h2 style applies. */}
+        <h2 className="flex flex-1 font-sans tracking-normal">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex flex-1 items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-foreground">{title}</span>
+              {description && (
+                <span className="block text-xs font-normal text-muted-foreground">{description}</span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        </h2>
       </div>
       {open && <div className="border-t border-border p-4">{children}</div>}
     </div>

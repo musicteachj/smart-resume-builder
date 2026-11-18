@@ -52,7 +52,7 @@ export function DeleteAccountDialog({
       else setFormError("We couldn't delete your account. Please try again.");
       return;
     }
-    logout();
+    logout({ signedOut: true });
     navigate("/", { replace: true });
   });
 

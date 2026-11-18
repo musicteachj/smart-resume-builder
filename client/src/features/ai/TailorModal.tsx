@@ -160,6 +160,7 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
           />
           <div className="text-center text-xs text-muted-foreground">or paste below</div>
           <Textarea
+            aria-label="Job description"
             value={jd}
             onChange={(e) => setJd(e.target.value)}
             rows={10}
@@ -211,12 +212,18 @@ export function TailorModal({ onClose }: { onClose: () => void }) {
                       onClick={() => toggle(pickedKeywords, setPickedKeywords, kw)}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        // Ink text on the tint: warning-colored 12px text on its own 10% tint
+                        // is 4.4:1 in light mode. The tint and icon carry the status color.
                         picked
-                          ? "bg-success/10 text-success"
-                          : "bg-warning/10 text-warning hover:bg-warning/20",
+                          ? "bg-success/10 text-foreground"
+                          : "bg-warning/10 text-foreground hover:bg-warning/20",
                       )}
                     >
-                      {picked ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                      {picked ? (
+                        <Check className="h-3 w-3 text-success" />
+                      ) : (
+                        <Plus className="h-3 w-3 text-warning" />
+                      )}
                       {kw}
                     </button>
                   );

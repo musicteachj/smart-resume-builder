@@ -8,7 +8,7 @@ const del = vi.fn();
 vi.mock("@/api/generated/cover-letters/cover-letters", () => ({
   useListCoverLetters: () => ({
     data: [
-      { id: "c1", title: "Acme — PM", body: "Dear team…", job_description: "", updated_at: "2026-07-16T00:00:00Z" },
+      { id: "c1", title: "Acme PM role", body: "Dear team…", job_description: "", updated_at: "2026-07-16T00:00:00Z" },
     ],
     isLoading: false,
   }),
@@ -31,13 +31,13 @@ function Harness() {
 describe("CoverLettersModal", () => {
   it("lists saved cover letters", () => {
     render(<Harness />);
-    expect(screen.getByText("Acme — PM")).toBeInTheDocument();
+    expect(screen.getByText("Acme PM role")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /new cover letter/i })).toBeInTheDocument();
   });
 
   it("deletes a letter after confirming in the dialog", async () => {
     render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "Delete this cover letter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Acme PM role" }));
     // The styled ConfirmDialog opens; its confirm button is labelled "Delete".
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(del).toHaveBeenCalledWith({ id: "c1" }));

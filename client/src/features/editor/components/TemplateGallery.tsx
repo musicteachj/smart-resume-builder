@@ -49,7 +49,8 @@ export function TemplateGallery({
               key={t.id}
               type="button"
               aria-pressed={selected}
-              aria-label={`${t.label} template`}
+              // Named by its visible label; the description is read as a description.
+              aria-describedby={`template-${t.id}-description`}
               onClick={() => {
                 onSelect(t.id);
                 onOpenChange(false);
@@ -64,11 +65,13 @@ export function TemplateGallery({
                   every thumbnail and the check badge. The page and badge share one grid cell
                   instead. */}
               <div className="grid h-44 overflow-hidden bg-white">
-                {/* 816px ≈ 8.5in Letter width at 96dpi; zoomed into the thumbnail. Non-interactive. */}
+                {/* 816px ≈ 8.5in Letter width at 96dpi; zoomed into the thumbnail. Non-interactive:
+                    inert, so the résumé's own links aren't tab stops nested inside this button. */}
                 <div
                   className="pointer-events-none [grid-area:1/1]"
                   style={{ width: 816, zoom: 0.23 }}
                   aria-hidden
+                  inert
                 >
                   <ResumeDocument
                     content={content}
@@ -85,10 +88,21 @@ export function TemplateGallery({
               </div>
               <div className="border-t border-border p-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-foreground">{t.label}</span>
-                  {selected && <span className="text-xs font-medium text-accent">Selected</span>}
+                  <span aria-hidden className="text-sm font-semibold text-foreground">
+                    {t.label}
+                  </span>
+                  <span className="sr-only">{t.label} template</span>
+                  {/* aria-pressed already says this to screen readers. */}
+                  {selected && (
+                    <span aria-hidden className="text-xs font-medium text-accent">
+                      Selected
+                    </span>
+                  )}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t.description}</p>
+                {/* Hidden from the button's name (too long), read via aria-describedby. */}
+                <p id={`template-${t.id}-description`} aria-hidden className="mt-0.5 text-xs text-muted-foreground">
+                  {t.description}
+                </p>
               </div>
             </button>
           );

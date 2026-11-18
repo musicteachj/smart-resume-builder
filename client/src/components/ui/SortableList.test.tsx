@@ -26,7 +26,7 @@ describe("SortableList", () => {
     renderList();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.getByText("Beta")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Drag to reorder" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Reorder item/ })).toHaveLength(2);
   });
 
   it("moves a dragged item without stretching it to the size of the item it's over", async () => {
@@ -50,7 +50,7 @@ describe("SortableList", () => {
     ({ container } = renderList());
 
     // Keyboard drag: pick Alpha up, then move it down over Beta.
-    const handle = screen.getAllByRole("button", { name: "Drag to reorder" })[0];
+    const handle = screen.getAllByRole("button", { name: /^Reorder item/ })[0];
     handle.focus();
     fireEvent.keyDown(handle, { code: "Space", key: " " });
     await act(() => new Promise((r) => setTimeout(r, 0)));

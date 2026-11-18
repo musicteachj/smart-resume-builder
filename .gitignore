@@ -4,7 +4,7 @@ node_modules/
 # Python
 __pycache__/
 *.py[cod]
-.venv/
+.venv
 venv/
 *.egg-info/
 
@@ -22,6 +22,11 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/
+# Playwright (client/ e2e suite)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Editor / OS
 .DS_Store

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Brand } from "@/components/layout/Brand";
 import { FooterLinks } from "@/components/layout/FooterLinks";
 import { Button } from "@/components/ui/Button";
+import { MAIN_CONTENT_ID } from "@/components/layout/SkipLink";
 
 const BENEFITS: [string, string][] = [
   ["AI that sharpens, not pads.", "Rewrite any bullet for impact and metrics in one click."],
@@ -17,20 +18,20 @@ export function LandingPage() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
         <Brand />
         <nav className="flex items-center gap-2">
-          <Link to="/login">
-            <Button variant="ghost" size="sm">
-              Sign in
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button variant="secondary" size="sm">
-              Get started
-            </Button>
-          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/login">Sign in</Link>
+          </Button>
+          <Button asChild variant="secondary" size="sm">
+            <Link to="/register">Get started</Link>
+          </Button>
         </nav>
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center px-6 pt-16 text-center">
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center px-6 pt-16 text-center focus:outline-none"
+      >
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
           AI-assisted, recruiter-ready
         </p>
@@ -54,11 +55,11 @@ export function LandingPage() {
           ))}
         </ul>
 
-        <Link to="/register" className="mt-9">
-          <Button size="lg" className="gap-2">
+        <Button asChild size="lg" className="mt-9 gap-2">
+          <Link to="/register">
             Build my resume <ArrowRight className="h-4 w-4" aria-hidden />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <p className="mt-3 text-sm text-muted-foreground">Free to start · No credit card required</p>
       </main>
 

@@ -10,14 +10,19 @@ import { ImproveBulletButton } from "@/features/ai/ImproveBulletButton";
 interface BulletEditorProps {
   value: string[];
   onChange: (next: string[]) => void;
+  /** The entry these bullets belong to (e.g. the company), so each control's name is
+   * unique across entries: "Bullet 1 from Acme Corp". */
+  context?: string;
 }
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
 
-export function BulletEditor({ value, onChange }: BulletEditorProps) {
+export function BulletEditor({ value, onChange, context }: BulletEditorProps) {
   // Stable per-bullet ids, parallel to `value`, so DnD keys survive edits/drags.
   // add/remove/reorder keep them in lockstep with `value` below. If `value` is
   // replaced externally with a different length (e.g. an AI tailor result), we
@@ -45,10 +50,16 @@ export function BulletEditor({ value, onChange }: BulletEditorProps) {
   };
 
   const items = value.map((text, i) => ({ id: ids[i], text, index: i }));
+  const bulletName = (index: number) => `bullet ${index + 1}${context ? ` from ${context}` : ""}`;
 
   return (
     <div className="space-y-2">
-      <SortableList items={items} getId={(it) => it.id} onReorder={reorder}>
+      <SortableList
+        items={items}
+        getId={(it) => it.id}
+        onReorder={reorder}
+        itemLabel={(it) => bulletName(it.index)}
+      >
         {(it, handle) => (
           <div className="flex gap-2">
             {handle}
@@ -56,24 +67,29 @@ export function BulletEditor({ value, onChange }: BulletEditorProps) {
               value={it.text}
               onChange={(e) => update(it.index, e.target.value)}
               rows={2}
+              aria-label={capitalize(bulletName(it.index))}
               placeholder="Describe an accomplishment, ideally with a metric…"
               className="flex-1"
             />
-            <ImproveBulletButton value={it.text} onAccept={(t) => update(it.index, t)} />
+            <ImproveBulletButton
+              value={it.text}
+              onAccept={(t) => update(it.index, t)}
+              label={`Improve ${bulletName(it.index)} with AI`}
+            />
             <button
               type="button"
               onClick={() => remove(it.index)}
-              aria-label="Remove bullet"
+              aria-label={`Remove ${bulletName(it.index)}`}
               className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
         )}
       </SortableList>
       {value.length < 12 && (
         <Button type="button" variant="ghost" size="sm" onClick={add} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Add bullet
+          <Plus className="h-4 w-4" aria-hidden /> Add bullet
         </Button>
       )}
     </div>

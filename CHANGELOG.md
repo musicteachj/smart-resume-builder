@@ -9,6 +9,12 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-18
+
+Pre-launch batch: password reset, account deletion, Privacy and Terms pages, production
+hardening, an atomic AI quota, a Playwright and axe accessibility suite on Chromium and WebKit,
+plus the ResumeIQ logo and the rename.
+
 ### Added
 - **The ResumeIQ logo** (Claude Design; exports and history in `docs/design/logo/`): a résumé page with a
   four-point spark beside a Newsreader "ResumeIQ" wordmark. `Brand` now draws the mark inline (`BrandMark`, in
@@ -33,6 +39,17 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - **Privacy Policy and Terms of Use** pages (`/privacy`, `/terms`), written from the app's actual data flows
   (plain-language drafts pending review). The landing and auth footers now link Privacy, Terms, and a Contact
   email, and the register page notes that creating an account accepts them.
+- **End-to-end and accessibility suite** (`npm run test:e2e`): Playwright on Chromium and WebKit (Safari's engine)
+  at 1280 × 800, plus a WebKit tablet pass at 820 × 1180. It boots its own Django (8012, throwaway
+  `resume_builder_e2e` database) and Vite (5181), mocks every `/api/ai/` call, and follows real password-reset links.
+  Every page state (landing, register, login, forgot and reset password, dashboard, import, editor, template
+  gallery, export menu, tailor, improve bullet, summary, ATS check, cover letters, history, account and account
+  deletion, Privacy, Terms) gets an axe scan (WCAG 2.0/2.1 A and AA) in light and dark, and a keyboard pass checks
+  focus visibility, focus traps, and focus return. The Vite proxy target is now set by `VITE_API_TARGET`.
+- **CI `e2e` job** runs the suite on Postgres 15 and uploads the Playwright report on failure (not a required check).
+- **Skip to main content** link: the first tab stop on every page, visible on focus, jumping to the page's `<main>`.
+- **Manual pre-launch QA checklist** in `docs/qa/2026-11-prelaunch-checklist.md` (real Safari, VoiceOver, zoom,
+  keyboard, reduced motion, dark mode).
 
 ### Changed
 - **README refreshed for release**: the feature list now covers import, cover letters, the ATS health check, version
@@ -102,6 +119,35 @@ Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
   `install:server`). CI pins `pip-audit`. A `dependabot.yml` opens weekly update PRs into `dev`.
 
 ### Fixed
+- **Accessibility fixes from the audit**:
+  - Dialogs return focus to what opened them (Radix only does that for its own Trigger, so focus fell to the page
+    body); a dialog opened from a menu returns to the menu's button. When the opener was deleted, focus goes to the
+    dialog it sat in (deleting a cover letter) or to `<main>` (deleting a résumé); delete dialogs now close only
+    after the list has refreshed, so that fallback applies.
+  - Menus are non-modal, so opening one no longer hides the rest of the app from screen readers (axe
+    `aria-hidden-focus`). Clicking a dashboard card to dismiss its menu just closes the menu.
+  - Dashboard cards were `role="button"` with the options button nested inside; the title is now a link stretched
+    over the card, and card titles are `h2`s.
+  - Template gallery thumbnails held focusable résumé links inside each button (now inert), and the buttons'
+    labels didn't match their visible text.
+  - The account menu's label left out its visible initials (WCAG 2.5.3).
+  - Missing-keyword chips in Tailor were 4.4:1 in light mode; they now use ink text on the tint.
+  - The primary button's hover dropped below 4.5:1 in dark mode; it now brightens instead of fading.
+  - Unlabeled fields (bullets, job descriptions) gained labels; field errors and hints are tied to their input with
+    `aria-describedby` and `aria-invalid`.
+  - Repeated controls say which item they act on ("Remove bullet 2 from Acme Corp", "Reorder Summary", "Delete
+    Platform role"); jobs, schools, and projects are named by company, school, or project name.
+  - Drag-to-reorder announces the item's name and position instead of its internal ID.
+  - The editor has a `<main>` landmark, a page `h1`, and section headings (`h2`) around its collapsible panels.
+- **Form fields have visible borders**: inputs and text areas used the 1.2:1 hairline; a new `input-border` token
+  (light `#878278`, dark `#7C776E`) gives at least 3:1 against page and card in both themes (WCAG 1.4.11).
+- **Signing out or deleting the account lands on the home page**: the route guard saw the session end before the
+  app's own navigation and sent the user to the sign-in form instead. Later visits to a protected page while signed
+  out still go to the sign-in form.
+- **Opening a deep link in development no longer bounces to the dashboard**: React StrictMode ran the session
+  restore twice in the same tab, and the second refresh (with a token the first had just rotated) signed the user
+  out. The restore is now single-flight within a tab. Two tabs refreshing at the same moment can still race; that
+  needs a server-side reuse grace window and is a follow-up.
 - **The AI now sees the whole résumé**: the text sent to Claude (summary, tailor, cover letter, ATS check)
   left out every date, location, the headline, and contact details, so the ATS check reported dates and
   contact info as missing when they were on the page, and generated summaries guessed the years of experience.
@@ -562,7 +608,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.11.0...v0.12.0

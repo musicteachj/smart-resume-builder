@@ -41,7 +41,12 @@ foreground/background pairs for contrast independently per theme.
 | `accent` (CTA/active — RESERVED) | `--accent` / `--primary` | `#0F5132` | `#3DA572` |
 | `accent-foreground` | `--accent-foreground` | `#FFFFFF` | `#10231A` |
 | `border` (hairline) | `--border` | `#E7E5E0` | `#3A3733` |
+| `input-border` (form fields) | `--input-border` | `#878278` | `#7C776E` |
 | `ring` (focus) | `--ring` | `#0F5132` | `#3DA572` |
+
+**Border rule:** form-field borders (Input, Textarea, and any field-like control) use `input-border`
+(`border-input-border`, at least 3:1 against page and card in both themes, WCAG 1.4.11); the hairline `border`
+token is for non-interactive dividers and card edges only.
 | `success` | `--success` | `#15803D` | `#4ADE80` |
 | `warning` | `--warning` | `#B45309` | `#F59E0B` |
 | `destructive` | `--destructive` | `#B42318` | `#F87171` |
@@ -108,6 +113,7 @@ focused field ring, and selected state. Never for decoration, backgrounds, or bo
 ## 6. Accessibility (non-negotiable)
 
 - Contrast ≥4.5:1 body / ≥3:1 large + UI glyphs; verify light *and* dark independently.
+- Form-field boundaries ≥3:1 against their background: use the `input-border` token, never the hairline `border`.
 - Visible 2px focus ring on every interactive element; tab order matches visual order.
 - Icon-only buttons get `aria-label`; SVG icons only (Lucide) — **no emoji as icons**.
 - Form labels via `<label for>`; errors `role="alert"` + `aria-live`; required marked.

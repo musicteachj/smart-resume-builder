@@ -17,7 +17,8 @@
     --muted-foreground: 43 4% 32%; /* #55534E */
     --accent: 152 69% 19%; /* #0F5132 forest green — RESERVED */
     --accent-foreground: 0 0% 100%;
-    --border: 43 13% 89%; /* #E7E5E0 hairline */
+    --border: 43 13% 89%; /* #E7E5E0 hairline (non-interactive dividers) */
+    --input-border: 40 6% 50%; /* #878278 form fields: 3.8:1 on surface, 3.7:1 on page (WCAG 1.4.11) */
     --ring: 152 69% 19%;
     --success: 142 72% 29%; /* #15803D */
     --success-foreground: 0 0% 100%;
@@ -36,6 +37,7 @@
     --accent: 151 46% 44%; /* #3DA572 */
     --accent-foreground: 152 37% 10%; /* #10231A */
     --border: 34 6% 21%; /* #3A3733 */
+    --input-border: 37 6% 46%; /* #7C776E form fields: 3.6:1 on surface, 3.9:1 on page */
     --ring: 151 46% 44%;
     --success: 142 69% 58%; /* #4ADE80 */
     --success-foreground: 40 6% 10%;

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { SortableList } from "@/components/ui/SortableList";
 
 import { newEducationItem, type EditorValues } from "../editorSchema";
+import { entryLabel } from "../entryLabel";
 
 export function EducationSection() {
   const {
@@ -15,13 +16,21 @@ export function EducationSection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const { fields, append, remove, move } = useFieldArray({ control, name: "content.education" });
+  const education = useWatch({ control, name: "content.education" });
+  const schoolLabel = (i: number) =>
+    entryLabel([education?.[i]?.school, education?.[i]?.degree], `school ${i + 1}`);
 
   return (
     <div className="space-y-4">
       {fields.length === 0 && (
         <p className="text-sm text-muted-foreground">No education added yet.</p>
       )}
-      <SortableList items={fields} getId={(f) => f.id} onReorder={move}>
+      <SortableList
+        items={fields}
+        getId={(f) => f.id}
+        onReorder={move}
+        itemLabel={(_f, i) => schoolLabel(i)}
+      >
         {(_f, handle, i) => {
           const e = errors.content?.education?.[i];
           return (
@@ -36,10 +45,10 @@ export function EducationSection() {
                 <button
                   type="button"
                   onClick={() => remove(i)}
-                  aria-label="Remove education"
+                  aria-label={`Remove ${schoolLabel(i)}`}
                   className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-variant hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -76,7 +85,7 @@ export function EducationSection() {
         onClick={() => append(newEducationItem())}
         className="gap-1.5"
       >
-        <Plus className="h-4 w-4" /> Add education
+        <Plus className="h-4 w-4" aria-hidden /> Add education
       </Button>
     </div>
   );
