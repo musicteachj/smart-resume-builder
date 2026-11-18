@@ -269,3 +269,30 @@ def test_refund_skips_a_counter_reset_since_the_reservation(user, settings):
     assert user.ai_calls_this_month == 0  # same 30-day period, so refunded
     assert user.last_month_reset == reservation.month_reset
     assert timezone.now().date() <= user.last_ai_call_date
+
+
+@pytest.mark.django_db
+def test_refusal_is_a_clear_422_and_is_not_charged(auth_client, user, settings, monkeypatch, caplog):
+    from django.utils import timezone
+
+    from apps.ai.service import AIRefusedError
+
+    settings.DEBUG = False
+    user.ai_calls_today = 2
+    user.ai_calls_this_month = 3
+    user.last_ai_call_date = timezone.now().date()
+    user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
+
+    def refuse(text, role=""):
+        raise AIRefusedError("cyber")
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", refuse)
+    with caplog.at_level("WARNING", logger="apps.ai.views"):
+        res = auth_client.post(IMPROVE, {"text": "secret bullet text"}, format="json")
+
+    assert res.status_code == 422
+    assert "couldn't help with this" in res.json()["detail"]
+    user.refresh_from_db()
+    assert (user.ai_calls_today, user.ai_calls_this_month) == (2, 3)
+    assert "category=cyber" in caplog.text
+    assert "secret bullet text" not in caplog.text

@@ -1,15 +1,20 @@
-"""Claude service — the only place that talks to the Anthropic API.
+"""Claude service: the only place that talks to the Anthropic API.
 
-Model routing (settings, env-overridable): Haiku for the simple rewrites,
-Sonnet for the reasoning-heavy tailor-to-JD. Opus/Fable are never used.
+Model routing (settings, env-overridable): Claude Haiku 5.5 for the short rewrites,
+Claude Sonnet 5.5 for tailoring, cover letters, the ATS check, and import. Every call
+goes through `_call`, which sets the effort level, and turns a refusal or a cut-off
+reply into an error instead of returning partial output.
 
-Structured output for tailor-to-JD uses tool-use with a forced tool call — the
-most robust way to get reliable JSON out of both Haiku and Sonnet.
+Both models think before answering (adaptive thinking is on by default), and thinking
+counts toward `max_tokens`, so the caps below leave room for it. Tailoring, the ATS
+check, and import get JSON back through structured outputs (`output_config.format`):
+these models don't accept a forced tool call.
 """
 
 from __future__ import annotations
 
 import functools
+import json
 import re
 import uuid
 
@@ -18,6 +23,16 @@ from django.conf import settings
 
 class AIServiceError(Exception):
     """Raised when an AI call cannot be completed (config or upstream error)."""
+
+
+class AIRefusedError(AIServiceError):
+    """Claude declined the request (`stop_reason: "refusal"`). Shown to the user, not masked."""
+
+    message = "Claude couldn't help with this request. Try rewording it, or remove any unusual content."
+
+    def __init__(self, category: str | None = None):
+        super().__init__(self.message)
+        self.category = category
 
 
 @functools.lru_cache(maxsize=1)
@@ -42,8 +57,54 @@ def _simple_client():
 
 
 def _text_from(message) -> str:
-    """Join all text blocks of a Messages API response."""
+    """Join all text blocks of a Messages API response (thinking blocks are skipped)."""
     return "".join(b.text for b in message.content if getattr(b, "type", None) == "text").strip()
+
+
+# Server-side refusal fallback (beta): if Claude Sonnet 5.5 declines, the API re-runs the
+# request on Claude Sonnet 5 inside the same call. The fallback list is only valid for
+# this model, so other models (an env override) go through the plain endpoint.
+_FALLBACKS = {"claude-sonnet-5-5": [{"model": "claude-sonnet-5"}]}
+_FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+
+def _call(client, *, model: str, effort: str, **kwargs):
+    """Send one Messages request and check how it ended.
+
+    Raises AIRefusedError on a refusal and AIServiceError on any upstream error or a
+    reply cut off at `max_tokens` (partial JSON or a half-sentence is never returned).
+    """
+    params = {"model": model, "output_config": {"effort": effort, **kwargs.pop("output_config", {})}, **kwargs}
+    try:
+        if model in _FALLBACKS:
+            resp = client.beta.messages.create(betas=[_FALLBACK_BETA], fallbacks=_FALLBACKS[model], **params)
+        else:
+            resp = client.messages.create(**params)
+    except AIServiceError:
+        raise
+    except Exception as exc:  # anthropic / network errors
+        raise AIServiceError(str(exc)) from exc
+
+    if resp.stop_reason == "refusal":
+        raise AIRefusedError(getattr(resp.stop_details, "category", None))
+    if resp.stop_reason == "max_tokens":
+        raise AIServiceError("The AI response was cut off before it finished.")
+    return resp
+
+
+def _json_from(message) -> dict:
+    """The JSON object a structured-output response carries in its text block."""
+    try:
+        data = json.loads(_text_from(message))
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        raise AIServiceError("Malformed response from the AI service.")
+    return data
+
+
+def _json_format(schema: dict) -> dict:
+    return {"format": {"type": "json_schema", "schema": schema}}
 
 
 # --- content formatting -----------------------------------------------------
@@ -131,17 +192,14 @@ def improve_bullet(text: str, role: str = "") -> str:
 
     context = f"Target role: {role}\n\n" if role else ""
     user = f"{context}Rewrite this resume bullet:\n\n{text}"
-    try:
-        resp = _simple_client().messages.create(
-            model=settings.AI_MODEL_SIMPLE,
-            max_tokens=256,
-            system=IMPROVE_BULLET,
-            messages=[{"role": "user", "content": user}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:  # anthropic / network errors
-        raise AIServiceError(str(exc)) from exc
+    resp = _call(
+        _simple_client(),
+        model=settings.AI_MODEL_SIMPLE,
+        effort="low",
+        max_tokens=1024,
+        system=IMPROVE_BULLET,
+        messages=[{"role": "user", "content": user}],
+    )
     out = _text_from(resp)
     if not out:
         raise AIServiceError("Empty response from the AI service.")
@@ -152,54 +210,49 @@ def generate_summary(content: dict) -> str:
     from .prompts import GENERATE_SUMMARY
 
     user = "Write a professional summary for this resume:\n\n" + _content_to_text(content)
-    try:
-        resp = _simple_client().messages.create(
-            model=settings.AI_MODEL_SIMPLE,
-            max_tokens=512,
-            system=GENERATE_SUMMARY,
-            messages=[{"role": "user", "content": user}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:
-        raise AIServiceError(str(exc)) from exc
+    resp = _call(
+        _simple_client(),
+        model=settings.AI_MODEL_SIMPLE,
+        effort="low",
+        max_tokens=1536,
+        system=GENERATE_SUMMARY,
+        messages=[{"role": "user", "content": user}],
+    )
     out = _text_from(resp)
     if not out:
         raise AIServiceError("Empty response from the AI service.")
     return out
 
 
-TAILOR_TOOL = {
-    "name": "submit_tailoring",
-    "description": "Submit the ATS match analysis and tailored bullet suggestions.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "match_score": {
-                "type": "integer",
-                "description": "0-100 estimate of how well the resume matches the job description.",
-            },
-            "missing_keywords": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Important job-description terms absent/weak in the resume (most important first).",
-            },
-            "suggestions": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "bullet_id": {"type": "string", "description": "The id token shown in brackets next to the bullet."},
-                        "current": {"type": "string"},
-                        "suggested": {"type": "string"},
-                        "adds": {"type": "array", "items": {"type": "string"}},
-                    },
-                    "required": ["bullet_id", "current", "suggested", "adds"],
+TAILOR_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "match_score": {
+            "type": "integer",
+            "description": "0-100 estimate of how well the resume matches the job description.",
+        },
+        "missing_keywords": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Important job-description terms absent/weak in the resume (most important first).",
+        },
+        "suggestions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "bullet_id": {"type": "string", "description": "The id token shown in brackets next to the bullet."},
+                    "current": {"type": "string"},
+                    "suggested": {"type": "string"},
+                    "adds": {"type": "array", "items": {"type": "string"}},
                 },
+                "required": ["bullet_id", "current", "suggested", "adds"],
+                "additionalProperties": False,
             },
         },
-        "required": ["match_score", "missing_keywords", "suggestions"],
     },
+    "required": ["match_score", "missing_keywords", "suggestions"],
+    "additionalProperties": False,
 }
 
 
@@ -212,26 +265,17 @@ def tailor_to_jd(content: dict, job_description: str) -> dict:
         + "\n\nJob description:\n"
         + job_description
     )
-    try:
-        resp = _client().messages.create(
-            model=settings.AI_MODEL_TAILOR,
-            max_tokens=2048,
-            system=TAILOR_JD,
-            tools=[TAILOR_TOOL],
-            tool_choice={"type": "tool", "name": "submit_tailoring"},
-            messages=[{"role": "user", "content": user}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:
-        raise AIServiceError(str(exc)) from exc
-
-    data = next(
-        (b.input for b in resp.content if getattr(b, "type", None) == "tool_use"),
-        None,
+    resp = _call(
+        _client(),
+        model=settings.AI_MODEL_TAILOR,
+        # Judging fit and rewriting bullets is the one route that gains from more thinking.
+        effort="medium",
+        max_tokens=8000,
+        system=TAILOR_JD,
+        output_config=_json_format(TAILOR_SCHEMA),
+        messages=[{"role": "user", "content": user}],
     )
-    if not isinstance(data, dict):
-        raise AIServiceError("Malformed response from the AI service.")
+    data = _json_from(resp)
 
     # Defensive normalization.
     score = data.get("match_score", 0)
@@ -250,43 +294,37 @@ def generate_cover_letter(content: dict, job_description: str) -> str:
     from .prompts import COVER_LETTER
 
     user = "Resume:\n" + _content_to_text(content) + "\n\nJob description:\n" + job_description
-    try:
-        resp = _client().messages.create(
-            model=settings.AI_MODEL_TAILOR,
-            max_tokens=1200,
-            system=COVER_LETTER,
-            messages=[{"role": "user", "content": user}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:
-        raise AIServiceError(str(exc)) from exc
+    resp = _call(
+        _client(),
+        model=settings.AI_MODEL_TAILOR,
+        effort="low",
+        max_tokens=4000,
+        system=COVER_LETTER,
+        messages=[{"role": "user", "content": user}],
+    )
     out = _text_from(resp)
     if not out:
         raise AIServiceError("Empty response from the AI service.")
     return out
 
 
-ATS_TOOL = {
-    "name": "submit_ats_check",
-    "description": "Submit the ATS readiness score, issues, and recommendations.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "score": {"type": "integer", "description": "0-100 overall ATS readiness / quality."},
-            "issues": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Specific problems with the resume, most important first.",
-            },
-            "recommendations": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Actionable improvements, most impactful first.",
-            },
+ATS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "score": {"type": "integer", "description": "0-100 overall ATS readiness / quality."},
+        "issues": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Specific problems with the resume, most important first.",
         },
-        "required": ["score", "issues", "recommendations"],
+        "recommendations": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Actionable improvements, most impactful first.",
+        },
     },
+    "required": ["score", "issues", "recommendations"],
+    "additionalProperties": False,
 }
 
 
@@ -294,23 +332,16 @@ def ats_health_check(content: dict) -> dict:
     from .prompts import ATS_HEALTH_CHECK
 
     user = "Review this resume:\n\n" + _content_to_text(content)
-    try:
-        resp = _client().messages.create(
-            model=settings.AI_MODEL_TAILOR,
-            max_tokens=1500,
-            system=ATS_HEALTH_CHECK,
-            tools=[ATS_TOOL],
-            tool_choice={"type": "tool", "name": "submit_ats_check"},
-            messages=[{"role": "user", "content": user}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:
-        raise AIServiceError(str(exc)) from exc
-
-    data = next((b.input for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
-    if not isinstance(data, dict):
-        raise AIServiceError("Malformed response from the AI service.")
+    resp = _call(
+        _client(),
+        model=settings.AI_MODEL_TAILOR,
+        effort="low",
+        max_tokens=4000,
+        system=ATS_HEALTH_CHECK,
+        output_config=_json_format(ATS_SCHEMA),
+        messages=[{"role": "user", "content": user}],
+    )
+    data = _json_from(resp)
 
     score = data.get("score", 0)
     try:
@@ -376,7 +407,7 @@ def _clean_list(value, maxlen: int, max_items: int) -> list[str]:
 
 
 def _normalize_parsed(data: dict) -> dict:
-    """Coerce the model's tool output into valid, editor-ready ResumeContent.
+    """Coerce the model's JSON output into valid, editor-ready ResumeContent.
 
     Assigns a UUID to every entry (the schema requires ``id``) and forces
     email/URL fields to valid-or-empty so the downstream create endpoint
@@ -442,60 +473,50 @@ def _normalize_parsed(data: dict) -> dict:
     }
 
 
-PARSE_TOOL = {
-    "name": "submit_resume",
-    "description": "Submit the structured résumé extracted from the provided text.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "personalInfo": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"}, "headline": {"type": "string"},
-                    "email": {"type": "string"}, "phone": {"type": "string"},
-                    "location": {"type": "string"}, "linkedin": {"type": "string"},
-                    "github": {"type": "string"}, "website": {"type": "string"},
-                },
-            },
-            "summary": {"type": "string"},
-            "workExperience": {"type": "array", "items": {"type": "object", "properties": {
-                "company": {"type": "string"}, "position": {"type": "string"},
-                "location": {"type": "string"}, "startDate": {"type": "string"},
-                "endDate": {"type": "string"}, "bullets": {"type": "array", "items": {"type": "string"}},
-            }}},
-            "education": {"type": "array", "items": {"type": "object", "properties": {
-                "school": {"type": "string"}, "degree": {"type": "string"},
-                "field": {"type": "string"}, "graduationDate": {"type": "string"}, "gpa": {"type": "string"},
-            }}},
-            "skills": {"type": "array", "items": {"type": "string"}},
-            "projects": {"type": "array", "items": {"type": "object", "properties": {
-                "name": {"type": "string"}, "description": {"type": "string"},
-                "url": {"type": "string"}, "technologies": {"type": "array", "items": {"type": "string"}},
-            }}},
-        },
-        "required": ["personalInfo", "workExperience", "education", "skills"],
+_STR = {"type": "string"}
+_STRS = {"type": "array", "items": _STR}
+
+
+def _obj(properties: dict) -> dict:
+    """A structured-output object with every field required. Structured outputs allow at
+    most 24 optional fields per schema; the prompt has Claude send "" or [] for anything
+    the résumé doesn't have, and `_normalize_parsed` cleans the result either way."""
+    return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
+
+
+PARSE_SCHEMA = _obj(
+    {
+        "personalInfo": _obj({
+            "name": _STR, "headline": _STR, "email": _STR, "phone": _STR,
+            "location": _STR, "linkedin": _STR, "github": _STR, "website": _STR,
+        }),
+        "summary": _STR,
+        "workExperience": {"type": "array", "items": _obj({
+            "company": _STR, "position": _STR, "location": _STR,
+            "startDate": _STR, "endDate": _STR, "bullets": _STRS,
+        })},
+        "education": {"type": "array", "items": _obj({
+            "school": _STR, "degree": _STR, "field": _STR, "graduationDate": _STR, "gpa": _STR,
+        })},
+        "skills": _STRS,
+        "projects": {"type": "array", "items": _obj({
+            "name": _STR, "description": _STR, "url": _STR, "technologies": _STRS,
+        })},
     },
-}
+)
 
 
 def parse_resume(text: str) -> dict:
     from .prompts import PARSE_RESUME
 
-    try:
-        resp = _client().messages.create(
-            model=settings.AI_MODEL_TAILOR,
-            max_tokens=4096,
-            system=PARSE_RESUME,
-            tools=[PARSE_TOOL],
-            tool_choice={"type": "tool", "name": "submit_resume"},
-            messages=[{"role": "user", "content": f"Résumé text:\n\n{text}"}],
-        )
-    except AIServiceError:
-        raise
-    except Exception as exc:
-        raise AIServiceError(str(exc)) from exc
-
-    data = next((b.input for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
-    if not isinstance(data, dict):
-        raise AIServiceError("Malformed response from the AI service.")
-    return _normalize_parsed(data)
+    resp = _call(
+        _client(),
+        model=settings.AI_MODEL_TAILOR,
+        # Extraction, not judgment: low effort keeps a long résumé inside the timeout.
+        effort="low",
+        max_tokens=12000,
+        system=PARSE_RESUME,
+        output_config=_json_format(PARSE_SCHEMA),
+        messages=[{"role": "user", "content": f"Résumé text:\n\n{text}"}],
+    )
+    return _normalize_parsed(_json_from(resp))

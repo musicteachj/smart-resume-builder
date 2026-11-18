@@ -22,7 +22,7 @@ from .serializers import (
     TailorJDRequestSerializer,
     TailorJDResponseSerializer,
 )
-from .service import AIServiceError
+from .service import AIRefusedError, AIServiceError
 from .usage import (
     AIRateLimitError,
     record_usage,
@@ -49,13 +49,19 @@ def _gate(user):
 
 
 def _ai_error(exc, feature):
-    """502 for an upstream/AI failure. The raw message is handy in dev but may expose
+    """502 for an upstream/AI failure (422 for a refusal, below). The raw message is handy in dev but may expose
     internals, so it's only surfaced under DEBUG; production gets a generic message.
 
     Logs the failure for CloudWatch: the upstream error type, HTTP status, and
     Anthropic request id, never the message text (it can echo the prompt) or any
     résumé content. Our own errors (e.g. missing API key) have no upstream cause and
-    their message is safe to log."""
+    their message is safe to log.
+
+    A refusal is not an outage: it returns 422 with a message the user can act on
+    (reword the request), and logs only the refusal category."""
+    if isinstance(exc, AIRefusedError):
+        logger.warning("AI call refused: feature=%s category=%s", feature, exc.category)
+        return Response({"detail": exc.message}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
     cause = exc.__cause__
     if cause is None:
         logger.warning("AI call failed: feature=%s error=%s", feature, exc)

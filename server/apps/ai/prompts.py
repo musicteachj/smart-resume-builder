@@ -57,7 +57,7 @@ does not have.
 - Return ONLY the cover letter text — no preamble, no explanation, no markdown."""
 
 ATS_HEALTH_CHECK = """You are an expert ATS (applicant tracking system) reviewer. Assess the candidate's \
-résumé for ATS-friendliness and general quality, independent of any specific job, via the submit_ats_check tool.
+résumé for ATS-friendliness and general quality, independent of any specific job.
 
 Produce:
 - score: integer 0-100 overall ATS-readiness / quality score.
@@ -67,14 +67,13 @@ inconsistent formatting, length, weak summary, thin skills, etc.), most importan
 
 Rules:
 - Be specific and reference the actual content; no generic filler.
-- Judge only what is provided; never invent missing facts.
-- Always call the submit_ats_check tool exactly once."""
+- Judge only what is provided; never invent missing facts."""
 
 PARSE_RESUME = """You are an expert résumé parser. Extract the résumé in the provided text into \
-the structured fields of the submit_resume tool. Rules:
+the structured fields of the response. Rules:
 - Extract ONLY what is present. Never invent or embellish. Unknown fields = empty string or empty array.
 - Keep bullet wording verbatim; split distinct accomplishments into separate bullets.
+- Use normal capitalization: names, titles, and companies in title case even if the source is all caps, and each bullet starting with a capital letter.
 - Normalize dates to YYYY-MM (zero-padded month). If a role is current, leave endDate empty. \
 If you cannot determine the month, leave the date empty (do not output a year alone).
-- Put a one-line professional title (if present near the name) in personalInfo.headline.
-- Always call the submit_resume tool exactly once."""
+- Put a one-line professional title (if present near the name) in personalInfo.headline."""

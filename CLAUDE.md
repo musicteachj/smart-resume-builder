@@ -39,7 +39,11 @@ Portfolio project deployed to AWS at `resume.jameslittlefield.net`.
 - **DB** — Postgres 15: `docker compose up -d` locally, AWS RDS in prod.
 - **AI** — Anthropic Python SDK (Phase 7); key via `ANTHROPIC_API_KEY`; limits 10/day & 50/month
   (constants `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` in settings; admins + DEBUG bypass; admin is granted only
-  with `manage.py set_admin <email>`, never by email at signup).
+  with `manage.py set_admin <email>`, never by email at signup). Models: `claude-haiku-5-5` (bullet, summary) and
+  `claude-sonnet-5-5` (tailor, cover letter, ATS check, import), all calls through `service._call` (explicit
+  `effort`, refusal -> 422, cut-off reply -> error). These models reject forced `tool_choice`, so JSON comes from
+  structured outputs (`output_config.format`): every field required, `additionalProperties: false` (the API caps a
+  schema at 24 optional fields). Thinking is on by default and counts toward `max_tokens`.
 - **Python**: use `python3.12` / `server/.venv`. System python3 is 3.9 — too old; never use it.
 
 ## Commands (run from repo root)
