@@ -13,23 +13,28 @@ const PREVIEW = '[aria-label="Resume preview"]';
 async function openEditor(page: Page, id: string) {
   await page.goto(`/resumes/${id}`);
   await expect(page.getByRole("textbox", { name: "Resume title" })).toBeVisible();
+  // Web fonts swapping in mid-test shift the layout under a drag; let them settle first.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
 /**
- * Move the dragged item down one slot with the keyboard. Wait until dnd-kit announces the drag,
- * then press ArrowDown. dnd-kit measures drop targets just after pick-up and silently drops an
- * arrow pressed before that, so press again only while the announced slot is still the starting
- * one. Once the item has moved, never press again (retrying on a mismatch overshot on a slow CI
- * runner, landing on position 4 of 5).
+ * Press an arrow during a keyboard drag and wait for the announced slot. Each press moves the
+ * item exactly one slot (SortableList's one-slot coordinate getter). dnd-kit drops a press made
+ * before it has measured the list (it isn't queued), so press again only while the announced
+ * slot hasn't changed; once the item has moved, never press again, so it can't overshoot.
  */
-async function moveDownOne(page: Page, live: Locator, name: string, expected: string) {
-  await expect(live).toHaveText(new RegExp(`^(Picked up ${name}, |${name} is over )position \\d+ of \\d+\\.$`));
+async function arrow(page: Page, live: Locator, key: "ArrowDown" | "ArrowUp", expected: string) {
   const slot = async () => ((await live.textContent()) ?? "").match(/position (\d+) of/)?.[1];
   const start = await slot();
   await expect(async () => {
-    if ((await slot()) === start) await page.keyboard.press("ArrowDown");
-    await expect(live).toHaveText(expected, { timeout: 2000 });
+    if ((await slot()) === start) await page.keyboard.press(key);
+    await expect(live).toHaveText(expected, { timeout: 1000 });
   }).toPass({ timeout: 15_000 });
+}
+
+async function moveDownOne(page: Page, live: Locator, name: string, expected: string) {
+  await expect(live).toHaveText(new RegExp(`^(Picked up ${name}, |${name} is over )position \\d+ of \\d+\\.$`));
+  await arrow(page, live, "ArrowDown", expected);
 }
 
 function fileName(download: Download) {
@@ -106,6 +111,25 @@ test.describe("editor", () => {
     await page.keyboard.press("Space");
     await expect(page.getByLabel("Company").first()).toHaveValue("Globex");
     await waitForSave(page);
+  });
+
+  test("keyboard reorder moves one slot per arrow press, both ways", async ({ page, user }) => {
+    const resume = await createResumeViaApi(page, user);
+    await openEditor(page, resume.id);
+
+    const handle = page.getByRole("button", { name: "Reorder Summary" });
+    await handle.focus();
+    await page.keyboard.press("Space");
+    const live = page.getByRole("status").filter({ hasText: /Summary/ });
+    await expect(live).toHaveText(/^(Picked up Summary, |Summary is over )position \d+ of 5\.$/);
+    // Sections differ a lot in height (Work experience is tall); each press is still one slot.
+    for (const position of [2, 3, 4, 5]) {
+      await arrow(page, live, "ArrowDown", `Summary is over position ${position} of 5.`);
+    }
+    for (const position of [4, 3, 2, 1]) {
+      await arrow(page, live, "ArrowUp", `Summary is over position ${position} of 5.`);
+    }
+    await page.keyboard.press("Escape");
   });
 
   test("template gallery: pick a template and a font", async ({ page, user }) => {
