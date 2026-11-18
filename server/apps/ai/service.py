@@ -19,6 +19,7 @@ import re
 import uuid
 
 from django.conf import settings
+from django.utils import timezone
 
 
 class AIServiceError(Exception):
@@ -129,10 +130,13 @@ def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
     """Render resume content as compact plain text for the prompt.
 
     Includes dates, locations, and the headline (the ATS check, summary, and tailoring all depend on them),
-    and says which contact details exist without sending their values.
+    and says which contact details exist without sending their values. Opens with today's date: the model
+    doesn't know it, so "years of experience" for a role running to the present would otherwise be a guess.
+    The date goes here, in the user message, not in the system prompts, so those stay identical across calls.
     """
+    today = timezone.now().date()
     pi = content.get("personalInfo") or {}
-    lines: list[str] = []
+    lines: list[str] = [f"Today's date: {today:%B} {today.day}, {today.year}"]
     if pi.get("name"):
         lines.append(f"Name: {pi['name']}")
     if pi.get("headline"):

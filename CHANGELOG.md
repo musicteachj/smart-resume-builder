@@ -21,6 +21,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   - Import uses normal capitalization for names and bullets even when the source is all caps.
 
 ### Fixed
+- **AI features know today's date**: the résumé text sent to Claude now opens with it, so a summary or cover
+  letter counts years of experience correctly for a role that runs to the present (both models guessed the year
+  before). The summary and cover-letter prompts say to leave the number out when the dates don't support one.
 - **A request Claude declines now says so**: it returns a clear "Claude couldn't help with this request" message
   (422) instead of "AI service unavailable", and doesn't count against the AI limit. Sonnet requests fall back to
   Claude Sonnet 5 on a decline, server side. A reply cut off at its token limit is an error, never partial output.
