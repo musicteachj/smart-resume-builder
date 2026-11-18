@@ -82,6 +82,51 @@ def test_section_order_round_trips(auth_client, content):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "order",
+    [
+        ["skills", "<script>"],  # unknown key
+        ["Summary"],  # keys are case-sensitive
+        ["skills", "summary", "skills"],  # duplicate
+    ],
+)
+def test_section_order_rejects_unknown_and_duplicate_keys(auth_client, content, order):
+    rid = auth_client.post(
+        LIST, {"title": "R", "template": "classic", "content": content}, format="json"
+    ).json()["id"]
+    res = auth_client.patch(detail(rid), {"section_order": order}, format="json")
+    assert res.status_code == 400
+    assert "section_order" in res.json()
+    assert auth_client.get(detail(rid)).json()["section_order"] == []
+
+
+@pytest.mark.django_db
+def test_section_order_accepts_the_full_canonical_set(auth_client, content):
+    order = ["projects", "skills", "education", "experience", "summary"]
+    res = auth_client.post(
+        LIST,
+        {"title": "R", "template": "classic", "content": content, "section_order": order},
+        format="json",
+    )
+    assert res.status_code == 201
+    assert res.json()["section_order"] == order
+
+
+@pytest.mark.django_db
+def test_legacy_section_order_still_reads_and_duplicates(auth_client, user, content):
+    # Rows saved before validation tightened may hold keys the API now rejects. They
+    # must still load and duplicate (the client normalizes the order on read).
+    legacy = Resume.objects.create(
+        user=user, title="Old", template="classic", content=content,
+        section_order=["skills", "skills", "retired-section"],
+    )
+    assert auth_client.get(detail(legacy.id)).status_code == 200
+    res = auth_client.post(duplicate_url(legacy.id), format="json")
+    assert res.status_code == 201
+    assert res.json()["section_order"] == ["skills", "skills", "retired-section"]
+
+
+@pytest.mark.django_db
 def test_delete(auth_client, content):
     rid = auth_client.post(
         LIST, {"title": "Temp", "template": "classic", "content": content}, format="json"

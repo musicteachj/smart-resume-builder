@@ -26,9 +26,12 @@ COPY --from=client-build /app/client/dist ./spa
 # STATIC_ROOT itself, and the ALB doesn't compress. Roughly 3x fewer bytes.
 RUN python -m whitenoise.compress spa
 
-# Collect Django/admin/DRF/Swagger static. SECRET_KEY/DEBUG here are throwaway
-# build-time values (real ones come from the environment at runtime).
-RUN SECRET_KEY=build-only DEBUG=False python manage.py collectstatic --noinput
+# Collect Django/admin/DRF/Swagger static. SECRET_KEY/DEBUG/DATABASE_URL here are
+# throwaway build-time values (real ones come from the environment at runtime);
+# collectstatic never connects to the database, but production settings require the URL.
+RUN SECRET_KEY=build-only DEBUG=False \
+    DATABASE_URL=postgres://build:build@localhost:5432/build-only \
+    python manage.py collectstatic --noinput
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

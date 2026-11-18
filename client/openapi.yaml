@@ -1033,9 +1033,8 @@ components:
         section_order:
           type: array
           items:
-            type: string
-            pattern: ^[-a-zA-Z0-9_]+$
-          maxItems: 12
+            $ref: '#/components/schemas/SectionOrderEnum'
+          maxItems: 5
         content:
           $ref: '#/components/schemas/ResumeContent'
         created_at:
@@ -1175,9 +1174,8 @@ components:
         section_order:
           type: array
           items:
-            type: string
-            pattern: ^[-a-zA-Z0-9_]+$
-          maxItems: 12
+            $ref: '#/components/schemas/SectionOrderEnum'
+          maxItems: 5
         content:
           $ref: '#/components/schemas/ResumeContent'
         created_at:
@@ -1389,6 +1387,20 @@ components:
       - resume
       - template
       - title
+    SectionOrderEnum:
+      enum:
+      - summary
+      - experience
+      - education
+      - skills
+      - projects
+      type: string
+      description: |-
+        * `summary` - summary
+        * `experience` - experience
+        * `education` - education
+        * `skills` - skills
+        * `projects` - projects
     TailorJDRequest:
       type: object
       properties:

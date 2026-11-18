@@ -47,7 +47,16 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-CLIENT_URL = os.environ.get("CLIENT_URL", "http://localhost:5173")
+# The SPA's origin, for CORS. Production serves the SPA from the API's own origin, so
+# there's no cross-origin client: an unset CLIENT_URL there means no CORS origins at all
+# (fail closed) instead of the Vite dev server. An empty value counts as unset.
+CLIENT_URL = os.environ.get("CLIENT_URL") or ("http://localhost:5173" if DEBUG else "")
+
+# The Django admin is mounted only under DEBUG or when explicitly enabled, so in
+# production /admin/ is a 404 instead of a login page to brute-force.
+DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "False").lower() in (
+    "true", "1", "yes",
+)
 
 
 # Application definition
@@ -79,7 +88,8 @@ MIDDLEWARE = [
     # Sets a Content-Security-Policy on every response in production (no-op under
     # DEBUG so Vite's dev server keeps working). Cheap response-header middleware.
     "config.middleware.ContentSecurityPolicyMiddleware",
-    # WhiteNoise (serves the built SPA + static) is inserted below for non-DEBUG.
+    # WhiteNoise (serves the built SPA + static) is inserted right after CSP below for
+    # non-DEBUG, so the files it answers itself (index.html, assets) still get the CSP.
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -92,7 +102,12 @@ MIDDLEWARE = [
 if not DEBUG:
     # In dev, Django's runserver serves static; WhiteNoise is only needed in
     # the production container (after collectstatic).
-    MIDDLEWARE.insert(2, "whitenoise.middleware.WhiteNoiseMiddleware")
+    # After the CSP middleware: WhiteNoise answers file requests itself, and only the
+    # middleware above it sees (and adds headers to) those responses.
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("config.middleware.ContentSecurityPolicyMiddleware") + 1,
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+    )
 
     # HTTPS hardening — TLS terminates at the ALB, which forwards plain HTTP with
     # X-Forwarded-Proto. Trusting that header makes request.is_secure() correct.
@@ -132,11 +147,23 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# Database — DATABASE_URL, e.g. postgres://user:pass@localhost:5432/resume_builder
+# Database: DATABASE_URL, e.g. postgres://user:pass@localhost:5432/resume_builder.
+# Required in production, so a missing secret fails at startup instead of quietly
+# pointing at localhost. DEBUG falls back to the docker-compose database. An empty
+# value counts as unset.
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    if DEBUG:
+        DATABASE_URL = "postgres://resume_user:resume_pass@localhost:5432/resume_builder"
+    else:
+        raise ImproperlyConfigured(
+            "DATABASE_URL environment variable is required when DEBUG=False"
+        )
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default="postgres://resume_user:resume_pass@localhost:5432/resume_builder",
+    "default": dj_database_url.parse(
+        DATABASE_URL,
         conn_max_age=600,
         # Re-check a persistent connection before reuse, so an RDS restart or failover
         # doesn't cost each worker one 500. (TLS to RDS: `sslmode=require` in the
@@ -178,6 +205,16 @@ REST_FRAMEWORK = {
     # whole client-supplied X-Forwarded-For header, which an attacker can rotate
     # to dodge the auth throttle. No effect in dev (no XFF header there).
     "NUM_PROXIES": 1,
+    # JSON only in production: the browsable API (an HTML page per endpoint) isn't
+    # part of the product. Swagger UI has its own renderers, so it's unaffected.
+    "DEFAULT_RENDERER_CLASSES": (
+        [
+            "rest_framework.renderers.JSONRenderer",
+            "rest_framework.renderers.BrowsableAPIRenderer",
+        ]
+        if DEBUG
+        else ["rest_framework.renderers.JSONRenderer"]
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -213,7 +250,7 @@ SIMPLE_JWT = {
 
 # CORS — Vite dev server locally; same-origin in production (SPA served by Django)
 
-CORS_ALLOWED_ORIGINS = [CLIENT_URL]
+CORS_ALLOWED_ORIGINS = [CLIENT_URL] if CLIENT_URL else []
 # Allow credentials so the refresh cookie rides along (flows are same-origin in dev-via-proxy and prod).
 CORS_ALLOW_CREDENTIALS = True
 

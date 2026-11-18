@@ -15,3 +15,4 @@ def immutable_file_test(path, url):
     short-lived.
     """
     return url.startswith("/assets/") or bool(_HASHED_STATIC.match(url))
+

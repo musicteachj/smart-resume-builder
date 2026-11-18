@@ -24,7 +24,6 @@ def spa_index(_request):
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     # API
     path("api/auth/", include("apps.accounts.urls")),
     path("api/", include("apps.resumes.urls")),
@@ -40,3 +39,8 @@ urlpatterns = [
     # index.html so React Router can take over. WhiteNoise serves real asset files first.
     re_path(r"^(?!api/|admin/|static/|assets/|health$).*$", spa_index),
 ]
+
+# Django admin: dev, or production only when DJANGO_ADMIN_ENABLED is set. Otherwise
+# /admin/ matches nothing (the SPA fallback above excludes it), so it's a 404.
+if settings.DEBUG or settings.DJANGO_ADMIN_ENABLED:
+    urlpatterns.insert(0, path("admin/", admin.site.urls))

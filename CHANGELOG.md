@@ -47,6 +47,24 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - **`certifi` 2026.10.18 → 2026.10.19** (pulled in by the HTTP clients) for PYSEC-2026-4320. Only that pin and its
   hashes change in `server/requirements.txt`.
 
+Pre-launch hardening (production settings fail closed).
+- **CORS fails closed**: `CLIENT_URL` defaults to the Vite dev server only under `DEBUG`; in production an unset
+  `CLIENT_URL` allows no cross-origin requests (the SPA is same-origin there).
+- **`DATABASE_URL` is required in production**: settings raise `ImproperlyConfigured` instead of quietly falling
+  back to the local database. The image build passes a throwaway value to `collectstatic`.
+- **Django admin is off in production**: `/admin/` is mounted only under `DEBUG` or with
+  `DJANGO_ADMIN_ENABLED=True`, so it's a 404 otherwise.
+- **No browsable API in production**: DRF renders JSON only when `DEBUG` is off (Swagger UI is unaffected).
+- **`section_order` is validated**: only the five known section keys, each at most once. Existing saved orders
+  still load, duplicate, and restore.
+- **CSP on every WhiteNoise response**: WhiteNoise now sits just inside the CSP middleware instead of ahead of it,
+  so `/index.html` and SPA assets (including SVGs) get the `Content-Security-Policy` header too.
+- **AI quota is reserved atomically**: one conditional `UPDATE` claims a call before the AI request runs (zero rows
+  means 429), so concurrent requests can't overspend the daily or monthly limit. Any failure during the AI call
+  (not only upstream errors) refunds it, and only within the same day and 30-day period it was claimed in. The
+  daily and monthly resets are conditional too, so a stale read can't erase a reservation.
+- The "no CSP under `DEBUG`" test now hits a route that goes through the middleware (`/health` answers first).
+
 Fixes from the 2026-10-18 pre-deploy review (security + deploy readiness).
 - **Sessions survive past 15 minutes, and logout always revokes**: refresh and logout ran DRF authentication, so
   the SPA's expired in-memory Bearer made them 401 before the view ran. The silent refresh failed (users were

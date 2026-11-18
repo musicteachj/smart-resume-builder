@@ -25,8 +25,9 @@ from .serializers import (
 from .service import AIServiceError
 from .usage import (
     AIRateLimitError,
-    check_limit,
     record_usage,
+    refund_on_failure,
+    reserve,
     reset_if_needed,
     usage_snapshot,
 )
@@ -35,16 +36,16 @@ logger = logging.getLogger(__name__)
 
 
 def _gate(user):
-    """Reset counters and enforce the limit. Returns a 429 Response if over, else None."""
+    """Reset counters and reserve one call. Returns (429 Response, None) if over,
+    else (None, reservation). Run the AI call inside refund_on_failure(user, reservation)."""
     reset_if_needed(user)
     try:
-        check_limit(user)
+        return None, reserve(user)
     except AIRateLimitError as exc:
         return Response(
             {"detail": exc.message, "scope": exc.scope, "ai_usage": usage_snapshot(user)},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-    return None
+        ), None
 
 
 def _ai_error(exc, feature):
@@ -90,13 +91,15 @@ class ImproveBulletView(_AIView):
         req = ImproveBulletRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         text = req.validated_data["text"]
         role = req.validated_data.get("role", "")
         try:
-            suggestion = service.improve_bullet(text, role)
+            with refund_on_failure(user, reservation):
+                suggestion = service.improve_bullet(text, role)
         except AIServiceError as exc:
             record_usage(user, "improve-bullet", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "improve-bullet")
@@ -116,12 +119,14 @@ class GenerateSummaryView(_AIView):
         req = GenerateSummaryRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         content = req.validated_data["content"]
         try:
-            summary = service.generate_summary(content)
+            with refund_on_failure(user, reservation):
+                summary = service.generate_summary(content)
         except AIServiceError as exc:
             record_usage(user, "generate-summary", input_length=len(str(content)), output_length=0, success=False)
             return _ai_error(exc, "generate-summary")
@@ -141,14 +146,16 @@ class TailorJDView(_AIView):
         req = TailorJDRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         content = req.validated_data["content"]
         jd = req.validated_data["job_description"]
         in_len = len(jd) + len(str(content))
         try:
-            result = service.tailor_to_jd(content, jd)
+            with refund_on_failure(user, reservation):
+                result = service.tailor_to_jd(content, jd)
         except AIServiceError as exc:
             record_usage(user, "tailor-jd", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "tailor-jd")
@@ -168,12 +175,14 @@ class ParseResumeView(_AIView):
         req = ParseResumeRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         text = req.validated_data["text"]
         try:
-            content = service.parse_resume(text)
+            with refund_on_failure(user, reservation):
+                content = service.parse_resume(text)
         except AIServiceError as exc:
             record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "parse-resume")
@@ -193,14 +202,16 @@ class CoverLetterView(_AIView):
         req = CoverLetterRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         content = req.validated_data["content"]
         jd = req.validated_data["job_description"]
         in_len = len(jd) + len(str(content))
         try:
-            letter = service.generate_cover_letter(content, jd)
+            with refund_on_failure(user, reservation):
+                letter = service.generate_cover_letter(content, jd)
         except AIServiceError as exc:
             record_usage(user, "cover-letter", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "cover-letter")
@@ -220,13 +231,15 @@ class AtsCheckView(_AIView):
         req = AtsCheckRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         user = request.user
-        if (over := _gate(user)) is not None:
+        over, reservation = _gate(user)
+        if over is not None:
             return over
 
         content = req.validated_data["content"]
         in_len = len(str(content))
         try:
-            result = service.ats_health_check(content)
+            with refund_on_failure(user, reservation):
+                result = service.ats_health_check(content)
         except AIServiceError as exc:
             record_usage(user, "ats-check", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "ats-check")
