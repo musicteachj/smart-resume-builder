@@ -9,7 +9,14 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-18
+
+AI features move to Claude Haiku 5.5 and Claude Sonnet 5.5, the AI knows today's date, declined requests say so,
+keyboard reordering moves one slot per press, and the README catches up with the pre-launch batch.
+
 ### Changed
+- **README brought up to date**: password reset, account deletion, Privacy and Terms, the accessibility work, the
+  Playwright and axe suite (`npm run test:e2e`), where reset emails go in development, and the production hardening.
 - **AI features run on Claude Haiku 5.5 and Claude Sonnet 5.5** (were Haiku 4.5 and Sonnet 4.6). In a live
   side-by-side run of all six features on two sample résumés, the new models answered tailoring, cover letters,
   and the ATS check in about half the time, cost about 30% less overall, and stuck to the candidate's real
@@ -634,7 +641,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.12.0...v0.13.0

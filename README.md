@@ -33,9 +33,19 @@ cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text fil
 - Six document fonts (Georgia, Times New Roman, Garamond, Arial, Helvetica, Calibri), chosen per resume
 - Export to PDF (identical to the preview), DOCX, or plain text
 
-**Accounts and cost protection**
-- Email and password sign-in (Google sign-in planned)
-- Per-user AI usage tracking with daily and monthly limits (10 and 50 calls)
+**Accounts and privacy**
+- Email and password sign-in (Google sign-in planned), with password reset by email
+- An Account page where you can delete your account and every résumé, version, and cover letter with it
+- Plain-language Privacy and Terms pages that say exactly what is stored and what is sent to Claude
+- Per-user AI usage tracking with daily and monthly limits (10 and 50 calls); a failed or declined AI request
+  isn't counted
+
+**Accessibility**
+- Keyboard-friendly throughout: a skip link on every page, focus that returns to where you were after a dialog
+  closes, and drag-to-reorder by keyboard (Space to pick up, arrows to move one slot, Space to drop)
+- Screen-reader labels that name the item a button acts on, and announcements as items move
+- Contrast checked in light and dark mode, including 3:1 borders on form fields
+- An automated axe (WCAG 2.1 AA) scan of every main page in Chromium and WebKit (Safari's engine) on each pull request
 
 ## Tech stack
 
@@ -46,15 +56,16 @@ cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text fil
 | Backend | Django 5.2, Django REST Framework, SimpleJWT, drf-spectacular (OpenAPI) |
 | Database | PostgreSQL 15 (Docker locally, AWS RDS in production) |
 | AI | Anthropic Claude via the Python SDK: Claude Haiku 5.5 for quick edits, Claude Sonnet 5.5 for tailoring, parsing, cover letters, and the ATS check |
-| CI | GitHub Actions (lint, typecheck, tests, schema drift, Docker smoke test, dependency audit) and CodeQL |
+| CI | GitHub Actions (lint, typecheck, tests, schema drift, Docker smoke test, dependency audit, Playwright end-to-end and axe accessibility checks) and CodeQL |
 | Hosting | One Docker image (gunicorn serves the API and the built SPA) on AWS ECS Fargate behind an ALB, with ECR, RDS, Secrets Manager, and Route 53 |
 
 ## Repository layout
 
 ```
 client/              React + Vite + Tailwind frontend
+client/e2e/          Playwright end-to-end and accessibility tests (Chromium + WebKit)
 server/              Django + DRF API (apps: accounts, resumes, ai)
-docs/                DESIGN.md (design system), design/ (logo and brand assets)
+docs/                DESIGN.md (design system), design/ (logo and brand assets), qa/ (manual Safari and VoiceOver checklist)
 screens/             High-fidelity design mockups (visual reference)
 .github/workflows/   CI and CodeQL
 Dockerfile           Multi-stage production image (Node builds the SPA, Python serves it)
@@ -91,6 +102,9 @@ Settings are fail-closed: without `DEBUG=True` in `.env`, Django runs in product
 Usage limits don't apply while `DEBUG` is on. In production, an account gets unlimited AI calls only through
 `server/.venv/bin/python server/manage.py set_admin <email>`.
 
+Password reset emails aren't sent in development: the reset link prints in the `npm run dev` terminal (Django's
+console email backend). Production needs a real `EMAIL_BACKEND` and `CLIENT_URL` (reset links are built from it).
+
 ### Run the production image locally
 
 ```bash
@@ -106,6 +120,7 @@ docker compose --profile prod up --build app   # API + built SPA on http://local
 | `npm run build` | Production client build |
 | `npm run test` | Client (Vitest) + server (pytest) tests; `test:client` / `test:server` run one side |
 | `npm run lint` / `npm run typecheck` | Client lint / TypeScript check |
+| `npm run test:e2e` | Playwright end-to-end and axe accessibility tests in Chromium and WebKit (starts its own Django and Vite servers; AI calls are mocked). First run: `npx playwright install chromium webkit` in `client/` |
 
 After any backend API change, regenerate the typed client with `npm run gen:api` in `client/`. CI fails if the
 committed client differs from a fresh generation.
@@ -114,7 +129,12 @@ committed client differs from a fresh generation.
 
 - Access tokens live in memory only; the refresh token is an `httpOnly` cookie with rotation and revocation on logout
 - Login and registration are throttled, and resume and cover-letter writes are rate-limited per user
-- Production sends a strict Content Security Policy, HTTPS redirects, and HSTS
+- Password reset can't be used to learn whether an email has an account, reset links are built only from the
+  configured site URL, the token never reaches server logs, and a reset signs out other devices within 15 minutes
+- Production sends a strict Content Security Policy (including on the built SPA files), HTTPS redirects, and HSTS
+- Production settings fail closed: no cross-origin access unless `CLIENT_URL` is set, no fallback database,
+  no Django admin unless `DJANGO_ADMIN_ENABLED` is set, and JSON-only API responses
+- AI usage limits are enforced with a single atomic database update, so simultaneous requests can't overspend them
 - All resume content is rendered through React's escaping, and resume links only become clickable for `http(s)` URLs
 
 ## Design

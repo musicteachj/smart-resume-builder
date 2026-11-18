@@ -229,6 +229,9 @@ off in prod, the accessibility audit, and automated WebKit coverage. Still open:
   DRF, `section_order` choices, CSP on WhiteNoise responses) and an atomic AI quota reserve with scoped refunds;
   Playwright + axe e2e on Chromium and WebKit (`client/e2e/`, CI `e2e` job) with the a11y fixes it found (skip link,
   focus return, labels, `input-border` token). PRs #42, #43, and the QA PR.
+- ✅ Models and polish (`0.16.0`): AI on `claude-haiku-5-5` / `claude-sonnet-5-5` via `service._call` (structured
+  outputs, explicit effort, refusal -> 422), today's date in the résumé prompt text, keyboard reorder one slot per
+  press (`SortableList` coordinate getter), README refreshed. PRs #45, #46, #47 and the README/version PR.
 - ⬜ Streaming AI responses (last of the post-audit batch; needs async-capable gunicorn workers, so it's tied to
   the deploy setup).
 - ⬜ Phase 10 — AWS deploy: ECR + ECS Fargate (`portfolio-cluster`) + `portfolio-alb` target group + RDS Postgres
