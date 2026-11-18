@@ -9,6 +9,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Fixed
+- **Keyboard reordering moves one slot per arrow press**: moving a short item past a tall one (for example
+  Summary past Work experience) could jump two slots, because the library lined up edges rather than centers.
+  Up and Down now center the item on the next slot, and keyboard drags are no longer clamped to the list's
+  edges, so the last slot is reachable. The end-to-end test that was flaky on Linux WebKit now presses once
+  and passes without retries, and a new test walks a section to the bottom and back.
+
 ## [0.15.0] - 2026-11-18
 
 Pre-launch batch: password reset, account deletion, Privacy and Terms pages, production
