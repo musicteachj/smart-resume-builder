@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ResumeContent } from './resumeContent';
+import type { SectionOrderEnum } from './sectionOrderEnum';
 
 /**
  * Full read + write representation of a resume (retrieve/create/update).
@@ -24,11 +25,8 @@ export interface Resume {
      * @pattern ^[-a-zA-Z0-9_]+$
      */
   document_font?: string;
-  /**
-     * @maxItems 12
-     * @items.pattern ^[-a-zA-Z0-9_]+$
-     */
-  section_order?: string[];
+  /** @maxItems 5 */
+  section_order?: SectionOrderEnum[];
   content: ResumeContent;
   readonly created_at: string;
   readonly updated_at: string;

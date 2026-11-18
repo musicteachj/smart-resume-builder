@@ -1,4 +1,8 @@
-/** The reorderable content sections of a résumé (the header is always pinned at the top). */
+/**
+ * The reorderable content sections of a résumé (the header is always pinned at the top).
+ * The server only accepts these keys in `section_order`: keep in sync with SECTION_KEYS
+ * in server/apps/resumes/serializers.py.
+ */
 export const SECTION_KEYS = ["summary", "experience", "education", "skills", "projects"] as const;
 
 export type SectionKey = (typeof SECTION_KEYS)[number];

@@ -1,7 +1,11 @@
-"""Security-hardening tests: auth throttling + Content-Security-Policy header."""
+"""Security-hardening tests: auth throttling, Content-Security-Policy, admin mounting."""
+
+import importlib
 
 import pytest
 from django.core.cache import cache
+from django.test import override_settings
+from django.urls import clear_url_caches
 from rest_framework.test import APIClient
 from rest_framework.throttling import SimpleRateThrottle
 
@@ -43,8 +47,10 @@ def test_csp_header_present_in_production(client, settings):
 
 def test_no_csp_header_in_debug(client, settings):
     settings.DEBUG = True
-    res = client.get(HEALTH)
-    assert res.status_code == 200
+    # A route that goes through the middleware stack (/health answers before it, so
+    # it would pass whether or not the DEBUG check works).
+    res = client.get(LOGIN)
+    assert res.status_code == 405
     assert "Content-Security-Policy" not in res.headers
 
 
@@ -81,3 +87,55 @@ def test_db_connections_are_health_checked(settings):
     # Persistent connections (CONN_MAX_AGE) go stale after an RDS restart or failover;
     # without health checks each worker serves one 500 before reconnecting.
     assert settings.DATABASES["default"]["CONN_HEALTH_CHECKS"] is True
+
+
+@pytest.fixture
+def reload_urls():
+    """Re-import config.urls under the current settings (it decides at import time
+    whether to mount the admin), then restore the original URLconf afterwards."""
+    import config.urls
+    from django.conf import settings as live
+
+    original = {"DEBUG": live.DEBUG, "DJANGO_ADMIN_ENABLED": live.DJANGO_ADMIN_ENABLED}
+
+    def _reload():
+        importlib.reload(config.urls)
+        clear_url_caches()
+
+    yield _reload
+    # Fixture teardown order isn't guaranteed relative to pytest-django's `settings`,
+    # so rebuild under the original values explicitly.
+    with override_settings(**original):
+        _reload()
+
+
+@pytest.mark.django_db
+def test_admin_not_mounted_in_production_by_default(client, settings, reload_urls):
+    settings.DEBUG = False
+    settings.DJANGO_ADMIN_ENABLED = False
+    reload_urls()
+    # Not mounted, and the SPA catch-all excludes admin/, so it's a plain 404.
+    assert client.get("/admin/").status_code == 404
+    assert client.get("/admin/login/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_admin_mounted_when_enabled(client, settings, reload_urls):
+    settings.DEBUG = False
+    settings.DJANGO_ADMIN_ENABLED = True
+    reload_urls()
+    # Anonymous visitors get redirected to the admin login (not rendered here: the
+    # login page needs collectstatic's manifest when DEBUG is off).
+    res = client.get("/admin/")
+    assert res.status_code == 302
+    assert res["Location"].startswith("/admin/login/")
+
+
+@pytest.mark.django_db
+def test_admin_mounted_in_debug(client, settings, reload_urls):
+    settings.DEBUG = True
+    settings.DJANGO_ADMIN_ENABLED = False
+    reload_urls()
+    res = client.get("/admin/")
+    assert res.status_code == 302
+    assert res["Location"].startswith("/admin/login/")

@@ -17,6 +17,10 @@ from .models import CoverLetter, Resume, ResumeVersion
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")  # YYYY-MM
 
+# The reorderable résumé sections, the only keys `section_order` accepts. Mirrors
+# SECTION_KEYS in client/src/features/templates/sections.ts; keep the two in sync.
+SECTION_KEYS = ("summary", "experience", "education", "skills", "projects")
+
 
 class MonthField(serializers.CharField):
     """A YYYY-MM month string (blank allowed mid-edit; format checked when present)."""
@@ -121,9 +125,12 @@ class ResumeSerializer(serializers.ModelSerializer):
     """Full read + write representation of a resume (retrieve/create/update)."""
 
     content = ResumeContentSerializer()
-    # Custom section order — a list of section keys ("summary", "skills", …). Empty = canonical.
+    # Custom section order: a list of distinct SECTION_KEYS. Empty means canonical.
     section_order = serializers.ListField(
-        child=serializers.SlugField(), required=False, allow_empty=True, max_length=12
+        child=serializers.ChoiceField(choices=SECTION_KEYS),
+        required=False,
+        allow_empty=True,
+        max_length=len(SECTION_KEYS),
     )
 
     class Meta:
@@ -133,6 +140,11 @@ class ResumeSerializer(serializers.ModelSerializer):
             "content", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_section_order(self, value):
+        if len(set(value)) != len(value):
+            raise serializers.ValidationError("Each section may appear only once.")
+        return value
 
 
 class ResumeListSerializer(serializers.ModelSerializer):

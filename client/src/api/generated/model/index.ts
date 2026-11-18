@@ -37,6 +37,7 @@ export * from './resumeVersionCreate';
 export * from './resumeVersionCreateKindEnum';
 export * from './resumeVersionKindEnum';
 export * from './resumeVersionList';
+export * from './sectionOrderEnum';
 export * from './tailorJDRequest';
 export * from './tailorJDResponse';
 export * from './tailorSuggestion';
