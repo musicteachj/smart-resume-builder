@@ -58,12 +58,12 @@ def test_no_csp_header_in_debug(client, settings):
     assert "Content-Security-Policy" not in res.headers
 
 
-@pytest.mark.parametrize("host", ["10.0.1.23:8000", "resume.jameslittlefield.net"])
+@pytest.mark.parametrize("host", ["10.0.1.23:8000", "resumeiq.jameslittlefield.net"])
 def test_health_answers_alb_checks_on_any_host(client, settings, host):
     # ALB health checks send the task's private IP as Host, which ALLOWED_HOSTS
     # rejects (400). /health must answer before host validation and the SSL redirect.
     settings.DEBUG = False
-    settings.ALLOWED_HOSTS = ["resume.jameslittlefield.net"]
+    settings.ALLOWED_HOSTS = ["resumeiq.jameslittlefield.net"]
     res = client.get(HEALTH, HTTP_HOST=host)
     assert res.status_code == 200
     assert res.json() == {"status": "ok"}
@@ -71,7 +71,7 @@ def test_health_answers_alb_checks_on_any_host(client, settings, host):
 
 def test_other_routes_still_reject_unknown_hosts(client, settings):
     settings.DEBUG = False
-    settings.ALLOWED_HOSTS = ["resume.jameslittlefield.net"]
+    settings.ALLOWED_HOSTS = ["resumeiq.jameslittlefield.net"]
     assert client.get(LOGIN, HTTP_HOST="10.0.1.23:8000").status_code == 400
 
 

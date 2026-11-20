@@ -79,7 +79,7 @@ jobs:
         env:
           DEBUG: "False"
           SECRET_KEY: ci-deploy-check-key-that-is-long-and-random-enough-0123456789abcdef
-          ALLOWED_HOSTS: resume.jameslittlefield.net
+          ALLOWED_HOSTS: resumeiq.jameslittlefield.net
         run: python manage.py check --deploy --fail-level WARNING
       - name: No missing migrations
         run: python manage.py makemigrations --check --dry-run

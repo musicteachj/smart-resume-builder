@@ -240,7 +240,7 @@ EMAIL_BACKEND = os.environ.get(
     else "django.core.mail.backends.dummy.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL", "ResumeIQ <no-reply@resume.jameslittlefield.net>"
+    "DEFAULT_FROM_EMAIL", "ResumeIQ <no-reply@resumeiq.jameslittlefield.net>"
 )
 PASSWORD_RESET_TIMEOUT = 3600  # seconds; reset links expire after 1 hour
 

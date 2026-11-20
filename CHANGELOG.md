@@ -56,6 +56,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   `is_guest`.
 
 ### Changed
+- Privacy and Terms describe the no-account demo (24-hour retention, 7-day backups, 14-day logs, Anthropic, Cloudflare,
+  AWS), and the account-era wording is gone. Link previews and addresses use `resumeiq.jameslittlefield.net`.
 - PostgreSQL 17 (`pgvector/pgvector:pg17`) locally and in CI, with a non-superuser `resumeiq` app role that owns its
   database in the local production run. The old `postgres_data` volume is left untouched.
 - Database connections live 60 s (was 600) and must connect within 5 s. Gunicorn recycles each worker after about 1000

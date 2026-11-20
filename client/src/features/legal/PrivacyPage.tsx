@@ -16,37 +16,48 @@ export function PrivacyPage() {
         <p>
           ResumeIQ is a résumé builder run as a personal portfolio project. This page explains, in
           plain language, what we store, what leaves our servers, and how to delete it. The short
-          version: we keep what you put in your account so the app works, we send text to an AI
-          provider only when you use an AI feature, and we don&apos;t run ads, analytics, or
-          trackers or sell your data.
+          version: the demo has no accounts, so we never ask for your name, email, or password. We
+          send text to an AI provider only when you use an AI feature, and we don&apos;t run ads,
+          analytics, or trackers or sell your data.
         </p>
       }
     >
+      <LegalSection title="Please don't upload a real resume">
+        <p>
+          Please don&apos;t upload a real resume. Use the sample or made-up details. This is a
+          public demo, and anything you enter is meant to be throwaway.
+        </p>
+      </LegalSection>
+
       <LegalSection title="What we store">
         <LegalList>
           <li>
-            <strong className="font-semibold">Your account:</strong> your email address, your name,
-            your password (stored only as a secure hash, never in readable form), and counters of
-            how many AI requests you&apos;ve made today and this month.
+            <strong className="font-semibold">Your demo:</strong> a random guest ID. It isn&apos;t
+            tied to your name or email, because the demo doesn&apos;t ask for either.
           </li>
           <li>
-            <strong className="font-semibold">Your résumés:</strong> everything you enter, including
-            the title, template, font, section order, and all the personal details in the résumé
-            (such as your name, contact details, work history, education, and links).
+            <strong className="font-semibold">Your résumés:</strong> everything you enter in the
+            demo, including the title, template, font, section order, and any details you type into
+            the résumé.
           </li>
           <li>
-            <strong className="font-semibold">Version history:</strong> saved and automatic snapshots
-            of your résumés, so you can look back and restore an earlier version.
+            <strong className="font-semibold">Version history:</strong> saved and automatic
+            snapshots of your résumés, so you can look back and restore an earlier version.
           </li>
           <li>
-            <strong className="font-semibold">Cover letters:</strong> the letters you save, including
-            the job description you pasted to write them.
+            <strong className="font-semibold">Cover letters:</strong> the letters you save,
+            including the job description you pasted to write them.
           </li>
           <li>
             <strong className="font-semibold">AI usage logs:</strong> for each AI request, which
             feature you used, how many characters went in and came out, whether it succeeded, and
             when. These logs never contain the text itself, and our AI error logs never include your
             text either.
+          </li>
+          <li>
+            <strong className="font-semibold">AI spend records:</strong> the cost of each AI
+            request and the name of the model, so the daily AI budget can be enforced. These records
+            contain no text and are kept for up to 35 days.
           </li>
         </LegalList>
       </LegalSection>
@@ -86,15 +97,30 @@ export function PrivacyPage() {
         </p>
       </LegalSection>
 
+      <LegalSection title="Cloudflare">
+        <p>
+          When you start a demo, a Cloudflare Turnstile check confirms you aren&apos;t a bot.
+          Cloudflare sees your IP address and some browser signals at that moment. The check runs
+          only when you start a demo.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Amazon Web Services">
+        <p>
+          The app runs on Amazon Web Services (AWS). AWS hosts the servers and the database, holds
+          the backups, and stores the server logs.
+        </p>
+      </LegalSection>
+
       <LegalSection title="Cookies and browser storage">
         <LegalList>
           <li>
-            One cookie, <code className="text-sm">refresh_token</code>, keeps you signed in. It is
-            httpOnly (scripts on the page can&apos;t read it), is sent only to our sign-in endpoints
-            (<code className="text-sm">/api/auth</code>), and lasts up to 7 days.
+            One cookie, <code className="text-sm">refresh_token</code>, keeps your demo going. It
+            is httpOnly (scripts on the page can&apos;t read it), is sent only to our
+            authentication endpoints (<code className="text-sm">/api/auth</code>), and lasts up to 24 hours.
           </li>
           <li>
-            Your short-lived sign-in token is kept only in the page&apos;s memory, never saved to
+            Your short-lived access token is kept only in the page&apos;s memory, never saved to
             disk.
           </li>
           <li>
@@ -115,8 +141,10 @@ export function PrivacyPage() {
       <LegalSection title="Server logs">
         <p>
           Like most websites, the server keeps technical logs (for example, the time of a request,
-          the address requested, and your browser type) to keep the service running and secure.
-          These logs don&apos;t contain your résumé text.
+          the address requested, your IP address, and your browser type) to keep the service
+          running and secure. These logs don&apos;t contain your résumé text.
+          Short-lived rate-limit counters for starting demos also use your IP address and expire
+          within a day.
         </p>
       </LegalSection>
 
@@ -127,19 +155,15 @@ export function PrivacyPage() {
         </LegalList>
       </LegalSection>
 
-      <LegalSection title="Email">
-        <p>
-          We email you only when you ask us to, for example a password reset link, which goes to the
-          address on your account.
-        </p>
-      </LegalSection>
-
       <LegalSection title="Keeping and deleting your data">
         <p>
-          Your data is kept until you delete it. Deleting a résumé also deletes its version history
-          and its cover letters. Deleting your account, from the{" "}
-          <LegalLink to="/account">Account page</LegalLink>, immediately and permanently deletes
-          your account and everything in it.
+          Your demo and everything in it is removed from the app after 24 hours. Daily server
+          backups keep copies for up to 7 days. Server logs (including IP addresses) are kept for
+          14 days.
+        </p>
+        <p>
+          Ending your demo (Sign out and end demo) deletes it from the app right away. Deleting a
+          résumé also deletes its version history and its cover letters.
         </p>
       </LegalSection>
 
