@@ -10,6 +10,12 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- **Demo mode** (`apps/demo`): `DEMO_MODE` makes register, login, password reset, and the API schema and Swagger pages
+  answer 404 (refresh, logout, and `me` stay open), and the admin can't be enabled alongside it in production. New
+  settings: `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `DEMO_GUEST_TTL_HOURS`, `DEMO_MAX_LIVE_GUESTS`,
+  `DEMO_STARTS_PER_HOUR`, `DEMO_STARTS_PER_DAY`.
+- `GET /api/demo/status`: a public, cached (60 s) flag for the SPA with `demo_mode`, `turnstile_site_key`,
+  `ai_available`, `ai_reason` (`ok`, `off`, `daily_used`), and `guest_start_available`.
 - **AI spend ledger** (`apps/ai/ledger.py`): a monthly dollar budget paced by day (a day may spend up to a multiple of
   an even share of what the month has left, never below a floor), a per-guest allowance, and guest fields on the user.
   Own tables in integer micro-dollars (`AIBudgetDay`, `AIReservation`), reserve before and settle after a call,

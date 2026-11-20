@@ -25,6 +25,7 @@ print(json.dumps({
     "db_name": s.DATABASES["default"]["NAME"],
     "renderers": s.REST_FRAMEWORK.get("DEFAULT_RENDERER_CLASSES"),
     "admin_enabled": s.DJANGO_ADMIN_ENABLED,
+    "demo_mode": s.DEMO_MODE,
     "middleware": s.MIDDLEWARE,
     "ai_daily_limit": s.AI_DAILY_LIMIT,
     "ai_monthly_limit": s.AI_MONTHLY_LIMIT,
@@ -40,6 +41,9 @@ PROD_ENV = {
     "DATABASE_URL": "postgres://u:p@db.example.com:5432/prod_db",
     "CLIENT_URL": "",
     "DJANGO_ADMIN_ENABLED": "",
+    "DEMO_MODE": "",
+    "TURNSTILE_SITE_KEY": "",
+    "TURNSTILE_SECRET_KEY": "",
 }
 
 
@@ -150,3 +154,14 @@ def test_ai_call_limits_and_fallback_come_from_the_environment():
     assert (read["ai_daily_limit"], read["ai_monthly_limit"], read["ai_fallback"]) == (3, 7, False)
     default = _settings()
     assert (default["ai_daily_limit"], default["ai_monthly_limit"], default["ai_fallback"]) == (10, 50, True)
+
+
+def test_demo_mode_and_the_admin_cannot_both_be_on_in_production():
+    result = _import_settings(DEMO_MODE="true", DJANGO_ADMIN_ENABLED="true")
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "DEMO_MODE" in result.stderr
+
+
+def test_demo_mode_is_off_by_default(prod):
+    assert prod["demo_mode"] is False

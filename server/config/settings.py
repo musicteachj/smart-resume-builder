@@ -59,6 +59,15 @@ DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "False").lower() i
     "true", "1", "yes",
 )
 
+# Demo mode (apps/demo): visitors get a throwaway guest account, so the account routes and the
+# API docs answer 404. The SPA learns this from GET /api/demo/status, never from a Vite variable.
+DEMO_MODE = os.environ.get("DEMO_MODE", "False").lower() in ("true", "1", "yes")
+if DEMO_MODE and DJANGO_ADMIN_ENABLED and not DEBUG:
+    raise ImproperlyConfigured("DEMO_MODE cannot be combined with DJANGO_ADMIN_ENABLED in production")
+# Cloudflare Turnstile keys for the guest start (verification arrives with the start endpoint).
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+
 
 # Application definition
 
@@ -78,6 +87,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.resumes",
     "apps.ai",
+    "apps.demo",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -402,3 +412,9 @@ AI_DAILY_FLOOR_USD = _env_decimal("AI_DAILY_FLOOR_USD", "0.50", minimum="0")
 AI_VISITOR_BUDGET_USD = _env_decimal("AI_VISITOR_BUDGET_USD", "0.15", minimum="0")
 # An unsettled reservation older than this is charged in full by the sweeper.
 AI_STALE_RESERVATION_MINUTES = _env_int("AI_STALE_RESERVATION_MINUTES", "10", minimum=1)
+
+# Demo guests: how long one lasts, how many may be live at once, and the per-IP start limits.
+DEMO_GUEST_TTL_HOURS = _env_int("DEMO_GUEST_TTL_HOURS", "24", minimum=1)
+DEMO_MAX_LIVE_GUESTS = _env_int("DEMO_MAX_LIVE_GUESTS", "300", minimum=1)
+DEMO_STARTS_PER_HOUR = _env_int("DEMO_STARTS_PER_HOUR", "15", minimum=1)
+DEMO_STARTS_PER_DAY = _env_int("DEMO_STARTS_PER_DAY", "50", minimum=1)

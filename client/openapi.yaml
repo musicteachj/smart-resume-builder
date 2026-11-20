@@ -488,6 +488,22 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/demo/status:
+    get:
+      operationId: get_demo_status
+      description: Public facts the SPA needs before anyone signs in. Cached for a
+        minute.
+      tags:
+      - demo
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoStatus'
+          description: ''
   /api/resume-versions/:
     get:
       operationId: list_resume_versions
@@ -871,6 +887,16 @@ components:
       - daily_limit
       - is_admin
       - monthly_limit
+    AiReasonEnum:
+      enum:
+      - ok
+      - 'off'
+      - daily_used
+      type: string
+      description: |-
+        * `ok` - ok
+        * `off` - off
+        * `daily_used` - daily_used
     AtsCheckRequest:
       type: object
       properties:
@@ -978,6 +1004,25 @@ components:
           writeOnly: true
       required:
       - password
+    DemoStatus:
+      type: object
+      properties:
+        demo_mode:
+          type: boolean
+        turnstile_site_key:
+          type: string
+        ai_available:
+          type: boolean
+        ai_reason:
+          $ref: '#/components/schemas/AiReasonEnum'
+        guest_start_available:
+          type: boolean
+      required:
+      - ai_available
+      - ai_reason
+      - demo_mode
+      - guest_start_available
+      - turnstile_site_key
     DetailResponse:
       type: object
       description: 'A plain `{"detail": "..."}` message.'

@@ -21,6 +21,8 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.demo.closed import ClosedInDemoModeMixin
+
 from .cookies import REFRESH_COOKIE_NAME, clear_refresh_cookie, set_refresh_cookie
 from .serializers import (
     AuthResponseSerializer,
@@ -62,7 +64,7 @@ def revoke_refresh_tokens(user):
         tags=["auth"],
     )
 )
-class RegisterView(generics.CreateAPIView):
+class RegisterView(ClosedInDemoModeMixin, generics.CreateAPIView):
     """Create an account; return the user + access token, set the refresh cookie."""
 
     serializer_class = RegisterSerializer
@@ -92,7 +94,7 @@ class RegisterView(generics.CreateAPIView):
         tags=["auth"],
     )
 )
-class LoginView(TokenObtainPairView):
+class LoginView(ClosedInDemoModeMixin, TokenObtainPairView):
     """Obtain an access token via email + password; set the refresh cookie."""
 
     serializer_class = EmailTokenObtainPairSerializer
@@ -230,7 +232,7 @@ def _send_reset_email(user):
         tags=["auth"],
     )
 )
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(ClosedInDemoModeMixin, APIView):
     """Email a password-reset link. Always answers the same way, so it can't reveal
     whether an email has an account."""
 
@@ -265,7 +267,7 @@ class PasswordResetRequestView(APIView):
         tags=["auth"],
     )
 )
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(ClosedInDemoModeMixin, APIView):
     """Set a new password from an emailed reset link, then revoke every refresh token
     (other devices are signed out once their 15-minute access token expires)."""
 
