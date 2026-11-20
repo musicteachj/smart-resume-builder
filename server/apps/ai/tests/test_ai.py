@@ -126,6 +126,7 @@ def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
     assert res.status_code == 502
     # The raw upstream string must not leak in production.
     assert "ANTHROPIC_API_KEY" not in res.json()["detail"]
+    assert res.json()["code"] == "ai_unavailable"
 
 
 @pytest.mark.django_db

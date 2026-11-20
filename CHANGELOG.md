@@ -21,6 +21,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.
 
 ### Changed
+- Every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage)
+  returns plain copy pointing at editing, templates, and export, with a `code` the client can read.
 - **The refusal fallback can be turned off** with `AI_SERVER_SIDE_FALLBACK` (default on), and its second pass now has
   an explicit `max_tokens`. The per-user AI call limits `AI_DAILY_LIMIT` and `AI_MONTHLY_LIMIT` come from the
   environment (defaults 10 and 50).
