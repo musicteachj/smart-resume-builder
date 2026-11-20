@@ -9,6 +9,11 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- **Micro-dollar pricing of Claude calls** (`apps/ai/pricing.py`): pinned per-model rates for Sonnet 5.5, Sonnet 5,
+  and Haiku 5.5 (including Haiku's long-prompt tier), exact whole-micro-dollar cost and worst-case reservation
+  math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.
+
 ## [0.16.0] - 2026-11-18
 
 AI features move to Claude Haiku 5.5 and Claude Sonnet 5.5, the AI knows today's date, declined requests say so,
