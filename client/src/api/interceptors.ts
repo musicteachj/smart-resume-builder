@@ -16,11 +16,13 @@ async function refreshAccessToken(): Promise<string | null> {
     setAccessToken(data.access);
     return data.access;
   } catch (err) {
-    // A 401 while a session was in use means it ended under us: refused (`session_ended`),
-    // or its cookie is gone (`no_session`: a demo past its 24 hours, whose cookie the
-    // browser dropped, or one ended in another tab). Anything else is a quiet sign-out.
-    const ended = wasSignedIn && (err as AxiosError)?.response?.status === 401;
-    logout({ sessionEnded: ended });
+    // Only a 401 ends the session. While a session was in use that means it ended under us:
+    // refused (`session_ended`), or its cookie is gone (`no_session`: a demo past its 24 hours,
+    // whose cookie the browser dropped, or one ended in another tab).
+    // A 429 (several visitors behind one office IP), a 5xx, or a network error says nothing about
+    // the session, so it stays as it is and only the original request fails. The next request that
+    // gets a 401 tries the refresh once more; nothing retries on its own.
+    if ((err as AxiosError)?.response?.status === 401) logout({ sessionEnded: wasSignedIn });
     return null;
   }
 }

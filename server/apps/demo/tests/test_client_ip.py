@@ -43,3 +43,28 @@ def test_rotating_the_forged_entry_does_not_dodge_the_start_limit(settings, monk
     ]
     cache.clear()
     assert statuses == [201, 201, 201, 429]
+
+
+def _key_for(ip):
+    req = Request(APIRequestFactory().post(START, HTTP_X_FORWARDED_FOR=ip, REMOTE_ADDR="10.0.0.5"))
+    return DemoStartHourThrottle().get_cache_key(req, None)
+
+
+def test_ipv6_starts_are_keyed_per_64_so_rotating_within_it_shares_one_limit():
+    assert _key_for("2001:db8:1:2::1") == _key_for("2001:db8:1:2:ffff:ffff:ffff:ffff") == _key_for("2001:DB8:1:2:abcd::9")
+    assert _key_for("2001:db8:1:2::1").endswith("2001:db8:1:2::/64")
+    assert _key_for("2001:db8:1:3::1") != _key_for("2001:db8:1:2::1")  # the next /64 is someone else
+
+
+def test_ipv4_starts_stay_keyed_per_address():
+    assert _key_for("203.0.113.7").endswith("203.0.113.7")
+    assert _key_for("203.0.113.7") != _key_for("203.0.113.8")
+    assert _key_for("::ffff:203.0.113.7") == _key_for("203.0.113.7")  # an IPv4-mapped address is that IPv4 client
+
+
+def test_a_non_ip_ident_is_used_as_is():
+    from apps.demo.throttles import _network_ident
+
+    assert _network_ident("not-an-ip") == "not-an-ip"
+    assert _network_ident("") == ""
+    assert _network_ident("fe80::1%eth0") == "fe80::/64"

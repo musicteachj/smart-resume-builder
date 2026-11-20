@@ -31,7 +31,7 @@ test.describe("demo sessions", () => {
     const id = await startDemo(page);
     await expect(page.getByRole("textbox", { name: "Resume title" })).toBeVisible();
     expireGuests(id);
-    await page.getByPlaceholder("A 2–3 sentence professional overview…").fill("Changed after the demo ended.");
+    await page.getByRole("textbox", { name: "Summary", exact: true }).fill("Changed after the demo ended.");
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("status").filter({ hasText: ENDED })).toBeVisible();
   });

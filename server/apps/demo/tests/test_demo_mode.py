@@ -39,3 +39,16 @@ def test_api_docs_are_404_in_demo_mode_even_for_a_guest(settings, guest, path):
 def test_session_routes_stay_open_in_demo_mode(settings, method, path, expected):
     settings.DEMO_MODE = True
     assert getattr(APIClient(), method)(path).status_code == expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("path", ["/api/schema/", "/api/schema/swagger-ui/"])
+@pytest.mark.parametrize(
+    "authorization",
+    ["Bearer not-a-jwt", "Bearer ", "Bearer a b", "Bearer eyJhbGciOiJIUzI1NiJ9.e30.c2lnbmF0dXJl", "Basic Zm9vOmJhcg=="],
+)
+def test_api_docs_are_404_in_demo_mode_with_a_malformed_bearer(settings, path, authorization):
+    # A bad Authorization header must not turn the hidden docs into a 500 (or a 401 that reveals them).
+    settings.DEMO_MODE = True
+    client = APIClient(raise_request_exception=False)
+    assert client.get(path, HTTP_AUTHORIZATION=authorization).status_code == 404

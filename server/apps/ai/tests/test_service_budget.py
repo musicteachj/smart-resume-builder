@@ -8,7 +8,7 @@ from unittest.mock import Mock
 import anthropic
 import httpx
 import pytest
-from django.db import OperationalError, connection
+from django.db import InterfaceError, OperationalError, connection
 
 from apps.accounts.models import User
 from apps.ai import ledger, service
@@ -151,18 +151,20 @@ def test_budget_refusal_sends_nothing(fake, content, settings):
     assert client.messages.calls + client.beta.messages.calls == []
 
 
-def test_ledger_outage_fails_closed(fake, content, monkeypatch):
+@pytest.mark.parametrize("error", [OperationalError, InterfaceError])  # InterfaceError: a closed connection
+def test_ledger_outage_fails_closed(fake, content, monkeypatch, error):
     client = fake(_response(_text(ATS_JSON)))
-    monkeypatch.setattr(ledger, "reserve", Mock(side_effect=OperationalError("down")))
+    monkeypatch.setattr(ledger, "reserve", Mock(side_effect=error("down")))
     with pytest.raises(AIUnavailableError):
         real_ats_health_check(content)
     assert client.beta.messages.calls == []
 
 
-def test_settle_failure_still_returns_the_answer(fake, content, monkeypatch, at):
+@pytest.mark.parametrize("error", [OperationalError, InterfaceError])
+def test_settle_failure_still_returns_the_answer(fake, content, monkeypatch, at, error):
     at(datetime(2026, 11, 1, 12, tzinfo=UTC))
     fake(_response(_text(ATS_JSON)))
-    monkeypatch.setattr(service.ledger, "settle", Mock(side_effect=OperationalError("blip")))
+    monkeypatch.setattr(service.ledger, "settle", Mock(side_effect=error("blip")))
     assert real_ats_health_check(content)["score"] == 70
     assert AIReservation.objects.get().settled_at is None
     monkeypatch.undo()

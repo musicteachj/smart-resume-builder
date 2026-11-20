@@ -51,7 +51,9 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # --max-requests recycles each worker after about 1000 requests (jittered so they don't
 # restart together) to cap slow memory growth; restarts are graceful.
 # Log to stdout for CloudWatch.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
+# --no-control-socket: gunicorn 26 opens a control socket under $HOME/.gunicorn by default, which the
+# read-only root filesystem refuses (an ERROR line at every boot). Nothing here uses that interface.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--no-control-socket", \
      "--worker-class", "gthread", "--workers", "2", "--threads", "8", \
      "--timeout", "120", "--keep-alive", "185", "--graceful-timeout", "110", \
      "--max-requests", "1000", "--max-requests-jitter", "100", \

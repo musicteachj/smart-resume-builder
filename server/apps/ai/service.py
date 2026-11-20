@@ -20,7 +20,7 @@ import re
 import uuid
 
 from django.conf import settings
-from django.db import DatabaseError
+from django.db import Error as DBError  # the base of every database error, InterfaceError included
 from django.utils import timezone
 
 from . import ledger
@@ -138,7 +138,7 @@ def _settle(reservation, actual_micros: int, how: str) -> None:
     reservation in full later."""
     try:
         ledger.settle(reservation, actual_micros, how=how)
-    except DatabaseError:
+    except DBError:
         logger.error("AI ledger settle failed: reservation=%s how=%s", reservation.id, how, exc_info=True)
 
 
@@ -161,7 +161,7 @@ def _call(client, *, model: str, effort: str, feature: str, visitor_id: int | No
         reservation = ledger.reserve(amount_micros=amount, feature=feature, model=model, visitor_id=visitor_id)
     except ledger.BudgetRefused as refused:
         raise AIBudgetRefusedError(refused.scope) from refused
-    except DatabaseError as exc:
+    except DBError as exc:
         logger.error("AI ledger reserve failed: feature=%s", feature, exc_info=True)
         raise AIUnavailableError("The AI budget could not be checked.") from exc
 

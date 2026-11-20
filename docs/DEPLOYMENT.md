@@ -79,7 +79,7 @@ Scheduled by EventBridge Scheduler.
 
 ## WAF expensive-paths rule
 
-Rate-limit `/api/ai/*` and `POST /api/demo/start`.
+Rate-limit `/api/ai/*` and `POST /api/demo/start`. The app's own start limits key IPv4 per address and IPv6 per /64.
 
 ## PostgreSQL 17 setup
 

@@ -28,6 +28,23 @@ load_dotenv(REPO_ROOT / ".env")
 # .env file in the image, so Secrets Manager env vars are never overridden.
 load_dotenv(BASE_DIR / ".env", override=True)
 
+_TRUE_VALUES = ("true", "1", "yes")
+_FALSE_VALUES = ("false", "0", "no")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """A strict on/off flag: true/1/yes or false/0/no (any case, surrounding spaces ignored); unset or
+    empty means `default`. Anything else (a typo, "on") fails to start instead of silently picking a side."""
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in _TRUE_VALUES:
+        return True
+    if raw in _FALSE_VALUES:
+        return False
+    raise ImproperlyConfigured(f"{name} must be one of true/1/yes or false/0/no, got {os.environ[name]!r}")
+
+
 # Fail-closed: an unset DEBUG means production behavior (CSP on, Secure cookies,
 # AI limits enforced, real SECRET_KEY required). Local dev sets DEBUG=True in the
 # repo-root .env (see .env.example).
@@ -61,7 +78,8 @@ DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "False").lower() i
 
 # Demo mode (apps/demo): visitors get a throwaway guest account, so the account routes and the
 # API docs answer 404. The SPA learns this from GET /api/demo/status, never from a Vite variable.
-DEMO_MODE = os.environ.get("DEMO_MODE", "False").lower() in ("true", "1", "yes")
+# Parsed strictly: a typo here must not quietly reopen the account routes in production.
+DEMO_MODE = _env_bool("DEMO_MODE", False)
 if DEMO_MODE and DJANGO_ADMIN_ENABLED and not DEBUG:
     raise ImproperlyConfigured("DEMO_MODE cannot be combined with DJANGO_ADMIN_ENABLED in production")
 # Cloudflare Turnstile keys for the guest start (verified in apps/demo/turnstile.py).
@@ -249,8 +267,9 @@ PASSWORD_RESET_TIMEOUT = 3600  # seconds; reset links expire after 1 hour
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # SimpleJWT, plus a 401 for a demo guest past its expiry (apps/accounts/authentication.py).
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.GuestExpiryJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     # Scoped throttles applied per-view (not globally): "auth" blunts login/register
@@ -442,7 +461,7 @@ AI_MONTHLY_LIMIT = _env_int("AI_MONTHLY_LIMIT", "50", minimum=0)
 AI_GUEST_CALL_LIMIT = _env_int("AI_GUEST_CALL_LIMIT", "30", minimum=1)
 # Let the API re-run a request Sonnet 5.5 declines on Sonnet 5 inside the same call. A declined
 # attempt is billed, so the ledger reserves for both passes while this is on.
-AI_SERVER_SIDE_FALLBACK = os.environ.get("AI_SERVER_SIDE_FALLBACK", "True").lower() in ("true", "1", "yes")
+AI_SERVER_SIDE_FALLBACK = _env_bool("AI_SERVER_SIDE_FALLBACK", True)
 # The month's live-AI budget; 0 turns live AI off.
 AI_MONTHLY_BUDGET_USD = _env_decimal("AI_MONTHLY_BUDGET_USD", "10", minimum="0")
 # One day may spend up to this multiple of an even share of what the month has left.

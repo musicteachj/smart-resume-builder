@@ -5,8 +5,10 @@ import type { DemoStatus } from "@/api/generated/model";
 import { useAuthStore } from "@/stores/auth";
 
 const DEMO_ENDED = "Your demo ended. Demos last 24 hours. You can start a new one anytime.";
-const AI_UNAVAILABLE =
+const AI_DAILY_USED =
   "Today's live AI budget is used up. The editor, templates, and PDF and Word export still work, and the screenshots below show the AI features.";
+const AI_OFF =
+  "Live AI is off in this demo right now. The editor, templates, and PDF and Word export still work, and the screenshots below show the AI features.";
 
 /** Long enough for screen readers to register a new live region before its text arrives. */
 const ANNOUNCE_DELAY_MS = 100;
@@ -35,13 +37,13 @@ function LiveNotice({ children }: { children: string }) {
   );
 }
 
-/** The demo landing's notices: a session that just ended, and a day without live AI. Both
- * come from state the page already has, so neither needs the bot check's script. */
+/** The demo landing's notices: a session that just ended, and no live AI (switched off, or today's
+ * budget used up). Both come from state the page already has, so neither needs the bot check's script. */
 export function DemoNotices({ status }: { status: DemoStatus | undefined }) {
   const sessionEnded = useAuthStore((s) => s.sessionEnded);
   const notices = [
     sessionEnded && DEMO_ENDED,
-    status && !status.ai_available && AI_UNAVAILABLE,
+    status && !status.ai_available && (status.ai_reason === "off" ? AI_OFF : AI_DAILY_USED),
   ].filter((n): n is string => Boolean(n));
   if (notices.length === 0) return null;
 

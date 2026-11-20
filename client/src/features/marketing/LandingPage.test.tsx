@@ -41,6 +41,8 @@ const turnstileScripts = () => document.querySelectorAll('script[src^="https://c
 const DEMO_ENDED = "Your demo ended. Demos last 24 hours. You can start a new one anytime.";
 const AI_NOTICE =
   "Today's live AI budget is used up. The editor, templates, and PDF and Word export still work, and the screenshots below show the AI features.";
+const AI_OFF_NOTICE =
+  "Live AI is off in this demo right now. The editor, templates, and PDF and Word export still work, and the screenshots below show the AI features.";
 
 describe("LandingPage", () => {
   beforeEach(() => useAuthStore.setState({ user: null, accessToken: null, status: "unauthenticated", sessionEnded: false }));
@@ -61,6 +63,13 @@ describe("LandingPage", () => {
     expect(await within(screen.getByRole("status")).findByText(AI_NOTICE)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try the live demo" })).toBeEnabled();
     expect(turnstileScripts()).toHaveLength(0);
+    expect(screen.queryByText(AI_OFF_NOTICE)).toBeNull();
+  });
+
+  it("says live AI is off (not that a budget ran out) when it is switched off", async () => {
+    renderLanding({ ...DEMO, ai_available: false, ai_reason: "off" });
+    expect(await within(screen.getByRole("status")).findByText(AI_OFF_NOTICE)).toBeInTheDocument();
+    expect(screen.queryByText(AI_NOTICE)).toBeNull();
   });
 
   it("disables the start when the demo is full", () => {

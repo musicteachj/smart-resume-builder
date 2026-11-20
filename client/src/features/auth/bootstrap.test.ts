@@ -63,6 +63,31 @@ describe("bootstrapAuth", () => {
     expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
   });
 
+  it.each([
+    ["a 429 (shared office IP)", 429, { detail: "Request was throttled." }],
+    ["a 5xx", 503, {}],
+  ])("%s on refresh at load is never an ended session and leaves the cookie alone", async (_label, status, body) => {
+    refreshStatus = status;
+    refreshBody = body;
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+    // No logout call, so the httpOnly refresh cookie survives and the next load restores the session.
+    expect(seen).toEqual(["/api/auth/refresh"]);
+
+    refreshStatus = 200;
+    refreshBody = { access: "new-access" };
+    await bootstrapAuth();
+    expect(useAuthStore.getState().status).toBe("authenticated");
+  });
+
+  it("a network error on refresh at load is never an ended session", async () => {
+    AXIOS_INSTANCE.defaults.adapter = async (config) => {
+      throw new AxiosError("Network Error", "ERR_NETWORK", config);
+    };
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+  });
+
   it("no cookie at load is a quiet sign-out", async () => {
     refreshStatus = 401;
     refreshBody = { detail: "No refresh token.", code: "no_session" };

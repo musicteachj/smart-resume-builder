@@ -80,6 +80,20 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - Two tabs restoring a session at the same moment no longer sign the visitor out: a just-rotated refresh token still
   trades for an access token for `REFRESH_REUSE_GRACE_SECONDS` (default 30), as long as its successor is live.
 - An AI call whose guest is removed mid-call no longer fails with a 500, and a removed user gets 401 `session_ended`.
+- A failed AI usage log write (a database blip after a paid answer) no longer turns the answer into a 500: the visitor
+  gets the answer and the failure is logged at error level with the error's class only. The ledger also catches
+  `InterfaceError` (a closed connection): the reserve still fails closed, and a failed settle still keeps the answer.
+- Importing a résumé that can't be created (a guest at the résumé or storage cap) shows the server's reason, or "We
+  couldn't create the resume. Please try again.", instead of failing silently.
+- A refresh that answers 429, a 5xx, or a network error no longer signs the visitor out: only a 401 ends a session.
+  Mid-session the original request fails and the session stays; at load the visitor shows as signed out (never as an
+  ended demo) and the cookie stays, so a reload restores the session.
+- The demo landing says "Live AI is off in this demo right now." when live AI is switched off, instead of saying
+  today's budget is used up.
+- The Swagger UI page answers 404 in demo mode with a malformed `Authorization` header too (it was a 500).
+- The production image no longer logs `Control server error` at boot under the read-only root filesystem: gunicorn
+  runs with `--no-control-socket`.
+- The editor's Summary field has an accessible name ("Summary"), with no visual change.
 
 ### Security
 - **CI security hardening**: gitleaks scans the full history on every push and pull request, a weekly dependency audit
@@ -98,6 +112,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   (unexpired, not blacklisted) successor, ends at logout, follows at most five rotations, and treats a cache miss as an
   ended session. A guest's rotated token and cookie are capped at the guest's end, and an expired guest cannot refresh.
 - A forged leftmost `X-Forwarded-For` entry can't change a rate-limit key or dodge the guest start limit (tested).
+- `DEMO_MODE` and `AI_SERVER_SIDE_FALLBACK` are parsed strictly: true/1/yes or false/0/no (any case, spaces
+  ignored), empty means the default, and anything else stops the app from starting, so a typo can't quietly reopen
+  register, login, and password reset in production.
+- An expired demo guest is refused (401 `session_ended`) on every authenticated route, even with a live access token,
+  instead of editing and using AI until cleanup runs.
+- The guest start limits count an IPv6 visitor per /64 (IPv4 stays per address), so rotating addresses within one
+  /64 can't dodge them.
 
 ## [0.16.0] - 2026-11-18
 

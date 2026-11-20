@@ -96,6 +96,41 @@ describe("auth interceptors", () => {
     expect(useAuthStore.getState().sessionEnded).toBe(true);
   });
 
+  it.each([
+    ["a 429 (shared office IP)", { status: 429, data: { detail: "Request was throttled." } }],
+    ["a 5xx", { status: 503, data: {} }],
+  ])("%s on refresh mid-session keeps the session and fails only the request", async (_label, refreshReply) => {
+    respond = (config) => (config.url === "/api/auth/refresh" ? refreshReply : { status: 401 });
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toMatchObject({ response: { status: 401 } });
+    expect(seen.map((c) => c.url)).toEqual(["/api/resumes/", "/api/auth/refresh"]);
+    expect(useAuthStore.getState()).toMatchObject({
+      status: "authenticated",
+      accessToken: "stale-token",
+      sessionEnded: false,
+    });
+  });
+
+  it("a network error on refresh mid-session keeps the session", async () => {
+    respond = (config) => {
+      if (config.url === "/api/auth/refresh") throw new AxiosError("Network Error", "ERR_NETWORK", config);
+      return { status: 401 };
+    };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", sessionEnded: false });
+  });
+
+  it("after a throttled refresh, the next 401 tries once more and a 401 then ends the session", async () => {
+    let refreshReply = { status: 429 };
+    respond = (config) => (config.url === "/api/auth/refresh" ? refreshReply : { status: 401 });
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState().status).toBe("authenticated");
+
+    refreshReply = { status: 401 };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(seen.filter((c) => c.url === "/api/auth/refresh")).toHaveLength(2);
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
+  });
+
   it("a refresh that fails while signed out is quiet", async () => {
     useAuthStore.setState({ status: "loading" });
     respond = (config) =>

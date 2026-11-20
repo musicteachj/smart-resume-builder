@@ -1,5 +1,8 @@
+import logging
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, InterfaceError, OperationalError
 from rest_framework.test import APIClient
 
 from apps.ai.models import AIUsageLog
@@ -416,3 +419,36 @@ def test_a_guest_removed_during_a_failing_ai_call_gets_the_ai_error_not_a_500(gu
     res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
     assert res.status_code == 502
     assert not AIUsageLog.objects.exists()
+
+
+_ALL_VIEWS = [
+    (IMPROVE, lambda c: {"text": "Led a team."}),
+    (SUMMARY, lambda c: {"content": c}),
+    (TAILOR, lambda c: {"content": c, "job_description": "Senior PM"}),
+    ("/api/ai/parse-resume", lambda c: {"text": "Maya Chen, Senior Product Designer at Meridian since 2022."}),
+    (COVER_LETTER, lambda c: {"content": c, "job_description": "Senior PM"}),
+    (ATS_CHECK, lambda c: {"content": c}),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("error", [OperationalError, InterfaceError, IntegrityError])
+@pytest.mark.parametrize(("url", "body"), _ALL_VIEWS)
+def test_a_usage_log_failure_after_a_paid_answer_still_returns_the_answer(
+    auth_client, user, content, monkeypatch, caplog, url, body, error
+):
+    # The call was paid for, so a database blip writing the log row must not turn it into a 500.
+    def broken_create(**_kwargs):
+        raise error("the log write failed: secret detail")
+
+    monkeypatch.setattr(AIUsageLog.objects, "create", broken_create)
+    with caplog.at_level(logging.ERROR, logger="apps.ai.usage"):
+        res = auth_client.post(url, body(content), format="json")
+    assert res.status_code == 200
+    assert "ai_usage" in res.json()
+    user.refresh_from_db()
+    assert user.ai_calls_today == 1  # the reservation stands: the call happened
+    logged = [r for r in caplog.records if r.name == "apps.ai.usage"]
+    assert [r.levelname for r in logged] == ["ERROR"]
+    assert error.__name__ in logged[0].getMessage()
+    assert "secret detail" not in caplog.text  # the error's class only, never its text

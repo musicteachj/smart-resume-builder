@@ -7,5 +7,9 @@ class ClosedInDemoModeMixin:
 
     def initial(self, request, *args, **kwargs):
         if settings.DEMO_MODE:
+            # Rendering the 404 can still read `request.user` (Swagger UI's HTML renderer runs the auth
+            # context processor), which would run JWT authentication late and turn a malformed Bearer
+            # into a 500. With no authenticators the request is simply anonymous.
+            request.authenticators = ()
             raise Http404
         super().initial(request, *args, **kwargs)

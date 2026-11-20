@@ -169,6 +169,31 @@ def test_demo_mode_is_off_by_default(prod):
     assert prod["demo_mode"] is False
 
 
+@pytest.mark.parametrize("flag", ["DEMO_MODE", "AI_SERVER_SIDE_FALLBACK"])
+@pytest.mark.parametrize("value", ["on", "ture"])
+def test_an_unrecognized_flag_value_fails_to_import(flag, value):
+    # A typo must not silently mean accounts mode (reopening register, login, and reset in production).
+    result = _import_settings(**{flag: value})
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert flag in result.stderr
+
+
+def test_flags_are_read_case_insensitively_and_stripped():
+    read = _settings(
+        DEMO_MODE=" True ", TURNSTILE_SITE_KEY="0xREALSITE", TURNSTILE_SECRET_KEY="0xREALSECRET",
+        AI_SERVER_SIDE_FALLBACK=" NO ",
+    )
+    assert (read["demo_mode"], read["ai_fallback"]) == (True, False)
+    other = _settings(DEMO_MODE="0", AI_SERVER_SIDE_FALLBACK="YES")
+    assert (other["demo_mode"], other["ai_fallback"]) == (False, True)
+
+
+def test_an_empty_flag_means_its_default():
+    read = _settings(DEMO_MODE="", AI_SERVER_SIDE_FALLBACK="  ")
+    assert (read["demo_mode"], read["ai_fallback"]) == (False, True)
+
+
 TEST_SITE = "1x00000000000000000000AA"
 TEST_SECRET = "1x0000000000000000000000000000000AA"
 

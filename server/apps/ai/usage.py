@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
+from django.db import Error, IntegrityError, transaction
 from django.db.models import F
 from django.db.models.functions import Greatest
 from django.utils import timezone
@@ -150,7 +150,12 @@ def refund_on_failure(user, reservation: Reservation):
 
 
 def record_usage(user, feature: str, *, input_length: int, output_length: int, success: bool) -> None:
-    """Log one AI call. The quota itself is counted by reserve() and refund()."""
+    """Log one AI call. The quota itself is counted by reserve() and refund().
+
+    Never raises: it runs after the AI call, so a paid answer must still reach the visitor if the
+    log row can't be written. Any database error (a removed user's foreign key, a dropped connection,
+    a lock timeout) is logged and swallowed. Only the error's class is logged, never its text.
+    """
     try:
         with transaction.atomic():
             AIUsageLog.objects.create(
@@ -160,11 +165,19 @@ def record_usage(user, feature: str, *, input_length: int, output_length: int, s
                 output_length=output_length,
                 success=success,
             )
-    except IntegrityError:
-        # Swallow only the user-removed-mid-call case (a demo guest ending or expiring); anything else is a bug.
-        if get_user_model().objects.filter(pk=user.pk).exists():
-            raise
-        logger.info("AI usage not logged: the user was removed during the call (feature=%s).", feature)
+    except Error as exc:  # django.db.Error: the base of every database error, InterfaceError included
+        if isinstance(exc, IntegrityError) and _user_removed(user):
+            # Expected: a demo guest ended or expired during the call.
+            logger.info("AI usage not logged: the user was removed during the call (feature=%s).", feature)
+            return
+        logger.error("AI usage not logged: feature=%s error=%s", feature, type(exc).__name__)
+
+
+def _user_removed(user) -> bool:
+    try:
+        return not get_user_model().objects.filter(pk=user.pk).exists()
+    except Error:
+        return False  # can't tell: report it as an error
 
 
 def usage_snapshot(user) -> dict:
