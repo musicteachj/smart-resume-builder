@@ -5,7 +5,7 @@ All notable changes to ResumeIQ (formerly Smart Resume Builder) are documented h
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project follows
 [Semantic Versioning](https://semver.org/). Until the first production deploy, each completed
 implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the first release to
-`resume.jameslittlefield.net`.
+`resumeiq.jameslittlefield.net`.
 
 ## [Unreleased]
 

@@ -7,7 +7,14 @@ ResumeIQ is an AI resume builder. Import an existing resume or start fresh, edit
 editor with live preview, sharpen bullets, tailor it to any job description with Claude, write a matching
 cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text file.
 
-**Live:** https://resume.jameslittlefield.net *(after deploy)*
+**Live:** https://resumeiq.jameslittlefield.net *(after deploy)*
+
+## Live demo
+
+The public site runs in demo mode: **Try the live demo** passes a Cloudflare bot check and opens a throwaway guest
+account with a sample resume, no sign-up. Guests get a small AI allowance, accounts and passwords don't exist, and a
+guest and its data are deleted after 24 hours. A monthly dollar budget caps total AI spend; when it is spent, the AI
+buttons say so and the rest of the editor keeps working. Details are on the in-app Privacy and Terms pages.
 
 ![ResumeIQ](client/public/og-image.png)
 
@@ -54,10 +61,10 @@ cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text fil
 | Frontend | React 19, Vite, TypeScript (strict), Tailwind CSS, shadcn/ui-style components, TanStack Query, React Hook Form + Zod, Zustand, dnd-kit |
 | API client | Orval: a typed axios + TanStack Query client generated from the backend's OpenAPI schema |
 | Backend | Django 5.2, Django REST Framework, SimpleJWT, drf-spectacular (OpenAPI) |
-| Database | PostgreSQL 15 (Docker locally, AWS RDS in production) |
+| Database | PostgreSQL 17 (Docker locally, the shared Postgres server in production) |
 | AI | Anthropic Claude via the Python SDK: Claude Haiku 5.5 for quick edits, Claude Sonnet 5.5 for tailoring, parsing, cover letters, and the ATS check |
 | CI | GitHub Actions (lint, typecheck, tests, schema drift, Docker smoke test, dependency audit, Playwright end-to-end and axe accessibility checks) and CodeQL |
-| Hosting | One Docker image (gunicorn serves the API and the built SPA) on AWS ECS Fargate behind an ALB, with ECR, RDS, Secrets Manager, and Route 53 |
+| Hosting | One Docker image (gunicorn serves the API and the built SPA) on AWS ECS (shared EC2 host) behind an ALB, with SSM Parameter Store secrets and Route 53; see `docs/DEPLOYMENT.md` |
 
 ## Repository layout
 
@@ -65,7 +72,7 @@ cover letter, and export a clean, ATS-safe PDF, Word document, or plain-text fil
 client/              React + Vite + Tailwind frontend
 client/e2e/          Playwright end-to-end and accessibility tests (Chromium + WebKit)
 server/              Django + DRF API (apps: accounts, resumes, ai)
-docs/                DESIGN.md (design system), design/ (logo and brand assets), qa/ (manual Safari and VoiceOver checklist)
+docs/                DEPLOYMENT.md (deploy values), DESIGN.md (design system), design/ (logo and brand assets), qa/ (manual Safari and VoiceOver checklist)
 screens/             High-fidelity design mockups (visual reference)
 .github/workflows/   CI and CodeQL
 Dockerfile           Multi-stage production image (Node builds the SPA, Python serves it)
@@ -108,8 +115,13 @@ console email backend). Production needs a real `EMAIL_BACKEND` and `CLIENT_URL`
 ### Run the production image locally
 
 ```bash
-docker compose --profile prod up --build app   # API + built SPA on http://localhost:8000
+docker compose up -d                                              # Postgres 17
+docker compose --profile prod run --rm app python manage.py migrate --noinput
+docker compose --profile prod up --build app                      # API + built SPA on http://localhost:8000
 ```
+
+This mirrors production: demo mode on, Cloudflare's always-pass Turnstile test keys, live AI off, a read-only
+root filesystem, dropped capabilities, and migrations as a separate step.
 
 ## Scripts (root)
 
