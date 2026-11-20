@@ -10,6 +10,10 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- A Playwright demo-mode suite (Chromium and WebKit, on its own Django 8013 and Vite 5182 with Cloudflare's test
+  keys, AI and Turnstile mocked): the guest start, two tabs reloading together, an ended demo (on reload and on
+  autosave), AI refusals, and ending the demo, each with axe scans in light and dark. And three landing screenshots
+  of the sample resume (`npm run screenshots`, JPEG under 250 KB) so the landing shows the AI features with no demo.
 - **The demo landing** (demo mode): one primary action, "Try the live demo", passes Cloudflare's bot check (its
   script loads only on that click, with the site key from `GET /api/demo/status`), starts a guest, and opens its
   sample resume, with "Please don't upload a real resume." under it. The page says when today's live AI budget is
