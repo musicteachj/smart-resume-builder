@@ -1,0 +1,11 @@
+# Gitleaks configuration, read by the Security workflow.
+# It keeps every default rule and allows only the fake e2e test-account password.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The fake e2e test-account password, used only against the local e2e database, never a secret"
+condition = "AND"
+paths = ['''^client/e2e/support/fixtures\.ts$''']
+regexes = ['''Correct-Horse-Battery-42''']

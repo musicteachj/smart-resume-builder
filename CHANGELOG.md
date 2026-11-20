@@ -80,6 +80,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - An AI call whose guest is removed mid-call no longer fails with a 500, and a removed user gets 401 `session_ended`.
 
 ### Security
+- **CI security hardening**: gitleaks scans the full history on every push and pull request, a weekly dependency audit
+  (`npm audit` and `pip-audit`) runs on a schedule, every workflow action is pinned to a commit SHA, and every checkout
+  sets `persist-credentials: false`. `.gitleaks.toml` keeps the default rules and allows only the fake e2e test password.
 - `.dockerignore` excludes every `.env*` file from the image build context.
 - **The bot check fails closed**: a failed check, a timeout, a bad reply, or an unset secret never creates a guest
   (production with `DEMO_MODE` on requires both Turnstile keys, and refuses Cloudflare's test keys unless every
