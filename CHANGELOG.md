@@ -10,6 +10,15 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- **The demo landing** (demo mode): one primary action, "Try the live demo", passes Cloudflare's bot check (its
+  script loads only on that click, with the site key from `GET /api/demo/status`), starts a guest, and opens its
+  sample resume, with "Please don't upload a real resume." under it. The page says when today's live AI budget is
+  used up (before any bot check), disables the start when the demo is full, shows the server's words when a start
+  is refused, and says "Your demo ended" when a demo in use ends (past its 24 hours, or ended in another tab). A
+  guest who is still signed in sees "Back to your demo" instead of a second start.
+- Guests see "Demo guest" in the header (never the placeholder email), no usage pill or AI usage line, and one menu
+  item, "Sign out and end demo", which confirms and then deletes the demo and its resumes right away. The import
+  dialog asks guests not to upload a real resume, and a guest's blank resume starts without a name or email.
 - Per-guest limits so one demo guest can't fill the disk: 20 résumés, 64 KB per résumé, and 5 MiB stored in total
   (résumés, versions, and cover letters), tunable with `DEMO_GUEST_MAX_RESUMES`, `DEMO_GUEST_MAX_CONTENT_BYTES`, and
   `DEMO_GUEST_MAX_STORAGE_BYTES`. Accounts are never capped. The server's message shows in the editor's save status and
@@ -41,6 +50,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   `is_guest`.
 
 ### Changed
+- In demo mode the account pages (sign-in, register, password reset, account) redirect home, and signed-out visits
+  to signed-in pages go home rather than to sign-in. If the demo status can't be fetched, the app assumes demo mode.
+- A failed session refresh no longer starts another refresh from a request that comes back after sign-out.
 - Every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage)
   returns plain copy pointing at editing, templates, and export, with a `code` the client can read.
 - **The refusal fallback can be turned off** with `AI_SERVER_SIDE_FALLBACK` (default on), and its second pass now has

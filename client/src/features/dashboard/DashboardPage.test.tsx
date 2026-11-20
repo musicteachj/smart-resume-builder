@@ -20,6 +20,8 @@ vi.mock("@/api/generated/resumes/resumes", () => ({
 }));
 vi.mock("./ImportResumeModal", () => ({ ImportResumeModal: () => null }));
 
+import { useAuthStore } from "@/stores/auth";
+
 import { DashboardPage } from "./DashboardPage";
 
 const LIMIT = "This demo can hold up to 20 resumes. Delete one to make room.";
@@ -40,7 +42,32 @@ function renderPage() {
 }
 
 describe("DashboardPage", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: null, accessToken: null, status: "loading" });
+  });
+
+  const blankFor = async (user: Record<string, unknown>) => {
+    useAuthStore.setState({ status: "authenticated", user: user as never });
+    createMutate.mockResolvedValue({ id: "new" });
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: /new resume/i }));
+    return createMutate.mock.calls[0]![0].data.content.personalInfo;
+  };
+
+  it("starts an account's blank resume with its name and email", async () => {
+    expect(await blankFor({ name: "Maya Chen", email: "maya@example.com", is_guest: false })).toEqual({
+      name: "Maya Chen",
+      email: "maya@example.com",
+    });
+  });
+
+  it("starts a guest's blank resume empty, never with the synthetic email", async () => {
+    expect(await blankFor({ name: "Demo guest", email: "guest-abc@demo.invalid", is_guest: true })).toEqual({
+      name: "",
+      email: "",
+    });
+  });
 
   it("shows the server's message when New resume is refused", async () => {
     createMutate.mockRejectedValue(limitError);

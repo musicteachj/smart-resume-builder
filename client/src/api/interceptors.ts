@@ -1,6 +1,6 @@
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-import { useAuthStore } from "@/stores/auth";
+import { isAuthenticated, useAuthStore } from "@/stores/auth";
 
 import { AXIOS_INSTANCE } from "./axios";
 
@@ -9,13 +9,18 @@ let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
   const { setAccessToken, logout } = useAuthStore.getState();
+  const wasSignedIn = isAuthenticated();
   try {
-    // The refresh token rides along as an httpOnly cookie — no request body needed.
+    // The refresh token rides along as an httpOnly cookie, so no request body is needed.
     const { data } = await AXIOS_INSTANCE.post<{ access: string }>("/api/auth/refresh");
     setAccessToken(data.access);
     return data.access;
-  } catch {
-    logout();
+  } catch (err) {
+    // A 401 while a session was in use means it ended under us: refused (`session_ended`),
+    // or its cookie is gone (`no_session`: a demo past its 24 hours, whose cookie the
+    // browser dropped, or one ended in another tab). Anything else is a quiet sign-out.
+    const ended = wasSignedIn && (err as AxiosError)?.response?.status === 401;
+    logout({ sessionEnded: ended });
     return null;
   }
 }
@@ -51,7 +56,10 @@ export function installAuthInterceptors() {
         | undefined;
       const isAuthCall = isAuthEndpoint(original?.url);
 
-      if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
+      // No access token means no session in use (signed out, or it just ended): a late 401
+      // then never starts another refresh, so a failed refresh can't loop.
+      const hasSession = useAuthStore.getState().accessToken !== null;
+      if (error.response?.status === 401 && original && !original._retry && !isAuthCall && hasSession) {
         original._retry = true;
         refreshing = refreshing ?? refreshAccessToken();
         const newToken = await refreshing;

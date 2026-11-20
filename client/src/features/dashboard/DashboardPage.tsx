@@ -50,7 +50,10 @@ export function DashboardPage() {
           title: "Untitled resume",
           template: "classic",
           content: {
-            personalInfo: { name: user?.name ?? "", email: user?.email ?? "" },
+            // A guest's name ("Demo guest") and email are placeholders, not theirs.
+            personalInfo: user?.is_guest
+              ? { name: "", email: "" }
+              : { name: user?.name ?? "", email: user?.email ?? "" },
             summary: "",
             workExperience: [],
             education: [],

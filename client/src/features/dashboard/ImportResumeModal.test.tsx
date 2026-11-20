@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useAuthStore } from "@/stores/auth";
+
 import { ImportResumeModal } from "./ImportResumeModal";
 
 const navigate = vi.fn();
@@ -26,7 +28,22 @@ const parsed = {
 };
 
 describe("ImportResumeModal", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: null, accessToken: null, status: "loading" });
+  });
+
+  it("asks a guest not to upload a real resume", () => {
+    useAuthStore.setState({ status: "authenticated", user: { name: "Demo guest", is_guest: true } as never });
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Please don't upload a real resume.");
+  });
+
+  it("doesn't show the guest notice to an account", () => {
+    useAuthStore.setState({ status: "authenticated", user: { name: "Maya Chen", is_guest: false } as never });
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    expect(screen.queryByText("Please don't upload a real resume.")).not.toBeInTheDocument();
+  });
 
   it("parses pasted text, shows the review, and creates on confirm", async () => {
     parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });

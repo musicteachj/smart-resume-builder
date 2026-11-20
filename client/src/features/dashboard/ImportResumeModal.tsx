@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +14,7 @@ import { aiErrorMessage } from "@/features/ai/aiError";
 import { applyAiUsage } from "@/features/ai/aiUsage";
 import { ResumeDocument } from "@/features/templates/ResumeDocument";
 import { extractFileText } from "@/lib/extractFileText";
+import { useAuthStore } from "@/stores/auth";
 
 type Step = "input" | "parsing" | "review";
 
@@ -39,6 +41,7 @@ export function ImportResumeModal({
   // Bumped on reset so a parse that finishes after the user discarded it is ignored.
   const runId = useRef(0);
   const discard = useDiscardConfirm(DISCARD_COPY);
+  const isGuest = useAuthStore((s) => s.user?.is_guest === true);
 
   const reset = () => {
     runId.current += 1;
@@ -116,6 +119,15 @@ export function ImportResumeModal({
         </div>
       ) : (
         <div className="space-y-4">
+          {isGuest && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-md border border-border bg-surface-variant px-3 py-2 text-sm text-foreground"
+            >
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              Please don't upload a real resume.
+            </p>
+          )}
           <input
             type="file"
             accept=".pdf,.docx"
