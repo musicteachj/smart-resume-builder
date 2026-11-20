@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Accounts mode (the demo status comes from the server).
+vi.mock("@/features/demo/useDemoStatus", () => ({
+  useDemoStatus: () => ({ status: undefined, isLoading: false, demoMode: false }),
+}));
 
 import { ProtectedRoute } from "@/routes/guards";
 import { useAuthStore } from "@/stores/auth";

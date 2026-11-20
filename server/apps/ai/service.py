@@ -15,15 +15,45 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 import re
 import uuid
 
 from django.conf import settings
+from django.db import Error as DBError  # the base of every database error, InterfaceError included
 from django.utils import timezone
+
+from . import ledger
+from .pricing import Attempt, input_token_bound, reservation_micros, served_cost_micros
+
+logger = logging.getLogger(__name__)
 
 
 class AIServiceError(Exception):
     """Raised when an AI call cannot be completed (config or upstream error)."""
+
+
+_BUDGET_MESSAGES = {
+    "off": "Live AI is off.",
+    "daily": "Today's AI budget is used up.",
+    "visitor": "This demo's AI allowance is used up.",
+}
+
+
+class AIBudgetRefusedError(AIServiceError):
+    """The dollar ledger refused the call before anything was sent. `scope` is "off", "daily", or "visitor"."""
+
+    def __init__(self, scope: str):
+        super().__init__(_BUDGET_MESSAGES.get(scope, "The AI budget does not allow this call."))
+        self.scope = scope
+
+
+class AIProviderLimitError(AIServiceError):
+    """Anthropic rejected the call because the account's spend limit or credit balance is used up."""
+
+
+class AIUnavailableError(AIServiceError):
+    """The call failed upstream or could not be made (network, overload, ledger outage)."""
 
 
 class AIRefusedError(AIServiceError):
@@ -53,8 +83,10 @@ def _client():
 
 
 def _simple_client():
-    """Haiku calls are quick: a short timeout with retries still fits the budget."""
-    return _client().with_options(timeout=settings.AI_SIMPLE_TIMEOUT_SECONDS, max_retries=2)
+    """Haiku calls are quick: a short timeout, one attempt."""
+    # No SDK retries: a retry is a second paid attempt outside its reservation, and 3 x 30 s plus
+    # backoff could outlast the load balancer.
+    return _client().with_options(timeout=settings.AI_SIMPLE_TIMEOUT_SECONDS, max_retries=0)
 
 
 def _text_from(message) -> str:
@@ -64,27 +96,102 @@ def _text_from(message) -> str:
 
 # Server-side refusal fallback (beta): if Claude Sonnet 5.5 declines, the API re-runs the
 # request on Claude Sonnet 5 inside the same call. The fallback list is only valid for
-# this model, so other models (an env override) go through the plain endpoint.
-_FALLBACKS = {"claude-sonnet-5-5": [{"model": "claude-sonnet-5"}]}
+# this model, so other models (an env override) go through the plain endpoint. The second
+# pass has its own explicit `max_tokens`, and the ledger reserves for both passes.
+_FALLBACKS = {"claude-sonnet-5-5": "claude-sonnet-5"}
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
+_USAGE_LIMIT_400 = re.compile(r"You have reached your specified (?:workspace |organization )?API usage limits", re.I)
+_CREDIT_400 = re.compile(r"credit balance is too low", re.I)
 
-def _call(client, *, model: str, effort: str, **kwargs):
-    """Send one Messages request and check how it ended.
 
-    Raises AIRefusedError on a refusal and AIServiceError on any upstream error or a
-    reply cut off at `max_tokens` (partial JSON or a half-sentence is never returned).
+def _error_text(exc) -> str:
+    body = getattr(exc, "body", None)
+    inner = body.get("error") if isinstance(body, dict) else None
+    detail = inner.get("message") if isinstance(inner, dict) else ""
+    return f"{exc} {detail or ''}"
+
+
+def _classify(exc: Exception) -> tuple[type[AIServiceError], bool]:
+    """The error to raise for a failed call, and whether Anthropic is known not to have billed it.
+
+    Only rejections made before any work is done are unbilled: 401, 402, 403, any 429 (rate limit or
+    spend cap), 529, and the 400s for a used-up usage limit or credit balance. A timeout, a dropped
+    connection, a 5xx, or any other 400 may have been billed, so those keep the full reservation.
+    """
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        return AIUnavailableError, False
+    text = _error_text(exc)
+    if status == 402 or (status == 400 and (_USAGE_LIMIT_400.search(text) or _CREDIT_400.search(text))):
+        return AIProviderLimitError, True
+    if status == 429:
+        body = getattr(exc, "body", None)
+        inner = body.get("error") if isinstance(body, dict) else None
+        code = inner.get("error_code") if isinstance(inner, dict) else None
+        return (AIProviderLimitError if code == "enforced_spend_limit_reached" else AIUnavailableError), True
+    return AIUnavailableError, status in (401, 403, 529)
+
+
+def _settle(reservation, actual_micros: int, how: str) -> None:
+    """Settle quietly: a ledger failure must not lose a finished answer. The sweeper charges the
+    reservation in full later."""
+    try:
+        ledger.settle(reservation, actual_micros, how=how)
+    except DBError:
+        logger.error("AI ledger settle failed: reservation=%s how=%s", reservation.id, how, exc_info=True)
+
+
+def _call(client, *, model: str, effort: str, feature: str, visitor_id: int | None, **kwargs):
+    """Reserve the worst case, send one Messages request, settle from real usage, check how it ended.
+
+    Raises AIBudgetRefusedError (nothing sent) if the ledger refuses, AIRefusedError on a refusal and
+    AIServiceError on any upstream error or a reply cut off at `max_tokens` (partial JSON or a
+    half-sentence is never returned). No transaction is open while the model call runs.
     """
     params = {"model": model, "output_config": {"effort": effort, **kwargs.pop("output_config", {})}, **kwargs}
+    max_tokens = params["max_tokens"]
+    fallback = _FALLBACKS.get(model) if settings.AI_SERVER_SIDE_FALLBACK else None
+    attempts = [Attempt(model, max_tokens)] + ([Attempt(fallback, max_tokens)] if fallback else [])
+    bound = input_token_bound(
+        system=params.get("system", ""), messages=params["messages"], output_config=params["output_config"]
+    )
+    amount = reservation_micros(attempts, bound)
     try:
-        if model in _FALLBACKS:
-            resp = client.beta.messages.create(betas=[_FALLBACK_BETA], fallbacks=_FALLBACKS[model], **params)
+        reservation = ledger.reserve(amount_micros=amount, feature=feature, model=model, visitor_id=visitor_id)
+    except ledger.BudgetRefused as refused:
+        raise AIBudgetRefusedError(refused.scope) from refused
+    except DBError as exc:
+        logger.error("AI ledger reserve failed: feature=%s", feature, exc_info=True)
+        raise AIUnavailableError("The AI budget could not be checked.") from exc
+
+    try:
+        if fallback:
+            resp = client.beta.messages.create(
+                betas=[_FALLBACK_BETA], fallbacks=[{"model": fallback, "max_tokens": max_tokens}], **params
+            )
         else:
             resp = client.messages.create(**params)
-    except AIServiceError:
-        raise
     except Exception as exc:  # anthropic / network errors
-        raise AIServiceError(str(exc)) from exc
+        error, unbilled = _classify(exc)
+        _settle(reservation, 0 if unbilled else amount, "unbilled" if unbilled else "kept")
+        logger.warning(
+            "AI call failed: feature=%s model=%s reserved=%s actual=%s how=%s",
+            feature, model, amount, 0 if unbilled else amount, "unbilled" if unbilled else "kept",
+        )
+        raise error(str(exc)) from exc
+
+    try:
+        actual, how = served_cost_micros(resp, requested_model=model), "usage"
+    except Exception:  # unreadable usage: assume the worst
+        logger.error("AI usage unreadable: feature=%s model=%s", feature, model, exc_info=True)
+        actual, how = amount, "kept"
+    _settle(reservation, actual, how)
+    usage = getattr(resp, "usage", None)
+    served = getattr(usage, "iterations", None) or [usage]
+    if any((getattr(item, "input_tokens", 0) or 0) > bound for item in served):
+        logger.warning("AI input exceeded its bound: feature=%s model=%s bound=%s", feature, model, bound)
+    logger.info("AI call: feature=%s model=%s reserved=%s actual=%s how=%s", feature, model, amount, actual, how)
 
     if resp.stop_reason == "refusal":
         raise AIRefusedError(getattr(resp.stop_details, "category", None))
@@ -191,7 +298,7 @@ def _content_to_text(content: dict, *, with_bullet_ids: bool = False) -> str:
 
 # --- features ---------------------------------------------------------------
 
-def improve_bullet(text: str, role: str = "") -> str:
+def improve_bullet(text: str, role: str = "", *, visitor_id: int | None = None) -> str:
     from .prompts import IMPROVE_BULLET
 
     context = f"Target role: {role}\n\n" if role else ""
@@ -200,6 +307,8 @@ def improve_bullet(text: str, role: str = "") -> str:
         _simple_client(),
         model=settings.AI_MODEL_SIMPLE,
         effort="low",
+        feature="improve-bullet",
+        visitor_id=visitor_id,
         max_tokens=1024,
         system=IMPROVE_BULLET,
         messages=[{"role": "user", "content": user}],
@@ -210,7 +319,7 @@ def improve_bullet(text: str, role: str = "") -> str:
     return out
 
 
-def generate_summary(content: dict) -> str:
+def generate_summary(content: dict, *, visitor_id: int | None = None) -> str:
     from .prompts import GENERATE_SUMMARY
 
     user = "Write a professional summary for this resume:\n\n" + _content_to_text(content)
@@ -218,6 +327,8 @@ def generate_summary(content: dict) -> str:
         _simple_client(),
         model=settings.AI_MODEL_SIMPLE,
         effort="low",
+        feature="generate-summary",
+        visitor_id=visitor_id,
         max_tokens=1536,
         system=GENERATE_SUMMARY,
         messages=[{"role": "user", "content": user}],
@@ -260,7 +371,7 @@ TAILOR_SCHEMA = {
 }
 
 
-def tailor_to_jd(content: dict, job_description: str) -> dict:
+def tailor_to_jd(content: dict, job_description: str, *, visitor_id: int | None = None) -> dict:
     from .prompts import TAILOR_JD
 
     user = (
@@ -274,6 +385,8 @@ def tailor_to_jd(content: dict, job_description: str) -> dict:
         model=settings.AI_MODEL_TAILOR,
         # Judging fit and rewriting bullets is the one route that gains from more thinking.
         effort="medium",
+        feature="tailor-jd",
+        visitor_id=visitor_id,
         max_tokens=8000,
         system=TAILOR_JD,
         output_config=_json_format(TAILOR_SCHEMA),
@@ -294,7 +407,7 @@ def tailor_to_jd(content: dict, job_description: str) -> dict:
     }
 
 
-def generate_cover_letter(content: dict, job_description: str) -> str:
+def generate_cover_letter(content: dict, job_description: str, *, visitor_id: int | None = None) -> str:
     from .prompts import COVER_LETTER
 
     user = "Resume:\n" + _content_to_text(content) + "\n\nJob description:\n" + job_description
@@ -302,6 +415,8 @@ def generate_cover_letter(content: dict, job_description: str) -> str:
         _client(),
         model=settings.AI_MODEL_TAILOR,
         effort="low",
+        feature="cover-letter",
+        visitor_id=visitor_id,
         max_tokens=4000,
         system=COVER_LETTER,
         messages=[{"role": "user", "content": user}],
@@ -332,7 +447,7 @@ ATS_SCHEMA = {
 }
 
 
-def ats_health_check(content: dict) -> dict:
+def ats_health_check(content: dict, *, visitor_id: int | None = None) -> dict:
     from .prompts import ATS_HEALTH_CHECK
 
     user = "Review this resume:\n\n" + _content_to_text(content)
@@ -340,6 +455,8 @@ def ats_health_check(content: dict) -> dict:
         _client(),
         model=settings.AI_MODEL_TAILOR,
         effort="low",
+        feature="ats-check",
+        visitor_id=visitor_id,
         max_tokens=4000,
         system=ATS_HEALTH_CHECK,
         output_config=_json_format(ATS_SCHEMA),
@@ -510,7 +627,7 @@ PARSE_SCHEMA = _obj(
 )
 
 
-def parse_resume(text: str) -> dict:
+def parse_resume(text: str, *, visitor_id: int | None = None) -> dict:
     from .prompts import PARSE_RESUME
 
     resp = _call(
@@ -518,6 +635,8 @@ def parse_resume(text: str) -> dict:
         model=settings.AI_MODEL_TAILOR,
         # Extraction, not judgment: low effort keeps a long résumé inside the timeout.
         effort="low",
+        feature="parse-resume",
+        visitor_id=visitor_id,
         max_tokens=12000,
         system=PARSE_RESUME,
         output_config=_json_format(PARSE_SCHEMA),

@@ -7,7 +7,8 @@ import { expect, test as base, type Page } from "@playwright/test";
 
 import type { AuthResponse, Resume, ResumeContent } from "../../src/api/generated/model";
 import { mockAi } from "./aiMocks";
-import { DJANGO_ENV, E2E_SERVER_HELPERS, PYTHON, SERVER_DIR } from "./env";
+import { DJANGO_DEMO_ENV, DJANGO_ENV, E2E_SERVER_HELPERS, PYTHON, SERVER_DIR } from "./env";
+import { mockTurnstile } from "./turnstileMock";
 
 export interface Account {
   name: string;
@@ -163,10 +164,37 @@ export async function expectVisibleFocus(page: Page) {
   expect(style!.outline || style!.shadow, `focus is not visible on <${style!.tag}> "${style!.text}"`).toBe(true);
 }
 
-/** Every page gets the AI mocks, so no spec can reach a real model by accident. */
+/** The AI endpoints and Cloudflare's Turnstile script, mocked: no spec reaches a real model or Cloudflare. */
+export async function installMocks(page: Page) {
+  await mockAi(page);
+  await mockTurnstile(page);
+}
+
+/** On the demo landing, press "Try the live demo" and wait for the sample résumé's editor. Returns its id. */
+export async function startDemo(page: Page): Promise<string> {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Try the live demo" }).click();
+  await page.waitForURL(/\/resumes\/[0-9a-f-]+$/);
+  return new URL(page.url()).pathname.split("/").pop()!;
+}
+
+/**
+ * Expire a demo guest (the owner of this résumé; every guest if omitted) and run the cleanup.
+ * Synchronous, so the next step sees the result. Pass the id in specs: they run in parallel
+ * against one database, and expiring every guest would end the other specs' demos.
+ */
+export function expireGuests(resumeId?: string): void {
+  execFileSync(PYTHON, [path.join(E2E_SERVER_HELPERS, "expire_guests.py"), ...(resumeId ? [resumeId] : [])], {
+    cwd: SERVER_DIR,
+    env: { ...process.env, ...DJANGO_DEMO_ENV },
+    encoding: "utf8",
+  });
+}
+
+/** Every page gets the mocks, so no spec can reach a real model by accident. */
 export const test = base.extend<{ user: SignedInUser }>({
   page: async ({ page }, use) => {
-    await mockAi(page);
+    await installMocks(page);
     await use(page);
   },
   /** A registered, signed-in user (refresh cookie in the page's context). */

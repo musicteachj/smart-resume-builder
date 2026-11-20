@@ -38,6 +38,7 @@ JSON output, the most advanced) — so the first AI integration is the simplest 
 | Auth | DRF **SimpleJWT** (email/password) first; **Google OAuth via `django-allauth` in scope**, built after core flows work |
 | API typing | `drf-spectacular` emits OpenAPI → **Orval** generates a typed axios + TanStack Query client into `client/src/api/generated/` (Zod gen OFF; JWT attached via a custom axios mutator). Recovers cross-stack type safety. Keep the schema clean: `@extend_schema` on SimpleJWT views, explicit `operation_id`s, and a nested serializer for the Resume `content` JSONField. |
 | Database | **PostgreSQL 15** — local via docker-compose, prod via **AWS RDS** |
+| Hosting and database update | **Superseded (2026-11) by the portfolio-infra design** (`portfolio-infra/docs/design/2026-11-18-portfolio-apps-aws-deployment-design.md`): ECS on the shared EC2 server, shared Postgres 17, SSM secrets, host `resumeiq.jameslittlefield.net`. This table's Hosting and Database rows are historical. See `docs/DEPLOYMENT.md`. |
 | AI | Anthropic Python SDK; Claude 4.x model |
 | PDF export | **Client-side `react-to-print`** (PDF = exact live preview; zero backend weight) |
 | Hosting | ECS Fargate on shared `portfolio-cluster`, ECR, shared `portfolio-alb`, Secrets Manager, GitHub Actions, RDS → `resume.jameslittlefield.net` |
@@ -128,7 +129,7 @@ smart-resume-builder/
    client: Vitest + React Testing Library (editor, auth guard, AI modal).
 9. **Containerize** — multi-stage Dockerfile (Node build → gunicorn + WhiteNoise serving SPA), verify
    `docker compose` end-to-end locally.
-10. **AWS deploy** — ECR repo `smart-resume-builder`; ECS Fargate service on `portfolio-cluster` + target
+10. **AWS deploy** *(superseded by the portfolio-infra design: ECS on the shared EC2 server, shared Postgres 17, SSM, `resumeiq.jameslittlefield.net`; see `docs/DEPLOYMENT.md`. The text below is historical.)* — ECR repo `smart-resume-builder`; ECS Fargate service on `portfolio-cluster` + target
     group on `portfolio-alb`; **RDS Postgres** instance; Secrets Manager entries (DB URL, JWT signing key,
     `ANTHROPIC_API_KEY`); `GitHub Actions` workflow (build → push ECR → update task def → deploy, mirroring
     `employee-management-system/.github/workflows/deploy-aws.yml`); Route 53 record `resume.jameslittlefield.net`.
@@ -188,7 +189,7 @@ fed by `docs/DESIGN.md`, to avoid a generic look on the dashboard and editor.
 - **Container parity:** build the prod Dockerfile and hit the running container at `/health`, the SPA, and an
   authed API call to confirm WhiteNoise serving + API both work from one image.
 - **Deploy:** push to `main` → GitHub Actions deploys → `https://resume.jameslittlefield.net` loads, full
-  flow works against RDS, secrets resolve from Secrets Manager.
+  flow works against RDS, secrets resolve from Secrets Manager. (superseded: see docs/DEPLOYMENT.md and the portfolio-infra design)
 
 ## Resolved defaults
 

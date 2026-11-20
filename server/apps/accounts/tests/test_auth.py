@@ -80,7 +80,8 @@ def test_refresh_without_cookie_is_unauthorized(client):
 
 
 @pytest.mark.django_db
-def test_refresh_rotates_the_cookie_and_blacklists_the_old_token(client):
+def test_refresh_rotates_the_cookie_and_blacklists_the_old_token(client, settings):
+    settings.REFRESH_REUSE_GRACE_SECONDS = 0  # strict rotation here; the reuse grace is covered in test_refresh.py
     reg = client.post(REGISTER, VALID, format="json")
     original = reg.cookies["refresh_token"].value
 

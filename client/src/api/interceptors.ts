@@ -1,6 +1,6 @@
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-import { useAuthStore } from "@/stores/auth";
+import { isAuthenticated, useAuthStore } from "@/stores/auth";
 
 import { AXIOS_INSTANCE } from "./axios";
 
@@ -9,13 +9,20 @@ let refreshing: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
   const { setAccessToken, logout } = useAuthStore.getState();
+  const wasSignedIn = isAuthenticated();
   try {
-    // The refresh token rides along as an httpOnly cookie — no request body needed.
+    // The refresh token rides along as an httpOnly cookie, so no request body is needed.
     const { data } = await AXIOS_INSTANCE.post<{ access: string }>("/api/auth/refresh");
     setAccessToken(data.access);
     return data.access;
-  } catch {
-    logout();
+  } catch (err) {
+    // Only a 401 ends the session. While a session was in use that means it ended under us:
+    // refused (`session_ended`), or its cookie is gone (`no_session`: a demo past its 24 hours,
+    // whose cookie the browser dropped, or one ended in another tab).
+    // A 429 (several visitors behind one office IP), a 5xx, or a network error says nothing about
+    // the session, so it stays as it is and only the original request fails. The next request that
+    // gets a 401 tries the refresh once more; nothing retries on its own.
+    if ((err as AxiosError)?.response?.status === 401) logout({ sessionEnded: wasSignedIn });
     return null;
   }
 }
@@ -51,7 +58,10 @@ export function installAuthInterceptors() {
         | undefined;
       const isAuthCall = isAuthEndpoint(original?.url);
 
-      if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
+      // No access token means no session in use (signed out, or it just ended): a late 401
+      // then never starts another refresh, so a failed refresh can't loop.
+      const hasSession = useAuthStore.getState().accessToken !== null;
+      if (error.response?.status === 401 && original && !original._retry && !isAuthCall && hasSession) {
         original._retry = true;
         refreshing = refreshing ?? refreshAccessToken();
         const newToken = await refreshing;

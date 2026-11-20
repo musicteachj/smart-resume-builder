@@ -7,6 +7,7 @@ or real environment variables (Docker / ECS). See ../.env.example.
 
 import os
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import dj_database_url
@@ -26,6 +27,23 @@ load_dotenv(REPO_ROOT / ".env")
 # (common: an exported but blank ANTHROPIC_API_KEY). No-op in prod — there's no
 # .env file in the image, so Secrets Manager env vars are never overridden.
 load_dotenv(BASE_DIR / ".env", override=True)
+
+_TRUE_VALUES = ("true", "1", "yes")
+_FALSE_VALUES = ("false", "0", "no")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """A strict on/off flag: true/1/yes or false/0/no (any case, surrounding spaces ignored); unset or
+    empty means `default`. Anything else (a typo, "on") fails to start instead of silently picking a side."""
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in _TRUE_VALUES:
+        return True
+    if raw in _FALSE_VALUES:
+        return False
+    raise ImproperlyConfigured(f"{name} must be one of true/1/yes or false/0/no, got {os.environ[name]!r}")
+
 
 # Fail-closed: an unset DEBUG means production behavior (CSP on, Secure cookies,
 # AI limits enforced, real SECRET_KEY required). Local dev sets DEBUG=True in the
@@ -58,6 +76,45 @@ DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "False").lower() i
     "true", "1", "yes",
 )
 
+# Demo mode (apps/demo): visitors get a throwaway guest account, so the account routes and the
+# API docs answer 404. The SPA learns this from GET /api/demo/status, never from a Vite variable.
+# Parsed strictly: a typo here must not quietly reopen the account routes in production.
+DEMO_MODE = _env_bool("DEMO_MODE", False)
+if DEMO_MODE and DJANGO_ADMIN_ENABLED and not DEBUG:
+    raise ImproperlyConfigured("DEMO_MODE cannot be combined with DJANGO_ADMIN_ENABLED in production")
+# Cloudflare Turnstile keys for the guest start (verified in apps/demo/turnstile.py).
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+# Cloudflare's published Turnstile test keys (a test asserts this matches apps/demo/turnstile.py).
+TURNSTILE_TEST_KEYS = {
+    "1x00000000000000000000AA",
+    "2x00000000000000000000AB",
+    "1x00000000000000000000BB",
+    "2x00000000000000000000BB",
+    "3x00000000000000000000FF",
+    "1x0000000000000000000000000000000AA",
+    "2x0000000000000000000000000000000AA",
+    "3x0000000000000000000000000000000AA",
+}
+if DEMO_MODE and not DEBUG:
+    # Fail closed: a production demo without real bot-check keys would let anyone mint guests.
+    for _name, _value in (
+        ("TURNSTILE_SITE_KEY", TURNSTILE_SITE_KEY),
+        ("TURNSTILE_SECRET_KEY", TURNSTILE_SECRET_KEY),
+    ):
+        if not _value:
+            raise ImproperlyConfigured(f"{_name} is required when DEMO_MODE is on and DEBUG is off")
+    # Cloudflare's published test keys always pass or always fail, so a deployed site must never
+    # use them (re-read 2026-11-20 at developers.cloudflare.com/turnstile/troubleshooting/testing/).
+    # They are fine for a container reached only as localhost, such as the local prod-image check.
+    if {TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY} & TURNSTILE_TEST_KEYS and not all(
+        _host in ("localhost", "127.0.0.1") for _host in ALLOWED_HOSTS
+    ):
+        raise ImproperlyConfigured(
+            "A Cloudflare Turnstile test key is set while ALLOWED_HOSTS includes a host other than "
+            "localhost or 127.0.0.1; use real keys for a deployed demo"
+        )
+
 
 # Application definition
 
@@ -77,6 +134,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.resumes",
     "apps.ai",
+    "apps.demo",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -164,13 +222,15 @@ if not DATABASE_URL:
 DATABASES = {
     "default": dj_database_url.parse(
         DATABASE_URL,
-        conn_max_age=600,
+        conn_max_age=60,
         # Re-check a persistent connection before reuse, so an RDS restart or failover
         # doesn't cost each worker one 500. (TLS to RDS: `sslmode=require` in the
         # DATABASE_URL secret plus `rds.force_ssl=1` on the instance.)
         conn_health_checks=True,
     )
 }
+# Fail fast when the database is unreachable instead of hanging a worker thread.
+DATABASES["default"].setdefault("OPTIONS", {})["connect_timeout"] = 5
 
 
 # Password validation
@@ -198,7 +258,7 @@ EMAIL_BACKEND = os.environ.get(
     else "django.core.mail.backends.dummy.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL", "ResumeIQ <no-reply@resume.jameslittlefield.net>"
+    "DEFAULT_FROM_EMAIL", "ResumeIQ <no-reply@resumeiq.jameslittlefield.net>"
 )
 PASSWORD_RESET_TIMEOUT = 3600  # seconds; reset links expire after 1 hour
 
@@ -207,8 +267,9 @@ PASSWORD_RESET_TIMEOUT = 3600  # seconds; reset links expire after 1 hour
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # SimpleJWT, plus a 401 for a demo guest past its expiry (apps/accounts/authentication.py).
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.GuestExpiryJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     # Scoped throttles applied per-view (not globally): "auth" blunts login/register
@@ -222,6 +283,8 @@ REST_FRAMEWORK = {
         "writes": "120/min",
         # Password-reset email requests, keyed by IP: limits reset-email spam.
         "password-reset": "5/hour",
+        # "demo-start-hour" and "demo-start-day" (guest starts, keyed by IP) are added below,
+        # once the DEMO_STARTS_PER_* settings have been read.
     },
     # One trusted proxy hop (the ALB). Without this, DRF keys IP throttles on the
     # whole client-supplied X-Forwarded-For header, which an attacker can rotate
@@ -265,6 +328,8 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Rotation itself is done by apps.accounts.refresh.refresh_session (it also adds a short reuse grace);
+    # these flags only document the intent and apply to any stock SimpleJWT view.
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
@@ -349,9 +414,6 @@ LOGGING = {
 
 # App constants
 
-AI_DAILY_LIMIT = 10
-AI_MONTHLY_LIMIT = 50
-
 # AI (Claude): Haiku 5.5 for the short rewrites, Sonnet 5.5 for tailoring, cover letters,
 # the ATS check, and import (Opus/Fable aren't needed). Env-overridable, but the service sends
 # `effort` and structured outputs, so an override must be a model that supports both.
@@ -360,6 +422,71 @@ AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-5-5")
 AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-5-5")
 # Timeout chain: Anthropic (100s, no retry) < ALB idle (120s) < client axios (125s).
 AI_TIMEOUT_SECONDS = 100
-AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, with 2 retries
+AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, one attempt (no retries)
 # Résumé text sent to the model is capped to bound per-call cost.
 AI_MAX_PROMPT_CHARS = 20000
+
+
+# AI dollar budget (apps/ai/ledger.py). Whole-account money, in USD here and micro-dollars in the ledger.
+def _env_decimal(name: str, default: str, *, minimum: str) -> Decimal:
+    raw = os.environ.get(name) or default
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        raise ImproperlyConfigured(f"{name} must be a number, got {raw!r}") from None
+    if not value.is_finite() or value < Decimal(minimum):
+        raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {raw!r}")
+    return value
+
+
+def _env_int(name: str, default: str, *, minimum: int) -> int:
+    raw = os.environ.get(name) or default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ImproperlyConfigured(f"{name} must be a whole number, got {raw!r}") from None
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {raw!r}")
+    return value
+
+
+# Seconds a just-rotated refresh token keeps working (access token only, no new cookie), so two tabs
+# restoring a session at the same moment don't sign the visitor out. 0 turns the grace off.
+REFRESH_REUSE_GRACE_SECONDS = _env_int("REFRESH_REUSE_GRACE_SECONDS", "30", minimum=0)
+
+# Per-user AI call limits (admins and DEBUG bypass them).
+AI_DAILY_LIMIT = _env_int("AI_DAILY_LIMIT", "10", minimum=0)
+AI_MONTHLY_LIMIT = _env_int("AI_MONTHLY_LIMIT", "50", minimum=0)
+# A demo guest's lifetime cap on live AI calls (no daily or 30-day reset, no admin or DEBUG bypass).
+AI_GUEST_CALL_LIMIT = _env_int("AI_GUEST_CALL_LIMIT", "30", minimum=1)
+# Let the API re-run a request Sonnet 5.5 declines on Sonnet 5 inside the same call. A declined
+# attempt is billed, so the ledger reserves for both passes while this is on.
+AI_SERVER_SIDE_FALLBACK = _env_bool("AI_SERVER_SIDE_FALLBACK", True)
+# The month's live-AI budget; 0 turns live AI off.
+AI_MONTHLY_BUDGET_USD = _env_decimal("AI_MONTHLY_BUDGET_USD", "10", minimum="0")
+# One day may spend up to this multiple of an even share of what the month has left.
+AI_PACING_MULTIPLIER = _env_decimal("AI_PACING_MULTIPLIER", "3", minimum="1")
+# A day's allowance is never below this (capped by what the month has left).
+AI_DAILY_FLOOR_USD = _env_decimal("AI_DAILY_FLOOR_USD", "0.50", minimum="0")
+# What one demo guest may spend in all.
+AI_VISITOR_BUDGET_USD = _env_decimal("AI_VISITOR_BUDGET_USD", "0.15", minimum="0")
+# An unsettled reservation older than this is charged in full by the sweeper.
+AI_STALE_RESERVATION_MINUTES = _env_int("AI_STALE_RESERVATION_MINUTES", "10", minimum=1)
+
+# Demo guests: how long one lasts, how many may be live at once, and the per-IP start limits.
+DEMO_GUEST_TTL_HOURS = _env_int("DEMO_GUEST_TTL_HOURS", "24", minimum=1)
+DEMO_MAX_LIVE_GUESTS = _env_int("DEMO_MAX_LIVE_GUESTS", "300", minimum=1)
+DEMO_STARTS_PER_HOUR = _env_int("DEMO_STARTS_PER_HOUR", "15", minimum=1)
+DEMO_STARTS_PER_DAY = _env_int("DEMO_STARTS_PER_DAY", "50", minimum=1)
+# Per-guest storage caps (guests only; accounts are never capped).
+DEMO_GUEST_MAX_RESUMES = _env_int("DEMO_GUEST_MAX_RESUMES", "20", minimum=1)
+# One résumé's `content` as UTF-8 JSON.
+DEMO_GUEST_MAX_CONTENT_BYTES = _env_int("DEMO_GUEST_MAX_CONTENT_BYTES", "65536", minimum=1)
+# Everything one guest stores (pg_column_size across résumés, versions, cover letters).
+DEMO_GUEST_MAX_STORAGE_BYTES = _env_int("DEMO_GUEST_MAX_STORAGE_BYTES", "5242880", minimum=1)
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].update(
+    {
+        "demo-start-hour": f"{DEMO_STARTS_PER_HOUR}/hour",
+        "demo-start-day": f"{DEMO_STARTS_PER_DAY}/day",
+    }
+)

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './aiReasonEnum';
 export * from './aIUsage';
 export * from './atsCheckRequest';
 export * from './atsCheckResponse';
@@ -14,11 +15,14 @@ export * from './coverLetter';
 export * from './coverLetterRequest';
 export * from './coverLetterResponse';
 export * from './deleteAccount';
+export * from './demoStatus';
 export * from './detailResponse';
 export * from './education';
 export * from './emailTokenObtainPair';
 export * from './generateSummaryRequest';
 export * from './generateSummaryResponse';
+export * from './guestStartRequest';
+export * from './guestStartResponse';
 export * from './improveBulletRequest';
 export * from './improveBulletResponse';
 export * from './listCoverLettersParams';

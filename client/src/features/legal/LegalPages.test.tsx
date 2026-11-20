@@ -30,3 +30,37 @@ describe.each([
     expect(screen.getByRole("link", { name: "ResumeIQ home" })).toHaveAttribute("href", "/");
   });
 });
+
+describe("public demo copy", () => {
+  it("privacy states the retention and names every processor", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <PrivacyPage />
+      </MemoryRouter>,
+    );
+    for (const text of [
+      "removed from the app after 24 hours",
+      "up to 7 days",
+      "(including IP addresses) are kept for 14 days",
+      "Anthropic",
+      "Cloudflare",
+      "Amazon Web Services",
+      "Please don't upload a real resume.",
+    ]) {
+      expect(container.textContent).toContain(text);
+    }
+  });
+
+  it.each([
+    ["Privacy", PrivacyPage],
+    ["Terms", TermsPage],
+  ])("%s has no account language and no em dashes", (_name, Page) => {
+    const { container } = render(
+      <MemoryRouter>
+        <Page />
+      </MemoryRouter>,
+    );
+    expect(container.textContent).not.toMatch(/\baccount\b|sign[- ]in\b|password reset/i);
+    expect(container.textContent).not.toContain(String.fromCharCode(0x2014));
+  });
+});

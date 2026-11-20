@@ -2,4 +2,4 @@
 export const CONTACT_EMAIL = "privacy@jameslittlefield.net";
 
 /** Shown on the Privacy and Terms pages. Update it whenever either page changes. */
-export const LEGAL_LAST_UPDATED = "November 17, 2026";
+export const LEGAL_LAST_UPDATED = "November 20, 2026";

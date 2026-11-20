@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useAuthStore } from "@/stores/auth";
+
 import { ImportResumeModal } from "./ImportResumeModal";
 
 const navigate = vi.fn();
@@ -26,7 +28,22 @@ const parsed = {
 };
 
 describe("ImportResumeModal", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: null, accessToken: null, status: "loading" });
+  });
+
+  it("asks a guest not to upload a real resume", () => {
+    useAuthStore.setState({ status: "authenticated", user: { name: "Demo guest", is_guest: true } as never });
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Please don't upload a real resume.");
+  });
+
+  it("doesn't show the guest notice to an account", () => {
+    useAuthStore.setState({ status: "authenticated", user: { name: "Maya Chen", is_guest: false } as never });
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    expect(screen.queryByText("Please don't upload a real resume.")).not.toBeInTheDocument();
+  });
 
   it("parses pasted text, shows the review, and creates on confirm", async () => {
     parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
@@ -40,6 +57,33 @@ describe("ImportResumeModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /open in editor/i }));
     await waitFor(() => expect(createMutate).toHaveBeenCalled());
     expect(navigate).toHaveBeenCalledWith("/resumes/new-id");
+  });
+
+  it("shows the server's reason when creating the imported resume fails (a guest at a cap)", async () => {
+    parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
+    const capped = new AxiosError("Request failed with status code 403", "ERR_BAD_REQUEST");
+    capped.response = { status: 403, data: { detail: "This demo holds up to 20 resumes." } } as AxiosError["response"];
+    createMutate.mockRejectedValue(capped);
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/paste/i), { target: { value: "Maya Chen\nSenior Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /open in editor/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This demo holds up to 20 resumes.");
+    expect(navigate).not.toHaveBeenCalled();
+    // The parsed résumé stays, so the visitor can try again.
+    expect(screen.getByRole("button", { name: /open in editor/i })).toBeInTheDocument();
+  });
+
+  it("falls back to a retry hint when creating fails without a reason", async () => {
+    parseMutate.mockResolvedValue({ content: parsed, ai_usage: { calls_today: 1, daily_limit: 10 } });
+    createMutate.mockRejectedValue(new AxiosError("Network Error", "ERR_NETWORK"));
+    render(<ImportResumeModal open onOpenChange={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/paste/i), { target: { value: "Maya Chen\nSenior Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /parse/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /open in editor/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't create the resume. Please try again.");
   });
 
   it("shows an error and stays on input when parsing fails", async () => {

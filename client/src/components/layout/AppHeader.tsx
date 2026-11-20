@@ -1,4 +1,5 @@
 import { LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Brand } from "@/components/layout/Brand";
@@ -12,6 +13,7 @@ import {
 import { AXIOS_INSTANCE } from "@/api/axios";
 import { UsagePill } from "@/components/ui/UsagePill";
 import { useSignOut } from "@/features/auth/useSignOut";
+import { EndDemoDialog } from "@/features/demo/EndDemoDialog";
 import { initials } from "@/lib/format";
 import { useAuthStore } from "@/stores/auth";
 import { useThemeStore } from "@/stores/theme";
@@ -21,6 +23,9 @@ export function AppHeader() {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
   const signOut = useSignOut();
+  // A demo guest has no account page, no usage readout, and its email is synthetic.
+  const isGuest = user?.is_guest === true;
+  const [endDemoOpen, setEndDemoOpen] = useState(false);
 
   // Clear the refresh cookie server-side, then go home and clear the in-memory session.
   const handleLogout = async () => {
@@ -42,7 +47,7 @@ export function AppHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {user?.ai_usage && (
+          {user?.ai_usage && !isGuest && (
             <UsagePill used={user.ai_usage.calls_today} limit={user.ai_usage.daily_limit} />
           )}
           <button
@@ -63,20 +68,30 @@ export function AppHeader() {
               <span className="sr-only">Account menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <div className="px-2.5 py-1.5 text-xs text-muted-foreground">{user?.email}</div>
+              <div className="px-2.5 py-1.5 text-xs text-muted-foreground">{isGuest ? "Demo guest" : user?.email}</div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/account">
-                  <UserRound className="h-4 w-4" aria-hidden />
-                  Account
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleLogout()}>
-                <LogOut className="h-4 w-4" aria-hidden />
-                Sign out
-              </DropdownMenuItem>
+              {isGuest ? (
+                <DropdownMenuItem onSelect={() => setEndDemoOpen(true)}>
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  Sign out and end demo
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link to="/account">
+                      <UserRound className="h-4 w-4" aria-hidden />
+                      Account
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleLogout()}>
+                    <LogOut className="h-4 w-4" aria-hidden />
+                    Sign out
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
+          {isGuest && <EndDemoDialog open={endDemoOpen} onOpenChange={setEndDemoOpen} />}
         </div>
       </div>
     </header>

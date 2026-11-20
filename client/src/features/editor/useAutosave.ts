@@ -10,6 +10,8 @@ import {
   usePatchResume,
 } from "@/api/generated/resumes/resumes";
 
+import { fieldErrors } from "@/lib/apiError";
+
 import type { EditorValues } from "./editorSchema";
 
 export type SaveStatus = "saved" | "saving" | "unsaved" | "retrying" | "error";
@@ -75,6 +77,8 @@ const snapshotOf = (values: EditorValues) => JSON.stringify(values);
  */
 export interface Autosave {
   status: SaveStatus;
+  /** The server's reason when a save was refused (a demo limit, say); null otherwise. */
+  errorDetail: string | null;
   flush: () => Promise<boolean>;
   abandonPending: () => void;
 }
@@ -99,6 +103,7 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): A
   });
   const [token] = useState(() => Symbol(id));
   const [status, setStatus] = useState<SaveStatus>(inherited ? "unsaved" : "saved");
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef(inherited);
   // Bumped on every change. A save only clears `pending` if nothing changed while
@@ -151,7 +156,10 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): A
       }
       const at = edits.current;
       const v = methods.getValues();
-      if (mounted.current) setStatus("saving");
+      if (mounted.current) {
+        setStatus("saving");
+        setErrorDetail(null);
+      }
       try {
         const updated = await mutateRef.current({
           id,
@@ -180,7 +188,11 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): A
         const tries = open ? attempts : closedAttempts;
         const delay = retryDelay(err, tries.current);
         if (delay === null || (!open && tries.current >= CLOSED_MAX_ATTEMPTS)) {
-          if (open) setStatus("error");
+          if (open) {
+            const fields = fieldErrors(err);
+            setErrorDetail(fields.detail ?? fields.content ?? null);
+            setStatus("error");
+          }
           else release();
           return;
         }
@@ -248,5 +260,5 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): A
     if (isOwner()) unsaved.delete(id);
   }, [id, isOwner]);
 
-  return { status, flush, abandonPending };
+  return { status, errorDetail, flush, abandonPending };
 }

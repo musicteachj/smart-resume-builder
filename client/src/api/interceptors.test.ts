@@ -31,7 +31,7 @@ beforeAll(() => {
 beforeEach(() => {
   seen.length = 0;
   respond = () => ({ status: 200 });
-  useAuthStore.setState({ accessToken: "stale-token", status: "authenticated" });
+  useAuthStore.setState({ accessToken: "stale-token", status: "authenticated", sessionEnded: false });
 });
 
 describe("auth interceptors", () => {
@@ -75,5 +75,78 @@ describe("auth interceptors", () => {
     respond = () => ({ status: 401 });
     await expect(AXIOS_INSTANCE.post("/api/auth/logout")).rejects.toBeInstanceOf(AxiosError);
     expect(seen.map((c) => c.url)).toEqual(["/api/auth/logout"]);
+  });
+
+  it("a failed refresh mid-session marks the session ended", async () => {
+    respond = (config) =>
+      config.url === "/api/auth/refresh"
+        ? { status: 401, data: { detail: "Your session ended.", code: "session_ended" } }
+        : { status: 401 };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(seen.map((c) => c.url)).toEqual(["/api/resumes/", "/api/auth/refresh"]);
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
+  });
+
+  it("a cookie gone mid-session (the demo expired or ended in another tab) also ends it", async () => {
+    respond = (config) =>
+      config.url === "/api/auth/refresh"
+        ? { status: 401, data: { detail: "No refresh token.", code: "no_session" } }
+        : { status: 401 };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState().sessionEnded).toBe(true);
+  });
+
+  it.each([
+    ["a 429 (shared office IP)", { status: 429, data: { detail: "Request was throttled." } }],
+    ["a 5xx", { status: 503, data: {} }],
+  ])("%s on refresh mid-session keeps the session and fails only the request", async (_label, refreshReply) => {
+    respond = (config) => (config.url === "/api/auth/refresh" ? refreshReply : { status: 401 });
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toMatchObject({ response: { status: 401 } });
+    expect(seen.map((c) => c.url)).toEqual(["/api/resumes/", "/api/auth/refresh"]);
+    expect(useAuthStore.getState()).toMatchObject({
+      status: "authenticated",
+      accessToken: "stale-token",
+      sessionEnded: false,
+    });
+  });
+
+  it("a network error on refresh mid-session keeps the session", async () => {
+    respond = (config) => {
+      if (config.url === "/api/auth/refresh") throw new AxiosError("Network Error", "ERR_NETWORK", config);
+      return { status: 401 };
+    };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", sessionEnded: false });
+  });
+
+  it("after a throttled refresh, the next 401 tries once more and a 401 then ends the session", async () => {
+    let refreshReply = { status: 429 };
+    respond = (config) => (config.url === "/api/auth/refresh" ? refreshReply : { status: 401 });
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState().status).toBe("authenticated");
+
+    refreshReply = { status: 401 };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(seen.filter((c) => c.url === "/api/auth/refresh")).toHaveLength(2);
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
+  });
+
+  it("a refresh that fails while signed out is quiet", async () => {
+    useAuthStore.setState({ status: "loading" });
+    respond = (config) =>
+      config.url === "/api/auth/refresh"
+        ? { status: 401, data: { detail: "No refresh token.", code: "no_session" } }
+        : { status: 401 };
+    await expect(AXIOS_INSTANCE.get("/api/auth/me")).rejects.toBeInstanceOf(AxiosError);
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+  });
+
+  it("never refreshes again once the session is gone (no retry loop)", async () => {
+    respond = () => ({ status: 401 });
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    // A request still in flight when the session ended comes back 401: no second refresh.
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    expect(seen.filter((c) => c.url === "/api/auth/refresh")).toHaveLength(1);
+    expect(useAuthStore.getState().sessionEnded).toBe(true);
   });
 });

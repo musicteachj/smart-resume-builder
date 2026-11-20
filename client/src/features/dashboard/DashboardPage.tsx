@@ -36,31 +36,46 @@ export function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  // Why a new or duplicated resume was refused (for guests, the demo limit).
+  const [createError, setCreateError] = useState("");
 
   const refreshList = () =>
     queryClient.invalidateQueries({ queryKey: getListResumesQueryKey() });
 
   const handleCreate = async () => {
-    const created = await createResume.mutateAsync({
-      data: {
-        title: "Untitled resume",
-        template: "classic",
-        content: {
-          personalInfo: { name: user?.name ?? "", email: user?.email ?? "" },
-          summary: "",
-          workExperience: [],
-          education: [],
-          skills: [],
-          projects: [],
+    setCreateError("");
+    try {
+      const created = await createResume.mutateAsync({
+        data: {
+          title: "Untitled resume",
+          template: "classic",
+          content: {
+            // A guest's name ("Demo guest") and email are placeholders, not theirs.
+            personalInfo: user?.is_guest
+              ? { name: "", email: "" }
+              : { name: user?.name ?? "", email: user?.email ?? "" },
+            summary: "",
+            workExperience: [],
+            education: [],
+            skills: [],
+            projects: [],
+          },
         },
-      },
-    });
-    navigate(`/resumes/${created.id}`);
+      });
+      navigate(`/resumes/${created.id}`);
+    } catch (err) {
+      setCreateError(fieldErrors(err).detail ?? "We couldn't create a resume. Please try again.");
+    }
   };
 
   const handleDuplicate = async (id: string) => {
-    await duplicateResume.mutateAsync({ id });
-    await refreshList();
+    setCreateError("");
+    try {
+      await duplicateResume.mutateAsync({ id });
+      await refreshList();
+    } catch (err) {
+      setCreateError(fieldErrors(err).detail ?? "We couldn't create a resume. Please try again.");
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -107,6 +122,12 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+
+      {createError && (
+        <p role="alert" className="mt-4 text-sm text-destructive">
+          {createError}
+        </p>
+      )}
 
       {isLoading ? (
         <div className="mt-16 flex justify-center">

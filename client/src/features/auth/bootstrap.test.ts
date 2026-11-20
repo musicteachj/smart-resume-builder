@@ -8,13 +8,14 @@ import { bootstrapAuth } from "./bootstrap";
 
 const seen: string[] = [];
 let refreshStatus = 200;
+let refreshBody: unknown = { access: "new-access" };
 const original = AXIOS_INSTANCE.defaults.adapter;
 
 const adapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) => {
   seen.push(config.url ?? "");
   const isRefresh = config.url === "/api/auth/refresh";
   const status = isRefresh ? refreshStatus : 200;
-  const data = isRefresh ? { access: "new-access" } : { id: 1, email: "a@example.com", name: "A" };
+  const data = isRefresh ? refreshBody : { id: 1, email: "a@example.com", name: "A" };
   const response = { data, status, statusText: "", headers: {}, config };
   if (status >= 400) throw new AxiosError("fail", String(status), config, null, response);
   return response;
@@ -23,8 +24,9 @@ const adapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) => {
 beforeEach(() => {
   seen.length = 0;
   refreshStatus = 200;
+  refreshBody = { access: "new-access" };
   AXIOS_INSTANCE.defaults.adapter = adapter;
-  useAuthStore.setState({ user: null, accessToken: null, status: "loading" });
+  useAuthStore.setState({ user: null, accessToken: null, status: "loading", sessionEnded: false });
 });
 
 afterEach(() => {
@@ -49,7 +51,47 @@ describe("bootstrapAuth", () => {
     expect(useAuthStore.getState().status).toBe("unauthenticated");
 
     refreshStatus = 200;
+    refreshBody = { access: "new-access" };
     await bootstrapAuth();
     expect(useAuthStore.getState().status).toBe("authenticated");
+  });
+
+  it("a refused cookie at load marks the session ended", async () => {
+    refreshStatus = 401;
+    refreshBody = { detail: "Your session ended.", code: "session_ended" };
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
+  });
+
+  it.each([
+    ["a 429 (shared office IP)", 429, { detail: "Request was throttled." }],
+    ["a 5xx", 503, {}],
+  ])("%s on refresh at load is never an ended session and leaves the cookie alone", async (_label, status, body) => {
+    refreshStatus = status;
+    refreshBody = body;
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+    // No logout call, so the httpOnly refresh cookie survives and the next load restores the session.
+    expect(seen).toEqual(["/api/auth/refresh"]);
+
+    refreshStatus = 200;
+    refreshBody = { access: "new-access" };
+    await bootstrapAuth();
+    expect(useAuthStore.getState().status).toBe("authenticated");
+  });
+
+  it("a network error on refresh at load is never an ended session", async () => {
+    AXIOS_INSTANCE.defaults.adapter = async (config) => {
+      throw new AxiosError("Network Error", "ERR_NETWORK", config);
+    };
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+  });
+
+  it("no cookie at load is a quiet sign-out", async () => {
+    refreshStatus = 401;
+    refreshBody = { detail: "No refresh token.", code: "no_session" };
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
   });
 });

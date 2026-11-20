@@ -25,6 +25,12 @@ describe("aiErrorMessage", () => {
     expect(useAuthStore.getState().user?.ai_usage).toEqual(usage);
   });
 
+  it("surfaces the server detail on 503", () => {
+    expect(aiErrorMessage(axiosErr(503, { detail: "Live AI is off in this demo right now.", code: "ai_off" }))).toBe(
+      "Live AI is off in this demo right now.",
+    );
+  });
+
   it("surfaces the server detail on 502", () => {
     expect(aiErrorMessage(axiosErr(502, { detail: "AI is not configured." }))).toBe("AI is not configured.");
   });
@@ -35,10 +41,14 @@ describe("aiErrorMessage", () => {
 
   it("explains a client-side timeout (no response)", () => {
     const err = { isAxiosError: true, code: "ECONNABORTED" } as AxiosError;
-    expect(aiErrorMessage(err)).toMatch(/took too long/i);
+    expect(aiErrorMessage(err)).toBe(
+      "That took too long. You can keep editing, switching templates, and exporting, and try the AI again later.",
+    );
   });
 
   it("falls back to a generic message when there's no detail", () => {
-    expect(aiErrorMessage(axiosErr(500, {}))).toMatch(/something went wrong/i);
+    expect(aiErrorMessage(axiosErr(500, {}))).toBe(
+      "Something went wrong with the AI. You can keep editing, switching templates, and exporting.",
+    );
   });
 });

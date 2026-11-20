@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 
 import type { SaveStatus } from "../useAutosave";
 
-export function SaveIndicator({ status }: { status: SaveStatus }) {
+/** `detail` is the server's reason for a refused save (for example a demo limit); it replaces "Couldn't save". */
+export function SaveIndicator({ status, detail }: { status: SaveStatus; detail?: string | null }) {
   const map = {
     saved: { icon: <Check className="h-3.5 w-3.5" />, text: "Saved", className: "text-muted-foreground" },
     saving: { icon: <Spinner className="h-3.5 w-3.5" />, text: "Saving…", className: "text-muted-foreground" },
     unsaved: { icon: null, text: "Unsaved changes", className: "text-muted-foreground" },
     retrying: { icon: <Spinner className="h-3.5 w-3.5" />, text: "Couldn't save, retrying…", className: "text-warning" },
-    error: { icon: <AlertCircle className="h-3.5 w-3.5" />, text: "Couldn't save", className: "text-destructive" },
+    error: { icon: <AlertCircle className="h-3.5 w-3.5" />, text: detail || "Couldn't save", className: "text-destructive" },
   }[status];
 
   return (

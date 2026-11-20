@@ -23,13 +23,13 @@ def test_client_times_out_before_the_load_balancer(settings):
     assert client.max_retries == 0
 
 
-def test_simple_client_is_short_with_retries(settings):
+def test_simple_client_is_short_and_never_retries(settings):
     settings.ANTHROPIC_API_KEY = "test-key"
     simple = service._simple_client()
     assert simple.timeout == settings.AI_SIMPLE_TIMEOUT_SECONDS == 30
-    assert simple.max_retries == 2
-    # Worst case (3 attempts) still fits under gunicorn's 120s.
-    assert simple.timeout * (simple.max_retries + 1) < 120
+    # A retry would be a second paid attempt outside its reservation.
+    assert simple.max_retries == 0
+    assert simple.timeout < 120
 
 
 def test_prompt_text_is_capped():
