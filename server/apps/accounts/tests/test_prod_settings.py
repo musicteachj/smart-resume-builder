@@ -26,6 +26,7 @@ print(json.dumps({
     "renderers": s.REST_FRAMEWORK.get("DEFAULT_RENDERER_CLASSES"),
     "admin_enabled": s.DJANGO_ADMIN_ENABLED,
     "middleware": s.MIDDLEWARE,
+    "ai_monthly_budget": [type(s.AI_MONTHLY_BUDGET_USD).__name__, str(s.AI_MONTHLY_BUDGET_USD)],
 }))
 """
 
@@ -118,3 +119,24 @@ def test_whitenoise_sits_inside_the_csp_middleware(prod):
     mw = prod["middleware"]
     csp = mw.index("config.middleware.ContentSecurityPolicyMiddleware")
     assert mw.index("whitenoise.middleware.WhiteNoiseMiddleware") == csp + 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"AI_MONTHLY_BUDGET_USD": "-1"},
+        {"AI_PACING_MULTIPLIER": "0.5"},
+        {"AI_DAILY_FLOOR_USD": "-0.01"},
+        {"AI_VISITOR_BUDGET_USD": "-1"},
+        {"AI_MONTHLY_BUDGET_USD": "ten"},
+        {"AI_STALE_RESERVATION_MINUTES": "soon"},
+    ],
+)
+def test_bad_ai_budget_settings_fail_to_import(overrides):
+    result = _import_settings(**overrides)
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+
+
+def test_ai_monthly_budget_reads_back_as_a_decimal():
+    assert _settings(AI_MONTHLY_BUDGET_USD="25")["ai_monthly_budget"] == ["Decimal", "25"]

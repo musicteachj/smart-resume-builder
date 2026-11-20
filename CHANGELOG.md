@@ -10,6 +10,12 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- **AI spend ledger** (`apps/ai/ledger.py`): a monthly dollar budget paced by day (a day may spend up to a multiple of
+  an even share of what the month has left, never below a floor), a per-guest allowance, and guest fields on the user.
+  Own tables in integer micro-dollars (`AIBudgetDay`, `AIReservation`), reserve before and settle after a call,
+  a stale-reservation sweeper, and no lock held across a model call. Settings: `AI_MONTHLY_BUDGET_USD` (0 turns live AI
+  off), `AI_PACING_MULTIPLIER`, `AI_DAILY_FLOOR_USD`, `AI_VISITOR_BUDGET_USD`, `AI_STALE_RESERVATION_MINUTES`.
+  Not wired to the Claude calls yet.
 - **Micro-dollar pricing of Claude calls** (`apps/ai/pricing.py`): pinned per-model rates for Sonnet 5.5, Sonnet 5,
   and Haiku 5.5 (including Haiku's long-prompt tier), exact whole-micro-dollar cost and worst-case reservation
   math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.

@@ -7,6 +7,7 @@ or real environment variables (Docker / ECS). See ../.env.example.
 
 import os
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import dj_database_url
@@ -363,3 +364,38 @@ AI_TIMEOUT_SECONDS = 100
 AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, with 2 retries
 # Résumé text sent to the model is capped to bound per-call cost.
 AI_MAX_PROMPT_CHARS = 20000
+
+
+# AI dollar budget (apps/ai/ledger.py). Whole-account money, in USD here and micro-dollars in the ledger.
+def _env_decimal(name: str, default: str, *, minimum: str) -> Decimal:
+    raw = os.environ.get(name) or default
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        raise ImproperlyConfigured(f"{name} must be a number, got {raw!r}") from None
+    if not value.is_finite() or value < Decimal(minimum):
+        raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {raw!r}")
+    return value
+
+
+def _env_int(name: str, default: str, *, minimum: int) -> int:
+    raw = os.environ.get(name) or default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ImproperlyConfigured(f"{name} must be a whole number, got {raw!r}") from None
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {raw!r}")
+    return value
+
+
+# The month's live-AI budget; 0 turns live AI off.
+AI_MONTHLY_BUDGET_USD = _env_decimal("AI_MONTHLY_BUDGET_USD", "10", minimum="0")
+# One day may spend up to this multiple of an even share of what the month has left.
+AI_PACING_MULTIPLIER = _env_decimal("AI_PACING_MULTIPLIER", "3", minimum="1")
+# A day's allowance is never below this (capped by what the month has left).
+AI_DAILY_FLOOR_USD = _env_decimal("AI_DAILY_FLOOR_USD", "0.50", minimum="0")
+# What one demo guest may spend in all.
+AI_VISITOR_BUDGET_USD = _env_decimal("AI_VISITOR_BUDGET_USD", "0.15", minimum="0")
+# An unsettled reservation older than this is charged in full by the sweeper.
+AI_STALE_RESERVATION_MINUTES = _env_int("AI_STALE_RESERVATION_MINUTES", "10", minimum=1)
