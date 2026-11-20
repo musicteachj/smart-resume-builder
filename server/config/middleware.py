@@ -1,6 +1,7 @@
 """Custom HTTP middleware for config-level concerns (security headers)."""
 
 from django.conf import settings
+from django.db import Error as DatabaseFailure, connection, transaction
 from django.http import JsonResponse
 
 # Content-Security-Policy for the SPA + API served from one origin.
@@ -32,13 +33,14 @@ CSP_POLICY = "; ".join(
 
 
 class HealthCheckMiddleware:
-    """Answer GET /health before anything else runs.
+    """Answer GET /health (liveness) and /health/ready (readiness) before anything else runs.
 
     ALB health checks send the task's private IP as the Host header, which
     ALLOWED_HOSTS (rightly) rejects with a 400, and they arrive over plain HTTP,
     which the SSL redirect would bounce. Answering here, first in the stack,
-    skips both. It never touches the database: a DB blip shouldn't make ECS
-    replace healthy tasks.
+    skips both. /health never touches the database: a DB blip shouldn't make ECS
+    replace healthy tasks. /health/ready runs SELECT 1 (2 s statement timeout) and
+    answers 503 when the database is unreachable, for deploy gates and smoke tests.
     """
 
     def __init__(self, get_response):
@@ -47,7 +49,20 @@ class HealthCheckMiddleware:
     def __call__(self, request):
         if request.path == "/health":
             return JsonResponse({"status": "ok"})
+        if request.path == "/health/ready":
+            return self._ready()
         return self.get_response(request)
+
+    @staticmethod
+    def _ready():
+        try:
+            with connection.cursor() as cursor, transaction.atomic():
+                cursor.execute("SET LOCAL statement_timeout = '2s'")
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except DatabaseFailure:
+            return JsonResponse({"status": "unavailable"}, status=503)
+        return JsonResponse({"status": "ready"})
 
 
 class ContentSecurityPolicyMiddleware:

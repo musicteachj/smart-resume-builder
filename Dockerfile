@@ -48,8 +48,11 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # = 16 requests in flight per task (the Anthropic client is thread-safe).
 # --keep-alive must exceed the ALB idle timeout (120s) or the ALB sees stray 502s.
 # --graceful-timeout lets in-flight AI calls finish on deploy (ECS stopTimeout 120).
+# --max-requests recycles each worker after about 1000 requests (jittered so they don't
+# restart together) to cap slow memory growth; restarts are graceful.
 # Log to stdout for CloudWatch.
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
      "--worker-class", "gthread", "--workers", "2", "--threads", "8", \
      "--timeout", "120", "--keep-alive", "185", "--graceful-timeout", "110", \
+     "--max-requests", "1000", "--max-requests-jitter", "100", \
      "--access-logfile", "-"]

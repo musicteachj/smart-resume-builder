@@ -48,7 +48,7 @@ urlpatterns = [
     ),
     # SPA fallback — anything not handled above (and not a static/asset path) returns
     # index.html so React Router can take over. WhiteNoise serves real asset files first.
-    re_path(r"^(?!api/|admin/|static/|assets/|health$).*$", spa_index),
+    re_path(r"^(?!api/|admin/|static/|assets/|health(?:/|$)).*$", spa_index),
 ]
 
 # Django admin: dev, or production only when DJANGO_ADMIN_ENABLED is set. Otherwise

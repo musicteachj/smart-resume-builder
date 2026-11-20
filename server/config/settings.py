@@ -204,13 +204,15 @@ if not DATABASE_URL:
 DATABASES = {
     "default": dj_database_url.parse(
         DATABASE_URL,
-        conn_max_age=600,
+        conn_max_age=60,
         # Re-check a persistent connection before reuse, so an RDS restart or failover
         # doesn't cost each worker one 500. (TLS to RDS: `sslmode=require` in the
         # DATABASE_URL secret plus `rds.force_ssl=1` on the instance.)
         conn_health_checks=True,
     )
 }
+# Fail fast when the database is unreachable instead of hanging a worker thread.
+DATABASES["default"].setdefault("OPTIONS", {})["connect_timeout"] = 5
 
 
 # Password validation

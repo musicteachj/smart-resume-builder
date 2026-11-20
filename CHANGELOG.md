@@ -10,6 +10,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- `GET /health/ready`: a readiness check (`SELECT 1` with a 2 s statement timeout, 200 `{"status": "ready"}` or 503
+  `{"status": "unavailable"}`), answered before host validation like `/health`, which still never touches the database.
 - A Playwright demo-mode suite (Chromium and WebKit, on its own Django 8013 and Vite 5182 with Cloudflare's test
   keys, AI and Turnstile mocked): the guest start, two tabs reloading together, an ended demo (on reload and on
   autosave), AI refusals, and ending the demo, each with axe scans in light and dark. And three landing screenshots
@@ -54,6 +56,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   `is_guest`.
 
 ### Changed
+- PostgreSQL 17 (`pgvector/pgvector:pg17`) locally and in CI, with a non-superuser `resumeiq` app role that owns its
+  database in the local production run. The old `postgres_data` volume is left untouched.
+- Database connections live 60 s (was 600) and must connect within 5 s. Gunicorn recycles each worker after about 1000
+  requests (jittered) to cap slow memory growth.
+- The compose `prod` profile now runs production-like: demo mode with Cloudflare's test keys, a zero AI budget,
+  separate migrations, a read-only root filesystem, dropped capabilities, a 640 MB memory limit, and a 120 s stop grace.
+- The CI Docker job smoke-tests demo mode and `/health/ready`.
 - In demo mode the account pages (sign-in, register, password reset, account) redirect home, and signed-out visits
   to signed-in pages go home rather than to sign-in. If the demo status can't be fetched, the app assumes demo mode.
 - A failed session refresh no longer starts another refresh from a request that comes back after sign-out.
@@ -71,6 +80,7 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - An AI call whose guest is removed mid-call no longer fails with a 500, and a removed user gets 401 `session_ended`.
 
 ### Security
+- `.dockerignore` excludes every `.env*` file from the image build context.
 - **The bot check fails closed**: a failed check, a timeout, a bad reply, or an unset secret never creates a guest
   (production with `DEMO_MODE` on requires both Turnstile keys, and refuses Cloudflare's test keys unless every
   allowed host is `localhost` or `127.0.0.1`). The token, secret, and visitor IP are never logged.

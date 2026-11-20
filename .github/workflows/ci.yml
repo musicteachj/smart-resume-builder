@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: resume_user
           POSTGRES_PASSWORD: resume_pass
@@ -121,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: resume_user
           POSTGRES_PASSWORD: resume_pass
@@ -151,6 +151,9 @@ jobs:
             -e SECRET_KEY=ci-smoke-test-key-that-is-long-and-random-enough-0123456789abcdef \
             -e ALLOWED_HOSTS=localhost \
             -e SECURE_SSL_REDIRECT=False \
+            -e DEMO_MODE=true \
+            -e TURNSTILE_SITE_KEY=1x00000000000000000000AA \
+            -e TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
             smart-resume-builder:ci
       - name: Health check and SPA are served
         run: |
@@ -159,8 +162,11 @@ jobs:
             sleep 2
           done
           curl -fsS http://localhost:8000/health | grep -q '"ok"'
+          curl -fsS http://localhost:8000/health/ready | grep -q '"ready"'
           curl -fsS http://localhost:8000/ | grep -q 'id="root"'
           curl -fsS http://localhost:8000/dashboard | grep -q 'id="root"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/auth/login)" = 404
+          curl -fsS http://localhost:8000/api/demo/status | grep -q '"demo_mode":true'
       - name: Container logs
         if: always()
         run: docker logs app || true
@@ -173,7 +179,7 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: resume_user
           POSTGRES_PASSWORD: resume_pass

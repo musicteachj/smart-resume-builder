@@ -5,6 +5,7 @@
 # Secrets — never bake env files into the image
 .env
 **/.env
+**/.env*
 
 # Dependencies / virtualenvs
 **/node_modules

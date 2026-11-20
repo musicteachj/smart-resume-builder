@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     environment:
       POSTGRES_USER: resume_user
@@ -10,7 +10,9 @@ services:
       # Loopback only — no reason to expose the dev DB (default creds!) to the LAN.
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 17 can't open the 15 data in the old postgres_data volume (left untouched).
+      - postgres17_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U resume_user -d resume_builder"]
       interval: 5s
@@ -32,12 +34,29 @@ services:
       # Local smoke test runs over plain HTTP; in real prod the redirect stays on.
       SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: localhost,127.0.0.1
-      DATABASE_URL: postgres://resume_user:resume_pass@db:5432/resume_builder
+      DATABASE_URL: postgres://resumeiq:resumeiq_local_only@db:5432/resumeiq
       CLIENT_URL: http://localhost:8000
-      # ANTHROPIC_API_KEY: sk-ant-...   # optional — set to exercise AI in the container
+      DEMO_MODE: "true"
+      # Cloudflare's always-pass Turnstile test keys.
+      TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
+      AI_MONTHLY_BUDGET_USD: "0"
+      ANTHROPIC_API_KEY: sk-ant-local-placeholder-never-sent
+      # Production-like: migrate as a separate step on a fresh database:
+      #   docker compose --profile prod run --rm app python manage.py migrate
+      RUN_MIGRATIONS: "0"
+    mem_limit: 640m
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    stop_grace_period: 120s
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  postgres17_data:
