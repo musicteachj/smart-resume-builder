@@ -307,6 +307,8 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Rotation itself is done by apps.accounts.refresh.refresh_session (it also adds a short reuse grace);
+    # these flags only document the intent and apply to any stock SimpleJWT view.
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
@@ -426,6 +428,10 @@ def _env_int(name: str, default: str, *, minimum: int) -> int:
         raise ImproperlyConfigured(f"{name} must be at least {minimum}, got {raw!r}")
     return value
 
+
+# Seconds a just-rotated refresh token keeps working (access token only, no new cookie), so two tabs
+# restoring a session at the same moment don't sign the visitor out. 0 turns the grace off.
+REFRESH_REUSE_GRACE_SECONDS = _env_int("REFRESH_REUSE_GRACE_SECONDS", "30", minimum=0)
 
 # Per-user AI call limits (admins and DEBUG bypass them).
 AI_DAILY_LIMIT = _env_int("AI_DAILY_LIMIT", "10", minimum=0)

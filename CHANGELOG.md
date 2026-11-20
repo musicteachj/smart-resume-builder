@@ -40,6 +40,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   an explicit `max_tokens`. The per-user AI call limits `AI_DAILY_LIMIT` and `AI_MONTHLY_LIMIT` come from the
   environment (defaults 10 and 50).
 
+### Fixed
+- Refreshing the session of a removed user answers 401 `session_ended` (and clears the cookie) instead of a 500. The
+  refresh endpoint's errors now carry a `code`: `no_session` (no cookie) or `session_ended`.
+- Two tabs restoring a session at the same moment no longer sign the visitor out: a just-rotated refresh token still
+  trades for an access token for `REFRESH_REUSE_GRACE_SECONDS` (default 30), as long as its successor is live.
+- An AI call whose guest is removed mid-call no longer fails with a 500, and a removed user gets 401 `session_ended`.
+
 ### Security
 - **The bot check fails closed**: a failed check, a timeout, a bad reply, or an unset secret never creates a guest
   (production with `DEMO_MODE` on requires both Turnstile keys, and refuses Cloudflare's test keys unless every
@@ -49,6 +56,10 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   on) before anything is sent and settles from real usage afterward, admins and `DEBUG` included. Known unbilled
   rejections settle to zero; a timeout, dropped connection, or unknown error keeps the full reservation. Haiku no
   longer retries automatically, so a retry can never be a second paid attempt outside its reservation.
+- **Session reuse grace is access-only and bounded**: the grace path never issues a refresh cookie, needs a live
+  (unexpired, not blacklisted) successor, ends at logout, follows at most five rotations, and treats a cache miss as an
+  ended session. A guest's rotated token and cookie are capped at the guest's end, and an expired guest cannot refresh.
+- A forged leftmost `X-Forwarded-For` entry can't change a rate-limit key or dodge the guest start limit (tested).
 
 ## [0.16.0] - 2026-11-18
 

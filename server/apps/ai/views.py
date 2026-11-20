@@ -1,12 +1,15 @@
 import logging
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import Throttled
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+
+from apps.accounts.refresh import SESSION_ENDED_DETAIL
 
 from . import ledger, service
 from .serializers import (
@@ -47,9 +50,14 @@ def _gate(user):
     over, else (None, reservation). Run the AI call inside refund_on_failure(user, reservation)."""
     if ledger.live_ai_off():
         return refusal("ai_off"), None
-    reset_if_needed(user)
     try:
+        reset_if_needed(user)
         return None, reserve(user)
+    except get_user_model().DoesNotExist:
+        # The account was removed after authentication (a guest ending or expiring): end the session cleanly.
+        return Response(
+            {"detail": SESSION_ENDED_DETAIL, "code": "session_ended"}, status=status.HTTP_401_UNAUTHORIZED
+        ), None
     except AIRateLimitError as exc:
         if exc.scope == "guest":
             return refusal("ai_visitor_used"), None

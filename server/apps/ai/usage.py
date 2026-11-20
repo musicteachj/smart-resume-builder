@@ -10,17 +10,21 @@ The reservation is a single conditional UPDATE, so concurrent requests can't all
 a stale "under the limit" read and overspend the quota together.
 """
 
+import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from .models import AIUsageLog
+
+logger = logging.getLogger(__name__)
 
 _COUNTERS = ["ai_calls_today", "ai_calls_this_month"]
 
@@ -128,7 +132,10 @@ def refund(user, reservation: Reservation) -> None:
     rows.filter(last_month_reset=reservation.month_reset).update(
         ai_calls_this_month=Greatest(F("ai_calls_this_month") - 1, 0)
     )
-    user.refresh_from_db(fields=_COUNTERS)
+    try:
+        user.refresh_from_db(fields=_COUNTERS)
+    except get_user_model().DoesNotExist:
+        pass  # the user was removed mid-call: nothing left to refund
 
 
 @contextmanager
@@ -144,13 +151,20 @@ def refund_on_failure(user, reservation: Reservation):
 
 def record_usage(user, feature: str, *, input_length: int, output_length: int, success: bool) -> None:
     """Log one AI call. The quota itself is counted by reserve() and refund()."""
-    AIUsageLog.objects.create(
-        user=user,
-        feature=feature,
-        input_length=input_length,
-        output_length=output_length,
-        success=success,
-    )
+    try:
+        with transaction.atomic():
+            AIUsageLog.objects.create(
+                user=user,
+                feature=feature,
+                input_length=input_length,
+                output_length=output_length,
+                success=success,
+            )
+    except IntegrityError:
+        # Swallow only the user-removed-mid-call case (a demo guest ending or expiring); anything else is a bug.
+        if get_user_model().objects.filter(pk=user.pk).exists():
+            raise
+        logger.info("AI usage not logged: the user was removed during the call (feature=%s).", feature)
 
 
 def usage_snapshot(user) -> dict:

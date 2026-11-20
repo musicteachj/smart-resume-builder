@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from apps.ai.models import AIUsageLog
@@ -376,3 +377,42 @@ def test_a_non_guest_is_not_held_to_the_guest_cap(auth_client, user, settings, m
     user.save(update_fields=["ai_calls_this_month"])
     monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **k: "ok")
     assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+
+
+@pytest.mark.django_db(transaction=True)  # FK checks are deferred to commit; only autocommit shows the real error
+def test_guest_removed_during_an_ai_call_gets_no_500(guest, monkeypatch):
+    client = APIClient()
+    client.force_authenticate(guest)
+
+    def improve(text, role="", **_):
+        get_user_model().objects.filter(pk=guest.pk).delete()
+        return "Better."
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", improve)
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()["suggestion"]) == (200, "Better.")
+    assert not AIUsageLog.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_user_removed_before_the_gate_gets_session_ended(user):
+    client = APIClient()
+    client.force_authenticate(user)
+    get_user_model().objects.filter(pk=user.pk).delete()
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()["code"]) == (401, "session_ended")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_guest_removed_during_a_failing_ai_call_gets_the_ai_error_not_a_500(guest, monkeypatch):
+    client = APIClient()
+    client.force_authenticate(guest)
+
+    def boom(text, role="", **_):
+        get_user_model().objects.filter(pk=guest.pk).delete()
+        raise AIServiceError("down")
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert res.status_code == 502
+    assert not AIUsageLog.objects.exists()

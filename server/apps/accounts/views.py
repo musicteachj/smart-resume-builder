@@ -15,8 +15,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -24,6 +23,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.demo.closed import ClosedInDemoModeMixin
 
 from .cookies import REFRESH_COOKIE_NAME, clear_refresh_cookie, set_refresh_cookie
+from .refresh import SESSION_ENDED_DETAIL, SessionEnded, end_rotated_session, refresh_session
 from .serializers import (
     AuthResponseSerializer,
     DeleteAccountSerializer,
@@ -130,20 +130,23 @@ class CookieTokenRefreshView(APIView):
     throttle_scope = "auth"
 
     def post(self, request):
-        token = request.COOKIES.get(REFRESH_COOKIE_NAME)
-        if not token:
-            return Response({"detail": "No refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
-        serializer = TokenRefreshSerializer(data={"refresh": token})
+        raw = request.COOKIES.get(REFRESH_COOKIE_NAME)
+        if not raw:
+            return Response(
+                {"detail": "No refresh token.", "code": "no_session"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         try:
-            serializer.is_valid(raise_exception=True)
-        except (InvalidToken, TokenError):
-            return Response({"detail": "Invalid refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
-        response = Response({"access": serializer.validated_data["access"]})
-        # ROTATE_REFRESH_TOKENS puts the replacement token in validated_data;
-        # the old one is already blacklisted (BLACKLIST_AFTER_ROTATION).
-        rotated = serializer.validated_data.get("refresh")
-        if rotated:
-            set_refresh_cookie(response, rotated)
+            result = refresh_session(raw)
+        except SessionEnded:
+            return clear_refresh_cookie(
+                Response(
+                    {"detail": SESSION_ENDED_DETAIL, "code": "session_ended"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            )
+        response = Response({"access": result.access})
+        if result.refresh:
+            set_refresh_cookie(response, result.refresh, max_age=result.cookie_max_age)
         return response
 
 
@@ -165,7 +168,9 @@ class LogoutView(APIView):
             try:
                 RefreshToken(token).blacklist()
             except TokenError:
-                pass  # expired/garbage cookie — clearing it is all that's left to do
+                # Garbage or expired: nothing to revoke. A just-rotated cookie is blacklisted, so also end
+                # its live successor (another tab may hold it).
+                end_rotated_session(token)
         return clear_refresh_cookie(Response(status=status.HTTP_204_NO_CONTENT))
 
 
