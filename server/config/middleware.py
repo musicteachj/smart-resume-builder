@@ -13,14 +13,17 @@ from django.http import JsonResponse
 #   two fonts.* hosts and tighten to 'self'.
 # - img-src allows data: for inline SVG/data-URI icons.
 # - connect-src 'self': the API is same-origin in production.
+# - challenges.cloudflare.com is allowed for scripts and frames only: the Turnstile bot check
+#   (demo mode) loads its script and renders in an iframe from there.
 CSP_POLICY = "; ".join(
     [
         "default-src 'self'",
-        "script-src 'self'",
+        "script-src 'self' https://challenges.cloudflare.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data:",
         "connect-src 'self'",
+        "frame-src https://challenges.cloudflare.com",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",

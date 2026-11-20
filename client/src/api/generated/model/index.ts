@@ -21,6 +21,8 @@ export * from './education';
 export * from './emailTokenObtainPair';
 export * from './generateSummaryRequest';
 export * from './generateSummaryResponse';
+export * from './guestStartRequest';
+export * from './guestStartResponse';
 export * from './improveBulletRequest';
 export * from './improveBulletResponse';
 export * from './listCoverLettersParams';

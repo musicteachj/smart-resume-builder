@@ -43,6 +43,10 @@ def test_csp_header_present_in_production(client, settings):
     assert "https://fonts.googleapis.com" in csp
     assert "https://fonts.gstatic.com" in csp
     assert "frame-ancestors 'none'" in csp
+    # The Turnstile bot check: its script and its iframe, from that one host only.
+    assert "script-src 'self' https://challenges.cloudflare.com;" in csp
+    assert "frame-src https://challenges.cloudflare.com;" in csp
+    assert csp.count("challenges.cloudflare.com") == 2
 
 
 def test_no_csp_header_in_debug(client, settings):

@@ -64,9 +64,38 @@ DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "False").lower() i
 DEMO_MODE = os.environ.get("DEMO_MODE", "False").lower() in ("true", "1", "yes")
 if DEMO_MODE and DJANGO_ADMIN_ENABLED and not DEBUG:
     raise ImproperlyConfigured("DEMO_MODE cannot be combined with DJANGO_ADMIN_ENABLED in production")
-# Cloudflare Turnstile keys for the guest start (verification arrives with the start endpoint).
+# Cloudflare Turnstile keys for the guest start (verified in apps/demo/turnstile.py).
 TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+# Cloudflare's published Turnstile test keys (a test asserts this matches apps/demo/turnstile.py).
+TURNSTILE_TEST_KEYS = {
+    "1x00000000000000000000AA",
+    "2x00000000000000000000AB",
+    "1x00000000000000000000BB",
+    "2x00000000000000000000BB",
+    "3x00000000000000000000FF",
+    "1x0000000000000000000000000000000AA",
+    "2x0000000000000000000000000000000AA",
+    "3x0000000000000000000000000000000AA",
+}
+if DEMO_MODE and not DEBUG:
+    # Fail closed: a production demo without real bot-check keys would let anyone mint guests.
+    for _name, _value in (
+        ("TURNSTILE_SITE_KEY", TURNSTILE_SITE_KEY),
+        ("TURNSTILE_SECRET_KEY", TURNSTILE_SECRET_KEY),
+    ):
+        if not _value:
+            raise ImproperlyConfigured(f"{_name} is required when DEMO_MODE is on and DEBUG is off")
+    # Cloudflare's published test keys always pass or always fail, so a deployed site must never
+    # use them (re-read 2026-11-20 at developers.cloudflare.com/turnstile/troubleshooting/testing/).
+    # They are fine for a container reached only as localhost, such as the local prod-image check.
+    if {TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY} & TURNSTILE_TEST_KEYS and not all(
+        _host in ("localhost", "127.0.0.1") for _host in ALLOWED_HOSTS
+    ):
+        raise ImproperlyConfigured(
+            "A Cloudflare Turnstile test key is set while ALLOWED_HOSTS includes a host other than "
+            "localhost or 127.0.0.1; use real keys for a deployed demo"
+        )
 
 
 # Application definition
@@ -233,6 +262,8 @@ REST_FRAMEWORK = {
         "writes": "120/min",
         # Password-reset email requests, keyed by IP: limits reset-email spam.
         "password-reset": "5/hour",
+        # "demo-start-hour" and "demo-start-day" (guest starts, keyed by IP) are added below,
+        # once the DEMO_STARTS_PER_* settings have been read.
     },
     # One trusted proxy hop (the ALB). Without this, DRF keys IP throttles on the
     # whole client-supplied X-Forwarded-For header, which an attacker can rotate
@@ -399,6 +430,8 @@ def _env_int(name: str, default: str, *, minimum: int) -> int:
 # Per-user AI call limits (admins and DEBUG bypass them).
 AI_DAILY_LIMIT = _env_int("AI_DAILY_LIMIT", "10", minimum=0)
 AI_MONTHLY_LIMIT = _env_int("AI_MONTHLY_LIMIT", "50", minimum=0)
+# A demo guest's lifetime cap on live AI calls (no daily or 30-day reset, no admin or DEBUG bypass).
+AI_GUEST_CALL_LIMIT = _env_int("AI_GUEST_CALL_LIMIT", "30", minimum=1)
 # Let the API re-run a request Sonnet 5.5 declines on Sonnet 5 inside the same call. A declined
 # attempt is billed, so the ledger reserves for both passes while this is on.
 AI_SERVER_SIDE_FALLBACK = os.environ.get("AI_SERVER_SIDE_FALLBACK", "True").lower() in ("true", "1", "yes")
@@ -418,3 +451,9 @@ DEMO_GUEST_TTL_HOURS = _env_int("DEMO_GUEST_TTL_HOURS", "24", minimum=1)
 DEMO_MAX_LIVE_GUESTS = _env_int("DEMO_MAX_LIVE_GUESTS", "300", minimum=1)
 DEMO_STARTS_PER_HOUR = _env_int("DEMO_STARTS_PER_HOUR", "15", minimum=1)
 DEMO_STARTS_PER_DAY = _env_int("DEMO_STARTS_PER_DAY", "50", minimum=1)
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].update(
+    {
+        "demo-start-hour": f"{DEMO_STARTS_PER_HOUR}/hour",
+        "demo-start-day": f"{DEMO_STARTS_PER_DAY}/day",
+    }
+)

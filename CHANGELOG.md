@@ -25,6 +25,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - **Micro-dollar pricing of Claude calls** (`apps/ai/pricing.py`): pinned per-model rates for Sonnet 5.5, Sonnet 5,
   and Haiku 5.5 (including Haiku's long-prompt tier), exact whole-micro-dollar cost and worst-case reservation
   math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.
+- **Guest demos** (`POST /api/demo/start`, demo mode only): a visitor passes a Cloudflare Turnstile check and gets a
+  throwaway guest account with a sample résumé (a fictional senior engineer, ready to edit) and a refresh cookie that
+  ends when the guest does (24 hours by default). Starts are limited per IP (`DEMO_STARTS_PER_HOUR`,
+  `DEMO_STARTS_PER_DAY`) and capped by the number of live guests (`DEMO_MAX_LIVE_GUESTS`), each refused with plain copy
+  and a `code`. A guest ends the demo with "delete account" and no password, and gets a lifetime cap on live AI calls
+  (`AI_GUEST_CALL_LIMIT`, default 30) with no daily reset and no admin or `DEBUG` bypass. `User` responses carry
+  `is_guest`.
 
 ### Changed
 - Every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage)
@@ -34,6 +41,10 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   environment (defaults 10 and 50).
 
 ### Security
+- **The bot check fails closed**: a failed check, a timeout, a bad reply, or an unset secret never creates a guest
+  (production with `DEMO_MODE` on requires both Turnstile keys, and refuses Cloudflare's test keys unless every
+  allowed host is `localhost` or `127.0.0.1`). The token, secret, and visitor IP are never logged.
+- The Content-Security-Policy allows `challenges.cloudflare.com` for scripts and frames only, for the bot check.
 - **Every Claude call goes through the spend ledger**: it reserves its worst case (both passes when the fallback is
   on) before anything is sent and settles from real usage afterward, admins and `DEBUG` included. Known unbilled
   rejections settle to zero; a timeout, dropped connection, or unknown error keeps the full reservation. Haiku no

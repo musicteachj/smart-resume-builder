@@ -311,3 +311,68 @@ def test_views_charge_guests_to_their_own_allowance(auth_client, guest_client, g
     assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
     assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
     assert seen == [guest.pk, None]
+
+
+@pytest.mark.django_db
+def test_a_guest_at_the_lifetime_cap_is_refused_even_in_debug(guest_client, guest, settings, monkeypatch):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    settings.DEBUG = True
+    guest.ai_calls_this_month = settings.AI_GUEST_CALL_LIMIT
+    guest.last_ai_call_date = timezone.now().date() - timedelta(days=1)
+    guest.save(update_fields=["ai_calls_this_month", "last_ai_call_date"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda *a, **k: pytest.fail("called Claude"))
+    res = guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert res.status_code == 429
+    assert res.json()["code"] == "ai_visitor_used"
+
+
+@pytest.mark.django_db
+def test_a_guest_cap_does_not_reset_daily_or_after_thirty_days(guest_client, guest, settings, monkeypatch):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    guest.ai_calls_today = 1
+    guest.ai_calls_this_month = settings.AI_GUEST_CALL_LIMIT
+    guest.last_ai_call_date = timezone.now().date() - timedelta(days=2)
+    guest.last_month_reset = timezone.now() - timedelta(days=45)
+    guest.save()
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda *a, **k: pytest.fail("called Claude"))
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").json()["code"] == "ai_visitor_used"
+    guest.refresh_from_db()
+    assert guest.ai_calls_this_month == settings.AI_GUEST_CALL_LIMIT
+
+
+@pytest.mark.django_db
+def test_a_guest_can_use_the_whole_cap_and_failed_calls_are_refunded(guest_client, guest, settings, monkeypatch):
+    settings.DEBUG = False
+    settings.AI_GUEST_CALL_LIMIT = 2
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **k: "ok")
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    third = guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert (third.status_code, third.json()["code"]) == (429, "ai_visitor_used")
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("upstream")
+
+    guest.refresh_from_db()
+    guest.ai_calls_this_month = 1
+    guest.save(update_fields=["ai_calls_this_month"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    with pytest.raises(RuntimeError):
+        guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    guest.refresh_from_db()
+    assert guest.ai_calls_this_month == 1
+
+
+@pytest.mark.django_db
+def test_a_non_guest_is_not_held_to_the_guest_cap(auth_client, user, settings, monkeypatch):
+    settings.AI_GUEST_CALL_LIMIT = 1
+    user.ai_calls_this_month = 1  # At the guest cap, still well under the 10/day and 50/month limits.
+    user.save(update_fields=["ai_calls_this_month"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **k: "ok")
+    assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200

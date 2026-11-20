@@ -10,11 +10,12 @@ REFRESH_COOKIE_PATH = "/api/auth"
 REFRESH_COOKIE_MAX_AGE = int(timedelta(days=7).total_seconds())
 
 
-def set_refresh_cookie(response, token: str):
+def set_refresh_cookie(response, token: str, *, max_age: int | None = None):
+    """`max_age` defaults to the 7-day refresh lifetime; a guest's is shorter (see tokens.py)."""
     response.set_cookie(
         REFRESH_COOKIE_NAME,
         token,
-        max_age=REFRESH_COOKIE_MAX_AGE,
+        max_age=REFRESH_COOKIE_MAX_AGE if max_age is None else max_age,
         httponly=True,
         secure=not settings.DEBUG,  # http localhost in dev; https in prod
         samesite="Lax",

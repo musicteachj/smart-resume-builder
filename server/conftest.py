@@ -27,7 +27,14 @@ def _disable_throttling(monkeypatch):
     monkeypatch.setattr(
         SimpleRateThrottle,
         "THROTTLE_RATES",
-        {"auth": None, "ai-burst": None, "writes": None, "password-reset": None},
+        {
+            "auth": None,
+            "ai-burst": None,
+            "writes": None,
+            "password-reset": None,
+            "demo-start-hour": None,
+            "demo-start-day": None,
+        },
     )
 
 

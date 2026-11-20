@@ -30,6 +30,8 @@ print(json.dumps({
     "ai_daily_limit": s.AI_DAILY_LIMIT,
     "ai_monthly_limit": s.AI_MONTHLY_LIMIT,
     "ai_fallback": s.AI_SERVER_SIDE_FALLBACK,
+    "turnstile": [s.TURNSTILE_SITE_KEY, s.TURNSTILE_SECRET_KEY],
+    "ai_guest_call_limit": s.AI_GUEST_CALL_LIMIT,
     "ai_monthly_budget": [type(s.AI_MONTHLY_BUDGET_USD).__name__, str(s.AI_MONTHLY_BUDGET_USD)],
 }))
 """
@@ -165,3 +167,75 @@ def test_demo_mode_and_the_admin_cannot_both_be_on_in_production():
 
 def test_demo_mode_is_off_by_default(prod):
     assert prod["demo_mode"] is False
+
+
+TEST_SITE = "1x00000000000000000000AA"
+TEST_SECRET = "1x0000000000000000000000000000000AA"
+
+
+def test_production_demo_mode_requires_both_turnstile_keys():
+    result = _import_settings(DEMO_MODE="true")
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "TURNSTILE" in result.stderr
+    only_site = _import_settings(DEMO_MODE="true", TURNSTILE_SITE_KEY="0xREALSITE")
+    assert only_site.returncode != 0 and "TURNSTILE_SECRET_KEY" in only_site.stderr
+    only_secret = _import_settings(DEMO_MODE="true", TURNSTILE_SECRET_KEY="0xREALSECRET")
+    assert only_secret.returncode != 0 and "TURNSTILE_SITE_KEY" in only_secret.stderr
+
+
+def test_production_demo_mode_accepts_real_turnstile_keys():
+    read = _settings(DEMO_MODE="true", TURNSTILE_SITE_KEY="0xREALSITE", TURNSTILE_SECRET_KEY="0xREALSECRET")
+    assert read["turnstile"] == ["0xREALSITE", "0xREALSECRET"]
+
+
+@pytest.mark.parametrize(
+    "site, secret",
+    [
+        (TEST_SITE, TEST_SECRET),
+        ("2x00000000000000000000AB", "2x0000000000000000000000000000000AA"),
+        ("3x00000000000000000000FF", "3x0000000000000000000000000000000AA"),
+        ("1x00000000000000000000BB", "0xREALSECRET"),
+        ("0xREALSITE", TEST_SECRET),
+    ],
+)
+def test_production_refuses_cloudflare_test_keys_on_a_real_host(site, secret):
+    result = _import_settings(
+        DEMO_MODE="true",
+        TURNSTILE_SITE_KEY=site,
+        TURNSTILE_SECRET_KEY=secret,
+        ALLOWED_HOSTS="resumeiq.jameslittlefield.net",
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "test key" in result.stderr
+
+
+def test_production_refuses_test_keys_when_any_host_is_not_local():
+    result = _import_settings(
+        DEMO_MODE="true",
+        TURNSTILE_SITE_KEY=TEST_SITE,
+        TURNSTILE_SECRET_KEY=TEST_SECRET,
+        ALLOWED_HOSTS="localhost,resumeiq.jameslittlefield.net",
+    )
+    assert result.returncode != 0
+
+
+def test_production_allows_test_keys_on_localhost_only():
+    read = _settings(
+        DEMO_MODE="true",
+        TURNSTILE_SITE_KEY=TEST_SITE,
+        TURNSTILE_SECRET_KEY=TEST_SECRET,
+        ALLOWED_HOSTS="localhost,127.0.0.1",
+    )
+    assert read["turnstile"] == [TEST_SITE, TEST_SECRET]
+
+
+def test_turnstile_keys_are_not_checked_outside_demo_mode(prod):
+    assert prod["turnstile"] == ["", ""]
+
+
+def test_ai_guest_call_limit_comes_from_the_environment():
+    assert _settings(AI_GUEST_CALL_LIMIT="3")["ai_guest_call_limit"] == 3
+    assert _settings()["ai_guest_call_limit"] == 30
+    assert _import_settings(AI_GUEST_CALL_LIMIT="0").returncode != 0

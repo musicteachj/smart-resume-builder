@@ -60,10 +60,10 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 
 /**
  * Permanently delete the signed-in user and everything they own (résumés, versions,
- * cover letters, and AI usage logs all cascade). Requires the current password.
+ * cover letters, and AI usage logs all cascade). Requires the current password; a demo guest has none and needs nothing.
  */
 export const deleteAccount = (
-    deleteAccountBody: DeleteAccount,
+    deleteAccountBody?: DeleteAccount,
  options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
 ) => {
 
@@ -109,9 +109,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
-    export type DeleteAccountMutationBody = DeleteAccount
+    export type DeleteAccountMutationBody = DeleteAccount | undefined
     export type DeleteAccountMutationError = unknown
-    export type DeleteAccountMutationVariables = {data: DeleteAccount}
+    export type DeleteAccountMutationVariables = {data?: DeleteAccount}
 
     export const useDeleteAccount = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,DeleteAccountMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}

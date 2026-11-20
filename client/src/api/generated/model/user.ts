@@ -13,6 +13,7 @@ export interface User {
   readonly name: string;
   /** App-level admin: bypasses AI usage limits. */
   readonly is_admin: boolean;
+  readonly is_guest: boolean;
   readonly created_at: string;
   readonly ai_usage: AIUsage;
 }

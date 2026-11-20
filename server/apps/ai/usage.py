@@ -3,7 +3,8 @@
 Resets the daily counter on a new day and the monthly counter every 30 days, then
 reserves one call against the configured limits before the AI call runs, and gives
 the reservation back if the call fails. Admins and DEBUG (local dev) bypass the cap
-but are still counted and logged.
+but are still counted and logged. Demo guests are different: they get AI_GUEST_CALL_LIMIT
+calls for their whole life, with no reset and no bypass.
 
 The reservation is a single conditional UPDATE, so concurrent requests can't all pass
 a stale "under the limit" read and overspend the quota together.
@@ -30,7 +31,7 @@ class AIRateLimitError(Exception):
     def __init__(self, message: str, scope: str):
         super().__init__(message)
         self.message = message
-        self.scope = scope  # "daily" | "monthly"
+        self.scope = scope  # "daily" | "monthly" | "guest"
 
 
 def _rows(user):
@@ -44,6 +45,8 @@ def reset_if_needed(user) -> None:
     no query); the UPDATE's own condition decides whether it happens, so a request
     holding a stale copy can't wipe out a call another request already reserved today.
     """
+    if user.is_guest:
+        return  # A guest's allowance is for life: it never resets.
     now = timezone.now()
     today = now.date()
     changed = False
@@ -80,7 +83,10 @@ def reserve(user) -> Reservation:
     counters are fresh from the database (the 429 body and responses report them).
     """
     rows = _rows(user)
-    if not (user.is_admin or settings.DEBUG):
+    if user.is_guest:
+        # Lifetime cap (the monthly counter never resets for a guest); no admin or DEBUG bypass.
+        rows = rows.filter(ai_calls_this_month__lt=settings.AI_GUEST_CALL_LIMIT)
+    elif not (user.is_admin or settings.DEBUG):
         rows = rows.filter(
             ai_calls_today__lt=settings.AI_DAILY_LIMIT,
             ai_calls_this_month__lt=settings.AI_MONTHLY_LIMIT,
@@ -93,6 +99,10 @@ def reserve(user) -> Reservation:
     user.refresh_from_db(fields=[*_COUNTERS, "last_ai_call_date", "last_month_reset"])
     if claimed:
         return Reservation(day=user.last_ai_call_date, month_reset=user.last_month_reset)
+    if user.is_guest:
+        raise AIRateLimitError(
+            f"This demo's AI allowance is used up ({settings.AI_GUEST_CALL_LIMIT} calls).", "guest"
+        )
     if user.ai_calls_today >= settings.AI_DAILY_LIMIT:
         raise AIRateLimitError(
             f"Daily AI limit reached ({settings.AI_DAILY_LIMIT}/day). Resets tomorrow.",

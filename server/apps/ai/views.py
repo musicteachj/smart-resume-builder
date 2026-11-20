@@ -51,6 +51,8 @@ def _gate(user):
     try:
         return None, reserve(user)
     except AIRateLimitError as exc:
+        if exc.scope == "guest":
+            return refusal("ai_visitor_used"), None
         return Response(
             {"detail": exc.message, "scope": exc.scope, "ai_usage": usage_snapshot(user)},
             status=status.HTTP_429_TOO_MANY_REQUESTS,

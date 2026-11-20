@@ -363,3 +363,64 @@ def test_delete_account_removes_the_user_and_everything_they_own(client):
     probe = APIClient()
     probe.cookies["refresh_token"] = refresh
     assert probe.post(REFRESH).status_code == 401
+
+
+def _start_guest(client, monkeypatch):
+    from apps.demo.turnstile import Verdict
+
+    monkeypatch.setattr("apps.demo.views.turnstile.verify", lambda token, remote_ip: Verdict.PASSED)
+    res = client.post("/api/demo/start", {"turnstile_token": "t"}, format="json")
+    assert res.status_code == 201
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {res.json()['access']}")
+    return res
+
+
+@pytest.mark.django_db
+def test_a_guest_can_end_the_demo_without_a_password(client, settings, monkeypatch):
+    settings.DEMO_MODE = True
+    start = _start_guest(client, monkeypatch)
+    guest = User.objects.get(pk=start.json()["user"]["id"])
+    refresh = start.cookies["refresh_token"].value
+    res = client.post(DELETE, {}, format="json")
+    assert res.status_code == 204
+    assert res.cookies["refresh_token"].value == ""  # cookie cleared
+    assert not User.objects.filter(pk=guest.pk).exists()
+    assert not Resume.objects.filter(user_id=guest.pk).exists()
+    probe = APIClient()
+    probe.cookies["refresh_token"] = refresh
+    assert probe.post(REFRESH).status_code == 401
+
+
+@pytest.mark.django_db
+def test_an_account_still_needs_its_password_to_delete(client):
+    reg = _register(client).json()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {reg['access']}")
+    res = client.post(DELETE, {}, format="json")
+    assert res.status_code == 400
+    assert "password" in res.json()
+    assert User.objects.filter(email=VALID["email"]).exists()
+
+
+@pytest.mark.django_db
+def test_a_guest_cannot_use_a_password_that_does_not_exist(guest_client, guest):
+    # A guest never needs one; a wrong one is simply ignored, never a way to fail the delete.
+    res = guest_client.post(DELETE, {"password": "anything"}, format="json")
+    assert res.status_code == 204
+    assert not User.objects.filter(pk=guest.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("password", ["", None])
+def test_a_guest_may_send_a_blank_password(guest_client, guest, password):
+    res = guest_client.post(DELETE, {"password": password}, format="json")
+    assert res.status_code == 204
+    assert not User.objects.filter(pk=guest.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("password", ["", None])
+def test_an_account_still_needs_a_non_blank_password(auth_client, user, password):
+    res = auth_client.post(DELETE, {"password": password}, format="json")
+    assert res.status_code == 400
+    assert "password" in res.json()
+    assert User.objects.filter(pk=user.pk).exists()

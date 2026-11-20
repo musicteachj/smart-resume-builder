@@ -314,7 +314,7 @@ class PasswordResetConfirmView(ClosedInDemoModeMixin, APIView):
 )
 class DeleteAccountView(APIView):
     """Permanently delete the signed-in user and everything they own (résumés, versions,
-    cover letters, and AI usage logs all cascade). Requires the current password."""
+    cover letters, and AI usage logs all cascade). Requires the current password; a demo guest has none and needs nothing."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]

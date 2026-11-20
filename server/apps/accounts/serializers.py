@@ -32,6 +32,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "name",
             "is_admin",
+            "is_guest",
             "created_at",
             "ai_usage",
         ]
@@ -111,12 +112,26 @@ def user_from_reset_link(uid: str, token: str, *, for_update: bool = False):
 
 
 class DeleteAccountSerializer(serializers.Serializer):
-    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+    """A real account must confirm with its password; a demo guest has none, so it needs nothing."""
 
-    def validate_password(self, value):
-        if not self.context["request"].user.check_password(value):
-            raise serializers.ValidationError("Incorrect password.")
-        return value
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        style={"input_type": "password"},
+    )
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if user.is_guest:
+            return attrs
+        password = attrs.get("password")
+        if not password:  # Missing, null, or blank all count as missing.
+            raise serializers.ValidationError({"password": "This field is required."})
+        if not user.check_password(password):
+            raise serializers.ValidationError({"password": "Incorrect password."})
+        return attrs
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):

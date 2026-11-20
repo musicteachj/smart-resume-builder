@@ -6,22 +6,28 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  DemoStatus
+  DemoStatus,
+  GuestStartRequest,
+  GuestStartResponse
 } from '../model';
 
 import { customAxios } from '../../axios';
@@ -47,6 +53,70 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
+ * Start a demo: verify the bot check, then create a throwaway guest with a sample résumé.
+ */
+export const startDemo = (
+    guestStartRequest: GuestStartRequest,
+ options?: SecondParameter<typeof customAxios>,signal?: AbortSignal
+) => {
+
+
+      return customAxios<GuestStartResponse>(
+      {url: `/api/demo/start`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: guestStartRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getStartDemoMutationKey = () => ['startDemo'] as const;
+
+export const getStartDemoMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startDemo>>, TError,StartDemoMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+): UseMutationOptions<Awaited<ReturnType<typeof startDemo>>, TError,StartDemoMutationVariables, TContext> => {
+
+const mutationKey = getStartDemoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startDemo>>, StartDemoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startDemo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartDemoMutationResult = NonNullable<Awaited<ReturnType<typeof startDemo>>>
+    export type StartDemoMutationBody = GuestStartRequest
+    export type StartDemoMutationError = unknown
+    export type StartDemoMutationVariables = {data: GuestStartRequest}
+
+    export const useStartDemo = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startDemo>>, TError,StartDemoMutationVariables, TContext>, request?: SecondParameter<typeof customAxios>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startDemo>>,
+        TError,
+        StartDemoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartDemoMutationOptions(options), queryClient);
+    }
+    /**
  * Public facts the SPA needs before anyone signs in. Cached for a minute.
  */
 export const getDemoStatus = (
