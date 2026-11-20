@@ -9,6 +9,13 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-20
+
+Resume IQ is ready for a public, no-sign-up demo: one click starts a 24-hour guest behind Cloudflare Turnstile,
+every Claude call is paid from a paced monthly dollar budget with a per-guest allowance, every refusal points at
+editing, templates, and export, and the demo is rehearsed locally on Postgres 17 with a readiness check, a
+production-like Docker run, hardened CI, and deploy notes for Phase 2.
+
 ### Added
 - `GET /health/ready`: a readiness check (`SELECT 1` with a 2 s statement timeout, 200 `{"status": "ready"}` or 503
   `{"status": "unavailable"}`), answered before host validation like `/health`, which still never touches the database.
@@ -752,7 +759,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...v0.14.0

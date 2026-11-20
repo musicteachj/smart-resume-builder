@@ -191,7 +191,7 @@ git commit -m "docs: add the demo mode and deploy readiness plan"
   - `def served_cost_micros(resp, *, requested_model: str) -> int`
   - `def usd_to_micros(usd: Decimal) -> int`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 from decimal import Decimal
@@ -255,21 +255,21 @@ def test_input_bound_counts_bytes_not_characters():  # Review Focus 4
     assert pricing.input_token_bound(system="ab", messages=[]) >= 2 + pricing.INPUT_OVERHEAD_TOKENS
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests/test_pricing.py -v`
 Expected: FAIL, `ImportError: cannot import name 'pricing'`.
 
-- [ ] **Step 3: Implement `apps/ai/pricing.py`**
+- [x] **Step 3: Implement `apps/ai/pricing.py`**
 
 Copy the `Price` table, `HAIKU_LONG_PROMPT_PRICE`, the dearest-price fallback with its warning, and the source comment from `open-door/apps/api/app/ai/pricing.py:24-238`, keeping only the three models above. Money is `Decimal`; results are whole micro-dollars: `cost_micros` rounds half to even, `reservation_micros` rounds up. A reservation prices input at `max(input, cache_write_5m)` and output at the full `max_tokens`, summed over attempts. `served_cost_micros` sums every entry of `resp.usage.iterations` at that entry's `model` (falling back to `resp.model`) when the list is non-empty, else prices `resp.usage` at `resp.model` (falling back to `requested_model`); treat `None` token counts as 0. `input_token_bound` returns the UTF-8 byte length of `system`, `json.dumps(messages, ensure_ascii=False)`, and `json.dumps(output_config or {}, ensure_ascii=False)` plus `INPUT_OVERHEAD_TOKENS`; its docstring states the assumption that no token is shorter than one byte.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests/test_pricing.py -v`
 Expected: 7 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -295,7 +295,7 @@ git commit -m "feat: price Claude calls in micro-dollars with a byte-safe input 
   - Settings: `AI_MONTHLY_BUDGET_USD`, `AI_DAILY_FLOOR_USD`, `AI_VISITOR_BUDGET_USD` (`Decimal`, at least 0), `AI_PACING_MULTIPLIER` (`Decimal`, at least 1), `AI_STALE_RESERVATION_MINUTES` (`int`); a bad value raises `ImproperlyConfigured`.
   - Fixtures in `server/conftest.py`: `guest` (a `User` with `is_guest=True`, `guest_expires_at=now+24h`, email `guest-test@demo.invalid`, name "Demo guest"), `guest_client` (an `APIClient` with `force_authenticate(guest)`), and `at` (returns `set_now(moment: datetime)`, which monkeypatches `apps.ai.ledger.utcnow`).
 
-- [ ] **Step 1: Write the failing tests** in `server/apps/ai/tests/test_ledger.py`
+- [x] **Step 1: Write the failing tests** in `server/apps/ai/tests/test_ledger.py`
 
 ```python
 import threading
@@ -450,17 +450,17 @@ def test_two_reservations_racing_for_the_last_room_admit_one(at):
 
 Add to `test_prod_settings.py`, following `_import_settings` (`test_prod_settings.py:42-60`): `AI_MONTHLY_BUDGET_USD="-1"` and `AI_PACING_MULTIPLIER="0.5"` fail with `ImproperlyConfigured`; `AI_MONTHLY_BUDGET_USD="25"` reads back as `Decimal("25")`.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests/test_ledger.py -v`
 Expected: FAIL on import (`ledger`, `AIBudgetDay`) and the missing `guest` and `at` fixtures.
 
-- [ ] **Step 3: Add the settings, model fields, and fixtures; generate migrations**
+- [x] **Step 3: Add the settings, model fields, and fixtures; generate migrations**
 
 Run: `server/.venv/bin/python server/manage.py makemigrations ai --name ai_budget_ledger && server/.venv/bin/python server/manage.py makemigrations accounts --name user_guest_fields && server/.venv/bin/python server/manage.py sqlmigrate accounts 0003`
 Expected: the SQL shows `ADD COLUMN "is_guest" boolean DEFAULT false NOT NULL` and `ADD COLUMN "demo_ai_spent_micros" bigint DEFAULT 0 NOT NULL` (database defaults, so a running 0.16.0 copy keeps inserting users during the deploy overlap; Postgres adds these without a table rewrite).
 
-- [ ] **Step 4: Implement `apps/ai/ledger.py`**
+- [x] **Step 4: Implement `apps/ai/ledger.py`**
 
 ```text
 reserve(amount, feature, model, visitor_id):
@@ -493,14 +493,14 @@ room_today_micros(): max(0, allowance_today - (today's settled + reserved))
 ```
 Module docstring: the rules from Global Constraints (no lock across the call, lock order, never refund on exception) and a pointer to `open-door/apps/api/app/ai/budget.py` as the pattern.
 
-- [ ] **Step 5: Run the tests to see them pass**
+- [x] **Step 5: Run the tests to see them pass**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests/test_ledger.py apps/accounts/tests/test_prod_settings.py -v && cd .. && server/.venv/bin/python server/manage.py makemigrations --check --dry-run`
 Expected: all pass; "No changes detected".
 
-- [ ] **Step 6: CHANGELOG** under `[Unreleased]` / Added: the AI spend ledger (monthly budget paced daily, per-guest allowance, its own tables).
+- [x] **Step 6: CHANGELOG** under `[Unreleased]` / Added: the AI spend ledger (monthly budget paced daily, per-guest allowance, its own tables).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -532,7 +532,7 @@ git commit -m "feat: add the AI spend ledger with daily pacing and a per-guest a
   - `fakes.py`: `_response(*blocks, stop_reason="end_turn", category=None, usage=SONNET_USAGE, model="claude-sonnet-5-5")`; `SONNET_USAGE` (3,000 in, 1,500 out, no iterations); the `fake` fixture returns `install(response, *, on_call=None) -> _FakeClient`, whose `messages.create` and `beta.messages.create` record the kwargs, call `on_call(kwargs)` if given, then raise the response if it is an exception or return it. Re-export the fixture from `apps/ai/tests/conftest.py` so every AI test module can use it.
   - Every route keeps today's `max_tokens` (parse-resume stays at 12,000: no paid measurement before launch).
 
-- [ ] **Step 1: Write the failing tests** in `test_service_budget.py` (import the real feature functions before `mock_claude` replaces them, as `test_service_requests.py:11-21` does; `pytestmark = pytest.mark.django_db`)
+- [x] **Step 1: Write the failing tests** in `test_service_budget.py` (import the real feature functions before `mock_claude` replaces them, as `test_service_requests.py:11-21` does; `pytestmark = pytest.mark.django_db`)
 
 ```python
 REQ = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -656,12 +656,12 @@ def test_haiku_never_retries(settings):
 
 Also: in `test_ai.py`, `test_views_charge_guests_to_their_own_allowance` (a recording mock for `improve_bullet` sees `visitor_id == guest.pk` for a guest and `None` for `user`); in `test_service_limits.py:25-31` assert `max_retries == 0` and `simple.timeout < 120`; in `test_prod_settings.py`, `AI_DAILY_LIMIT="3"`, `AI_MONTHLY_LIMIT="7"`, `AI_SERVER_SIDE_FALLBACK="False"` read back as `3`, `7`, `False`.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests -v`
 Expected: the new tests fail (no reservation rows, missing classes and kwargs).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 - `_simple_client()`: `max_retries=0`; comment why (a retry is a second paid attempt outside its reservation, and 3 x 30 s plus backoff could outlast the load balancer).
 - `_FALLBACKS = {"claude-sonnet-5-5": "claude-sonnet-5"}`.
@@ -682,14 +682,14 @@ Expected: the new tests fail (no reservation rows, missing classes and kwargs).
 - Unbilled: status 401, 402, 403, 529; any 429 (plain rate limit or the spend cap: both are rejected before any work is done; shared rule update 2026-11-19 in `portfolio-infra/PLAN.md`; add a test row for a plain 429 with no `error_code`); 400 whose message or body matches `You have reached your specified (?:workspace |organization )?API usage limits` or says the credit balance is too low. The `enforced_spend_limit_reached` code still decides the friendly message, not billing. Provider limit (`AIProviderLimitError`): 402, the 400 usage-limit, the 429 spend limit. Everything else: `AIUnavailableError`. Messages stay generic; the SDK error rides on `__cause__` for the existing logging in `views._ai_error`.
 - Update `mock_claude` lambdas in `conftest.py` to accept `**_kw`; add `pytestmark = pytest.mark.django_db` to `test_service_requests.py`; update `test_sonnet_5_5_requests_carry_the_refusal_fallback` to the new `fallbacks` shape.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai -v && cd .. && npm run test:server`
 Expected: all pass.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]`: Security (every Claude call reserves its worst case before it runs and settles from real usage, admins and DEBUG included; Haiku no longer retries automatically); Changed (the refusal fallback can be turned off with `AI_SERVER_SIDE_FALLBACK`, and its second pass has an explicit `max_tokens`; AI call limits come from the environment).
+- [x] **Step 5: CHANGELOG** under `[Unreleased]`: Security (every Claude call reserves its worst case before it runs and settles from real usage, admins and DEBUG included; Haiku no longer retries automatically); Changed (the refusal fallback can be turned off with `AI_SERVER_SIDE_FALLBACK`, and its second pass has an explicit `max_tokens`; AI call limits come from the environment).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -723,7 +723,7 @@ git commit -m "feat: reserve and settle every Claude call in the spend ledger"
   | `ai_rate_limited` | 429 | "That's a lot of AI requests in a short time. Please wait a few minutes. You can still edit, switch templates, and export your resume as a PDF or Word file." |
   | `ai_unavailable` | 502 | "The AI service isn't available right now. You can still edit, switch templates, and export your resume as a PDF or Word file." |
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 AI_ROUTES = [("improve-bullet", {"text": "Led a team."}), ("generate-summary", {"content": make_content()}),
@@ -768,23 +768,23 @@ def test_admins_and_debug_still_pay_in_dollars(auth_client, user, settings):
 
 Client (`aiError.test.ts`): a 503 with `detail` returns the detail; an `ECONNABORTED` returns "That took too long. You can keep editing, switching templates, and exporting, and try the AI again later."; a response with no body returns "Something went wrong with the AI. You can keep editing, switching templates, and exporting."
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/ai/tests/test_refusals.py -v` and `npm run test --prefix client -- aiError`
 Expected: FAIL (no `refusals` module; client copy differs).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `_gate` returns `refusal("ai_off")` when `ledger.live_ai_off()`, before touching the per-user counters. `_ai_error` keeps the 422 refusal path and maps `AIBudgetRefusedError` scopes `off`/`daily`/`visitor` to `ai_off`/`ai_daily_used`/`ai_visitor_used`, `AIProviderLimitError` to `ai_provider_limit` (logged at error level: "Anthropic spend limit reached"), and everything else to `ai_unavailable` (under `DEBUG` the `detail` stays `str(exc)` with the same code). `_AIView.handle_exception` turns `Throttled` into `refusal("ai_rate_limited", headers={"Retry-After": str(int(exc.wait or 60))})`. Client `aiErrorMessage` returns `detail` for 429, 502, and 503 and uses the two fallback strings above. Update any spec or test asserting the old strings: `grep -rn "took too long\|temporarily unavailable" client/src client/e2e server/apps`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `npm run test:server && npm run test:client && npm run lint && npm run typecheck`
 Expected: all pass.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Changed: every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage) returns plain copy pointing at editing, templates, and export, with a `code`.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Changed: every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage) returns plain copy pointing at editing, templates, and export, with a `code`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -811,7 +811,7 @@ git commit -m "feat: friendly AI refusals that point at the free path"
   - `GET /api/demo/status`, `operation_id="get_demo_status"`, tag `demo`, `AllowAny`, no authentication; response `DemoStatus {demo_mode: bool, turnstile_site_key: str, ai_available: bool, ai_reason: "ok" | "off" | "daily_used", guest_start_available: bool}`; cached 60 s under cache key `demo-status`; header `Cache-Control: public, max-age=60`. `STATUS_MIN_ROOM_MICROS = 250_000` in `apps/demo/views.py`. `guest_start_available` is `DEMO_MODE and TURNSTILE_SITE_KEY != "" and live guests < DEMO_MAX_LIVE_GUESTS`.
   - Generated client: `useGetDemoStatus`, types `DemoStatus`, `AiReasonEnum` (accept whatever name drf-spectacular emits without a warning).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 CLOSED = ["/api/auth/register", "/api/auth/login", "/api/auth/password-reset", "/api/auth/password-reset/confirm"]
@@ -857,21 +857,21 @@ def test_guest_start_is_unavailable_at_the_live_guest_cap(db, settings, guest): 
 ```
 In `test_prod_settings.py`: `DEMO_MODE="true", DJANGO_ADMIN_ENABLED="true"` in production fails.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/demo apps/accounts/tests/test_prod_settings.py -v`
 Expected: FAIL (no `apps.demo`, routes answer).
 
-- [ ] **Step 3: Implement** the settings block, the mixin on `RegisterView`, `LoginView`, `PasswordResetRequestView`, `PasswordResetConfirmView`, `DemoClosedSchemaView(ClosedInDemoModeMixin, SpectacularAPIView)` and `DemoClosedSwaggerView(ClosedInDemoModeMixin, SpectacularSwaggerView)` in `config/urls.py`, `path("api/demo/", include("apps.demo.urls"))`, and the status view. Both demo views set `authentication_classes = []`, so a stale Bearer can never 401 them and the client interceptors need no change.
+- [x] **Step 3: Implement** the settings block, the mixin on `RegisterView`, `LoginView`, `PasswordResetRequestView`, `PasswordResetConfirmView`, `DemoClosedSchemaView(ClosedInDemoModeMixin, SpectacularAPIView)` and `DemoClosedSwaggerView(ClosedInDemoModeMixin, SpectacularSwaggerView)` in `config/urls.py`, `path("api/demo/", include("apps.demo.urls"))`, and the status view. Both demo views set `authentication_classes = []`, so a stale Bearer can never 401 them and the client interceptors need no change.
 
-- [ ] **Step 4: Regenerate the API client and run everything**
+- [x] **Step 4: Regenerate the API client and run everything**
 
 Run: `cd client && npm run gen:api && cd .. && server/.venv/bin/python server/manage.py spectacular --validate --fail-on-warn --file /tmp/openapi-check.yaml && npm run test:server && npm run test:client && npm run typecheck`
 Expected: all pass; `git status --short client/` shows the regenerated files.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Added: `DEMO_MODE` (register, login, password reset, and the API schema and Swagger pages answer 404; admin can't be enabled with it in production) and `GET /api/demo/status`.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Added: `DEMO_MODE` (register, login, password reset, and the API schema and Swagger pages answer 404; admin can't be enabled with it in production) and `GET /api/demo/status`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -906,7 +906,7 @@ git commit -m "feat: demo mode closes the account routes and serves a public sta
   - CSP: `script-src 'self' https://challenges.cloudflare.com` and a new `frame-src https://challenges.cloudflare.com`.
   - Start refusal copy (`{"detail", "code"}`): `bot_check_failed` 403 "We couldn't confirm you're a person. Please try the check again."; `bot_check_unavailable` 503 "The bot check isn't available right now, so new demos can't start. The screenshots on this page show what the app does."; `demo_full` 503 "The demo is full right now. The screenshots on this page show what the app does. Please check back later."; `demo_rate_limited` 429 "A lot of demos have started from your network recently. Please try again later. The screenshots on this page show what the app does."
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # test_turnstile.py
@@ -967,25 +967,25 @@ def test_start_is_limited_per_ip(client, monkeypatch): ...                  # de
 - `test_security.py`: the CSP contains `script-src 'self' https://challenges.cloudflare.com` and `frame-src https://challenges.cloudflare.com`.
 - `test_prod_settings.py`: production with `DEMO_MODE=true` and no Turnstile keys fails; with test keys and `ALLOWED_HOSTS=resumeiq.jameslittlefield.net` fails; with test keys and `ALLOWED_HOSTS=localhost,127.0.0.1` imports.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/demo apps/accounts apps/ai -v`
 Expected: the new tests fail.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 - `turnstile.verify`: follow `open-door/apps/api/app/modules/sandbox/turnstile.py:33-138` (codes, the test-secret branch, fail-closed rules), with stdlib `urllib.request.urlopen` (POST form `secret`, `response`, `remoteip`, `idempotency_key`; `timeout=5`). Expected hostnames are `ALLOWED_HOSTS` entries that are neither `*` nor start with `.`. Never log the token or secret.
 - Start view order: 404 unless `DEMO_MODE`; validate; live-guest cap (503 `demo_full`); `verify(token, remote_ip=<throttle get_ident>)`; then in one `transaction.atomic()` create the guest (`create_user(email=f"guest-{uuid4().hex}@demo.invalid", name="Demo guest", password=None, is_guest=True, guest_expires_at=now + TTL)`) and the sample résumé (`template="classic"`); then `issue_refresh`, respond 201, set the cookie with `max_age=refresh_cookie_max_age(guest)`. `handle_exception` turns `Throttled` into `demo_rate_limited` with `Retry-After`. Log one line per start with the guest id, never the IP or token.
 - `SAMPLE_CONTENT`: a fictional "Riley Chen, Senior Software Engineer" with every `personalInfo` field filled (email `riley.chen@example.com`, phone `555-0142`, `https://` LinkedIn and GitHub URLs on `example.com` paths are fine), a summary, three jobs with three or four metric bullets each, one degree, about ten skills, two projects; American English, no em dashes; title `SAMPLE_TITLE = "Sample resume: Riley Chen"`.
 
-- [ ] **Step 4: Regenerate the API client and run everything**
+- [x] **Step 4: Regenerate the API client and run everything**
 
 Run: `cd client && npm run gen:api && cd .. && server/.venv/bin/python server/manage.py spectacular --validate --fail-on-warn --file /tmp/openapi-check.yaml && npm run test:server && npm run test:client && npm run typecheck`
 Expected: all pass. (The client's `DeleteAccountDialog` keeps requiring a password through its own Zod schema.)
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]`: Added (guest demos behind Cloudflare Turnstile and per-IP limits, a sample résumé, a live-guest cap, password-free "end my demo" for guests, a lifetime AI call cap per guest); Security (CSP allows only `challenges.cloudflare.com` for the bot check).
+- [x] **Step 5: CHANGELOG** under `[Unreleased]`: Added (guest demos behind Cloudflare Turnstile and per-IP limits, a sample résumé, a live-guest cap, password-free "end my demo" for guests, a lifetime AI call cap per guest); Security (CSP allows only `challenges.cloudflare.com` for the bot check).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1011,7 +1011,7 @@ git commit -m "feat: start guest demos behind Turnstile with a sample resume"
   - Refresh responses: 401 `{"detail": "No refresh token.", "code": "no_session"}` without a cookie; 401 `{"detail": "Your session ended.", "code": "session_ended"}` with the cookie cleared when it can't be used; 200 `{"access"}` (with a rotated cookie, or with no `Set-Cookie` on the grace path).
   - Cache key `refresh-successor:<old jti>` holding the new jti for `REFRESH_REUSE_GRACE_SECONDS`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Local fixtures in `test_refresh.py`: `signed_in_client` (an `APIClient` whose `refresh_token` cookie comes from `issue_refresh(user)`, for the existing `user` account) and `guest_cookie_client` (the same for `guest`).
 
@@ -1068,12 +1068,12 @@ def test_rotating_the_forged_entry_does_not_dodge_the_start_limit(settings, monk
     # demo-start-hour "3/hour"; four POSTs with leftmost 1.1.1.1..4.4.4.4 and rightmost 203.0.113.7 -> fourth is 429
 ```
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/accounts/tests/test_refresh.py apps/demo/tests/test_client_ip.py apps/ai/tests/test_ai.py -v`
 Expected: the deleted-user test errors with `DoesNotExist` (today's 500); the grace tests get 401; the AI test raises `IntegrityError`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```text
 refresh_session(raw):
@@ -1096,14 +1096,14 @@ _grace(raw):
 ```
 `record_usage` wraps its insert in `transaction.atomic()` and logs and swallows `IntegrityError`; `refund` and `reserve` treat `User.DoesNotExist` on `refresh_from_db` as "nothing to do"; `_gate` answers 401 `session_ended` if the user vanished before the call. Update `CLAUDE.md:134-135` later (Task 16).
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `npm run test:server`
 Expected: all pass, including the existing `test_auth.py` rotation tests.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Fixed: refreshing a removed user's session answers 401 instead of a 500; two tabs restoring at once no longer sign the visitor out (30-second reuse grace); an AI call whose guest is removed mid-call no longer fails with a 500. Security: a forged leftmost `X-Forwarded-For` can't change a rate-limit key (test).
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Fixed: refreshing a removed user's session answers 401 instead of a 500; two tabs restoring at once no longer sign the visitor out (30-second reuse grace); an AI call whose guest is removed mid-call no longer fails with a 500. Security: a forged leftmost `X-Forwarded-For` can't change a rate-limit key (test).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1126,7 +1126,7 @@ git commit -m "fix: keep sessions alive across tabs and end removed guests clean
 - Consumes: `ledger.sweep_stale`, `ledger.prune_settled`, SimpleJWT `flushexpiredtokens`.
 - Produces: `python manage.py cleanup_demo [--batch-size N]` (default 100). Prints exactly one line: `cleanup_demo: guests_deleted=<n> reservations_swept=<n> reservations_pruned=<n>`. Any error propagates (non-zero exit, so Phase 2's failed-task alarm fires).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_cleanup_removes_expired_guests_and_their_data(guest, user):   # user = an account
@@ -1144,21 +1144,21 @@ def test_cleanup_works_in_batches(): ...                         # --batch-size 
 def test_a_second_run_finds_nothing(): ...                       # guests_deleted=0
 ```
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/demo/tests/test_cleanup.py -v`
 Expected: FAIL, `Unknown command: 'cleanup_demo'`.
 
-- [ ] **Step 3: Implement** the command: expired guests (`is_guest=True, guest_expires_at__lte=now`) deleted in batches of primary keys (cascades remove résumés, versions, cover letters, usage logs); `sweep_stale(older_than=timedelta(minutes=settings.AI_STALE_RESERVATION_MINUTES))`; `call_command("flushexpiredtokens")`; `prune_settled(older_than=timedelta(days=35))`. Rewrite the entrypoint comment: production sets `RUN_MIGRATIONS=0` on the service, the one-off migrate task, and the hourly cleanup task (see `docs/DEPLOYMENT.md`); local compose relies on the default.
+- [x] **Step 3: Implement** the command: expired guests (`is_guest=True, guest_expires_at__lte=now`) deleted in batches of primary keys (cascades remove résumés, versions, cover letters, usage logs); `sweep_stale(older_than=timedelta(minutes=settings.AI_STALE_RESERVATION_MINUTES))`; `call_command("flushexpiredtokens")`; `prune_settled(older_than=timedelta(days=35))`. Rewrite the entrypoint comment: production sets `RUN_MIGRATIONS=0` on the service, the one-off migrate task, and the hourly cleanup task (see `docs/DEPLOYMENT.md`); local compose relies on the default.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `cd server && .venv/bin/python -m pytest apps/demo -v`
 Expected: all pass.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Added: `manage.py cleanup_demo`, the hourly job.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Added: `manage.py cleanup_demo`, the hourly job.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1179,7 +1179,7 @@ git commit -m "feat: add the hourly cleanup_demo command"
 - Consumes: `User.is_guest`.
 - Produces: `class DemoLimitReached(APIException)` (status 400, body `{"detail": <copy>, "code": "demo_limit"}`); `def guest_storage_bytes(user_id: int) -> int` (sum of `pg_column_size` over résumé and version `content` and cover-letter `body` and `job_description`); `def check_guest_write(user, *, adding_resume: bool = False) -> None` (no-op for accounts). Copy: résumé count "This demo can hold up to 20 resumes. Delete one to make room."; storage "This demo has reached its storage limit. Delete a resume or some saved versions to keep editing."; content size (a `content` field error) "This resume is larger than the demo allows. Remove some text to keep saving." Client: `useAutosave` returns `errorDetail: string | null`; `SaveIndicator` takes an optional `detail` and shows it in place of "Couldn't save".
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_a_guest_can_hold_twenty_resumes(guest_client, guest, settings):
@@ -1198,21 +1198,21 @@ def test_storage_counts_resumes_versions_and_letters(guest): ...   # guest_stora
 ```
 Client: `SaveIndicator` with `status="error"` and `detail="This demo has reached its storage limit. ..."` renders the detail; `DashboardPage` shows a `role="alert"` with the server `detail` when "New resume" gets a 400 (mock `useCreateResume`).
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/demo/tests/test_quotas.py -v` and `npm run test --prefix client -- SaveIndicator DashboardPage`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement.** Call `check_guest_write(request.user, adding_resume=True)` in `perform_create` and `duplicate`; `check_guest_write(request.user)` before `perform_update`'s transaction, before a manual version `snapshot`, and in the cover letter `perform_create`. Content size: `len(json.dumps(value, ensure_ascii=False).encode())` against the setting, guests only. Dashboard: wrap `handleCreate` and `handleDuplicate` in try/catch and show `fieldErrors(err).detail ?? "We couldn't create a resume. Please try again."`.
+- [x] **Step 3: Implement.** Call `check_guest_write(request.user, adding_resume=True)` in `perform_create` and `duplicate`; `check_guest_write(request.user)` before `perform_update`'s transaction, before a manual version `snapshot`, and in the cover letter `perform_create`. Content size: `len(json.dumps(value, ensure_ascii=False).encode())` against the setting, guests only. Dashboard: wrap `handleCreate` and `handleDuplicate` in try/catch and show `fieldErrors(err).detail ?? "We couldn't create a resume. Please try again."`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `npm run test:server && npm run test:client && npm run lint && npm run typecheck`
 Expected: all pass.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Added: per-guest limits (20 résumés, 64 KB per résumé, 5 MiB in total), shown in the editor's save status and on the dashboard.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Added: per-guest limits (20 résumés, 64 KB per résumé, 5 MiB in total), shown in the editor's save status and on the dashboard.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1249,7 +1249,7 @@ git commit -m "feat: cap what one demo guest can store"
   - Guest menu: label "Demo guest"; item "Sign out and end demo". Dialog title "End your demo?", body "Signing out ends this demo and deletes its resumes right away. You can start a new demo from the home page anytime.", buttons "End demo" (destructive) and "Keep working"; error "We couldn't end your demo. Please try again."
   - Import modal, guests: "Please don't upload a real resume."
 
-- [ ] **Step 1: Write the failing tests** (mock `@/features/demo/useDemoStatus` and the generated hooks with `vi.mock`)
+- [x] **Step 1: Write the failing tests** (mock `@/features/demo/useDemoStatus` and the generated hooks with `vi.mock`)
 
 ```tsx
 // guards.test.tsx
@@ -1295,21 +1295,21 @@ it("a failed refresh mid-session marks the session ended", ...);
 ```
 Also: the usage pill and the AI menu's usage line are absent for a guest; `DashboardPage` creates a guest's blank résumé with `personalInfo: { name: "", email: "" }`; `ImportResumeModal` shows the notice for a guest.
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npm run test:client`
 Expected: the new tests fail.
 
-- [ ] **Step 3: Implement** to `docs/DESIGN.md`: tokens only, the accent reserved for the one primary CTA ("Try the live demo"), notices as `role="status"`, errors as `role="alert"`, every page still inside `<main id="main">`. The Turnstile widget renders in a slot under the CTA. Starting a demo calls `clearSessionEnded()`.
+- [x] **Step 3: Implement** to `docs/DESIGN.md`: tokens only, the accent reserved for the one primary CTA ("Try the live demo"), notices as `role="status"`, errors as `role="alert"`, every page still inside `<main id="main">`. The Turnstile widget renders in a slot under the CTA. Starting a demo calls `clearSessionEnded()`.
 
-- [ ] **Step 4: Run everything**
+- [x] **Step 4: Run everything**
 
 Run: `npm run test:client && npm run lint && npm run typecheck && npm run build && npm run test:e2e`
 Expected: all pass; the existing e2e suite (accounts mode) is unchanged.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Added: the demo landing (one-click live demo behind the bot check, budget and demo-full notices, the demo-ended notice), "Demo guest" in the header, and "Sign out and end demo". Changed: in demo mode the account pages redirect home.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Added: the demo landing (one-click live demo behind the bot check, budget and demo-full notices, the demo-ended notice), "Demo guest" in the header, and "Sign out and end demo". Changed: in demo mode the account pages redirect home.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1334,7 +1334,7 @@ git commit -m "feat: demo mode in the client with a one-click guest start"
   - `fixtures.ts`: `installMocks(page)` (AI plus Turnstile; the `page` fixture uses it), `startDemo(page): Promise<string>` (goes to `/`, clicks "Try the live demo", waits for `/resumes/<id>`, returns the id), `expireGuests()` (runs `expire_guests.py` with `DJANGO_DEMO_ENV`).
   - `expire_guests.py`: sets every guest's `guest_expires_at` to now and runs `call_command("cleanup_demo")`.
 
-- [ ] **Step 1: Write the specs**
+- [x] **Step 1: Write the specs**
 
 ```ts
 // demo/start.spec.ts
@@ -1379,25 +1379,25 @@ test("sign out and end demo removes the demo", ...);                   // menu -
 ```
 Use the editor's real labels (check `SummarySection.tsx`); keep the axe scans in light and dark through `expectAccessible`.
 
-- [ ] **Step 2: Run the demo specs**
+- [x] **Step 2: Run the demo specs**
 
 Run: `docker compose up -d && npm run test:e2e -- --project=demo-chromium --project=demo-webkit`
 Expected: all pass. If a spec fails, fix the app, not the assertion, unless the copy changed on purpose.
 
-- [ ] **Step 3: Capture the landing screenshots**
+- [x] **Step 3: Capture the landing screenshots**
 
 `e2e/screenshots/landing.spec.ts` starts a demo and saves JPEG (quality 80) shots of the editor with the live preview, the open template gallery, and the tailoring modal with the mocked result, to `client/src/features/marketing/screenshots/`. Then fill `SCREENSHOTS` with imports, alt text ("The editor: the form on the left and the live resume preview on the right", "Choosing among six resume templates", "Tailoring a resume to a job description, with an ATS match score"), and captions (the tailoring one says "Illustrative example").
 Run: `cd client && npm run screenshots && ls -l src/features/marketing/screenshots`
 Expected: three files, each under 250 KB.
 
-- [ ] **Step 4: Run the whole suite**
+- [x] **Step 4: Run the whole suite**
 
 Run: `npm run test:e2e && npm run test:client && npm run build`
 Expected: all pass, including the landing page's axe scan with the screenshots.
 
-- [ ] **Step 5: CHANGELOG** under `[Unreleased]` / Added: Playwright demo-mode suite (Chromium and WebKit; guest start, two tabs, an ended demo, refusals, end demo) and landing screenshots that need no demo.
+- [x] **Step 5: CHANGELOG** under `[Unreleased]` / Added: Playwright demo-mode suite (Chromium and WebKit; guest start, two tabs, an ended demo, refusals, end demo) and landing screenshots that need no demo.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1418,7 +1418,7 @@ git commit -m "test: end-to-end demo suite and landing screenshots"
 **Interfaces:**
 - Produces: `GET /health/ready` (200 `{"status": "ready"}`, 503 `{"status": "unavailable"}`); `CONN_MAX_AGE = 60`; `DATABASES["default"]["OPTIONS"]["connect_timeout"] = 5`; gunicorn `--max-requests 1000 --max-requests-jitter 100`; `.dockerignore` adds `**/.env*`; local role `resumeiq` (password `resumeiq_local_only`) owning database `resumeiq`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 @pytest.mark.django_db
@@ -1442,19 +1442,19 @@ def test_database_connections_are_short_lived_and_fail_fast(settings):
     assert settings.DATABASES["default"]["OPTIONS"]["connect_timeout"] == 5
 ```
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `cd server && .venv/bin/python -m pytest apps/accounts/tests/test_health.py -v`
 Expected: FAIL (`/health/ready` reaches the SPA catch-all; `CONN_MAX_AGE` is 600).
 
-- [ ] **Step 3: Implement the server side.** Readiness runs `SET LOCAL statement_timeout = '2s'` and `SELECT 1` inside a short `transaction.atomic()` and maps `DatabaseError` to 503. SPA regex: `r"^(?!api/|admin/|static/|assets/|health(?:/|$)).*$"`. Add the gunicorn flags to the `CMD` with a comment (recycles workers to cap slow memory growth; restarts are graceful). Add `**/.env*` to `.dockerignore`.
+- [x] **Step 3: Implement the server side.** Readiness runs `SET LOCAL statement_timeout = '2s'` and `SELECT 1` inside a short `transaction.atomic()` and maps `DatabaseError` to 503. SPA regex: `r"^(?!api/|admin/|static/|assets/|health(?:/|$)).*$"`. Add the gunicorn flags to the `CMD` with a comment (recycles workers to cap slow memory growth; restarts are graceful). Add `**/.env*` to `.dockerignore`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `npm run test:server`
 Expected: all pass.
 
-- [ ] **Step 5: Move local Postgres to 17**
+- [x] **Step 5: Move local Postgres to 17**
 
 `docker/postgres-init/01-resumeiq-role.sql` (runs once, on a fresh volume):
 ```sql
@@ -1467,13 +1467,13 @@ REVOKE CONNECT ON DATABASE resumeiq FROM PUBLIC;
 `docker-compose.yml`: `db.image: pgvector/pgvector:pg17`; volume `postgres17_data:/var/lib/postgresql/data` plus `./docker/postgres-init:/docker-entrypoint-initdb.d:ro`; top-level `volumes: postgres17_data:`. Make the `app` profile production-like: `DATABASE_URL: postgres://resumeiq:resumeiq_local_only@db:5432/resumeiq`, `DEMO_MODE: "true"`, the always-pass Turnstile site key and secret, `AI_MONTHLY_BUDGET_USD: "0"`, `ANTHROPIC_API_KEY: sk-ant-local-placeholder-never-sent`, `RUN_MIGRATIONS: "0"`, `mem_limit: 640m`, `read_only: true`, `tmpfs: [/tmp]`, `cap_drop: [ALL]`, `security_opt: ["no-new-privileges:true"]`, `stop_grace_period: 120s`; keep `DEBUG: "False"`, `SECURE_SSL_REDIRECT: "False"`, `ALLOWED_HOSTS: localhost,127.0.0.1`, `CLIENT_URL: http://localhost:8000`.
 
 A PostgreSQL 17 server can't open the PostgreSQL 15 data in the old `postgres_data` volume, so the new volume starts empty and the old one is left untouched. Optional: if James wants his local dev data, dump it first (Step 5a), then restore it (Step 5d).
-- [ ] 5a (optional, before switching): `docker compose exec db pg_dump -U resume_user -d resume_builder -Fc -f /tmp/rb.dump && docker compose cp db:/tmp/rb.dump /tmp/resume_builder-pg15.dump`
-- [ ] 5b: `docker compose down && docker compose up -d db && docker compose exec db psql -U resume_user -d postgres -c "select version()" -c "\du resumeiq"`. Expected: PostgreSQL 17.x; `resumeiq` has no Superuser or Create DB attribute.
-- [ ] 5c: `server/.venv/bin/python server/manage.py migrate`. Expected: all migrations applied.
-- [ ] 5d (optional): `docker compose cp /tmp/resume_builder-pg15.dump db:/tmp/rb.dump && docker compose exec db pg_restore -U resume_user -d resume_builder --clean --if-exists --no-owner /tmp/rb.dump`, then migrate again.
-- [ ] 5e: `npm run test:server && npm run test:e2e`. Expected: all pass on 17. The old volume stays until James chooses to remove it.
+- [x] 5a (optional, before switching): `docker compose exec db pg_dump -U resume_user -d resume_builder -Fc -f /tmp/rb.dump && docker compose cp db:/tmp/rb.dump /tmp/resume_builder-pg15.dump`
+- [x] 5b: `docker compose down && docker compose up -d db && docker compose exec db psql -U resume_user -d postgres -c "select version()" -c "\du resumeiq"`. Expected: PostgreSQL 17.x; `resumeiq` has no Superuser or Create DB attribute.
+- [x] 5c: `server/.venv/bin/python server/manage.py migrate`. Expected: all migrations applied.
+- [x] 5d (optional): `docker compose cp /tmp/resume_builder-pg15.dump db:/tmp/rb.dump && docker compose exec db pg_restore -U resume_user -d resume_builder --clean --if-exists --no-owner /tmp/rb.dump`, then migrate again.
+- [x] 5e: `npm run test:server && npm run test:e2e`. Expected: all pass on 17. The old volume stays until James chooses to remove it.
 
-- [ ] **Step 6: CI on Postgres 17 and a demo-mode smoke test**
+- [x] **Step 6: CI on Postgres 17 and a demo-mode smoke test**
 
 In `ci.yml`, change the three service images (`:47`, `:124`, `:177`) to `pgvector/pgvector:pg17`. In the Docker job, start the container with `-e DEMO_MODE=true -e TURNSTILE_SITE_KEY=1x00000000000000000000AA -e TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` (loopback `ALLOWED_HOSTS`, so test keys are allowed) and add:
 ```bash
@@ -1482,9 +1482,9 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api
 curl -fsS http://localhost:8000/api/demo/status | grep -q '"demo_mode":true'
 ```
 
-- [ ] **Step 7: CHANGELOG** under `[Unreleased]`: Added (`/health/ready`); Changed (Postgres 17 locally and in CI, with a non-superuser app role in the local production run; database connections live 60 s and connect within 5 s; gunicorn recycles workers; the compose `prod` profile runs production-like); Security (`.dockerignore` excludes every `.env*` file).
+- [x] **Step 7: CHANGELOG** under `[Unreleased]`: Added (`/health/ready`); Changed (Postgres 17 locally and in CI, with a non-superuser app role in the local production run; database connections live 60 s and connect within 5 s; gunicorn recycles workers; the compose `prod` profile runs production-like); Security (`.dockerignore` excludes every `.env*` file).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1505,7 +1505,7 @@ git commit -m "feat: readiness check, Postgres 17, and a production-like local r
 **Interfaces:**
 - Produces: workflow `Security` with job `secrets` ("Leaked secrets (gitleaks)") on push to `main` and `dev`, every PR, Mondays at 13:00 UTC, and manual runs; job `dependencies` ("Weekly dependency audit") on the schedule and manual runs only. The existing required `ci.yml` jobs keep their names.
 
-- [ ] **Step 1: Write `security.yml`**
+- [x] **Step 1: Write `security.yml`**
 
 Copy `open-door/.github/workflows/security.yml:1-41` (triggers, concurrency, top-level `permissions: contents: read`, the gitleaks 8.30.1 install with its checksum check, `fetch-depth: 0`, `./gitleaks git --redact --verbose --exit-code 1`). Add:
 ```yaml
@@ -1526,7 +1526,7 @@ Copy `open-door/.github/workflows/security.yml:1-41` (triggers, concurrency, top
       - run: pip install pip-audit==2.10.1 && pip-audit -r server/requirements.txt --require-hashes
 ```
 
-- [ ] **Step 2: Pin every action to a commit SHA**
+- [x] **Step 2: Pin every action to a commit SHA**
 
 Known pins (from Open Door): `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1`, `actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0`, `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2`; the two `docker/*` actions are already pinned. Resolve the rest:
 ```bash
@@ -1541,14 +1541,14 @@ Use the setup-python and codeql-action major versions the workflows use today (`
 Run: `grep -nE "uses: [^ ]+@" .github/workflows/*.yml | grep -vE "@[0-9a-f]{40} # v"`
 Expected: no output. Dependabot's `github-actions` entry (`.github/dependabot.yml`) keeps the pins current.
 
-- [ ] **Step 3: Scan the full history once, locally**
+- [x] **Step 3: Scan the full history once, locally**
 
 Run: `docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --verbose --exit-code 1`
 Expected: "no leaks found". Any finding: stop and show James. Add a `.gitleaks.toml` allowlist (like `open-door/.gitleaks.toml`) only for a finding he confirms is not a secret.
 
-- [ ] **Step 4: CHANGELOG** under `[Unreleased]` / Security: gitleaks on every push and PR, a weekly dependency audit, every workflow action pinned to a commit SHA.
+- [x] **Step 4: CHANGELOG** under `[Unreleased]` / Security: gitleaks on every push and PR, a weekly dependency audit, every workflow action pinned to a commit SHA.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1565,7 +1565,7 @@ git commit -m "ci: add gitleaks and a weekly audit, and pin actions to commit SH
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Write the failing tests** (`LegalPages.test.tsx`)
+- [x] **Step 1: Write the failing tests** (`LegalPages.test.tsx`)
 
 ```tsx
 it("privacy states the retention and names every processor", () => {
@@ -1582,30 +1582,30 @@ it.each([["Privacy", PrivacyPage], ["Terms", TermsPage]])("%s has no account lan
 });
 ```
 
-- [ ] **Step 2: Run them to see them fail**
+- [x] **Step 2: Run them to see them fail**
 
 Run: `npm run test --prefix client -- LegalPages`
 Expected: FAIL.
 
-- [ ] **Step 3: Rewrite the pages for the public demo**
+- [x] **Step 3: Rewrite the pages for the public demo**
 
 Privacy (keep the draft-for-review header comment, the layout, and the contact section): the demo has no accounts (no name, email, or password); what's stored (a random guest ID, the résumés, versions, and cover letters made in the demo, AI usage logs without text, AI spend records with amounts and model names only); the retention sentence from Global Constraints, plus "Ending your demo (Sign out and end demo) deletes it from the app right away."; processors: Anthropic (only when an AI feature is used), Cloudflare (the bot check when starting a demo; it sees your IP address and browser signals), Amazon Web Services (hosting, backups, logs), Google Fonts (unchanged); cookies (`refresh_token` lasts up to 24 hours; the theme in local storage); "Please don't upload a real resume. Use the sample or made-up details."; remove the Email section and the Account page link.
 Terms: "By starting a demo, you agree to these terms"; the demo is temporary (deleted after 24 hours, or sooner if you end it), each demo has an AI allowance and live AI has a daily budget for everyone, so it may be unavailable; don't upload real résumés or anyone's personal data; acceptable use (no bots or scraping; don't start many demos to get around limits); "We may end demos that break these terms or abuse the service."; remove account wording. Set `LEGAL_LAST_UPDATED` to the day of this change ("Month D, YYYY").
 
-- [ ] **Step 4: Fix the stale `resume.` addresses**
+- [x] **Step 4: Fix the stale `resume.` addresses**
 
 `index.html` `og:url` `https://resumeiq.jameslittlefield.net/` and `og:image` `https://resumeiq.jameslittlefield.net/og-image.png`; `settings.py:121` comment `*.resumeiq.…`; `settings.py:201` `ResumeIQ <no-reply@resumeiq.jameslittlefield.net>`; `test_security.py` and `ci.yml:78` hosts to `resumeiq.jameslittlefield.net`.
 Run: `grep -rn "resume\.jameslittlefield" client/src client/index.html client/e2e server/config server/apps .github`
 Expected: no output.
 
-- [ ] **Step 5: Run everything**
+- [x] **Step 5: Run everything**
 
 Run: `npm run test:client && npm run test:server && npm run build && npm run test:e2e`
 Expected: all pass.
 
-- [ ] **Step 6: CHANGELOG** under `[Unreleased]` / Changed: Privacy and Terms describe the no-account demo (24-hour retention, 7-day backups, 14-day logs, Anthropic, Cloudflare, AWS); link previews and addresses use `resumeiq.jameslittlefield.net`.
+- [x] **Step 6: CHANGELOG** under `[Unreleased]` / Changed: Privacy and Terms describe the no-account demo (24-hour retention, 7-day backups, 14-day logs, Anthropic, Cloudflare, AWS); link previews and addresses use `resumeiq.jameslittlefield.net`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1625,7 +1625,7 @@ git commit -m "docs: privacy and terms for the no-account demo, and the resumeiq
 **Interfaces:**
 - Produces: the values Phase 2 copies (below).
 
-- [ ] **Step 1: Write `docs/DEPLOYMENT.md`** with these sections, values exact:
+- [x] **Step 1: Write `docs/DEPLOYMENT.md`** with these sections, values exact:
   - **Where it runs:** ECS on the shared EC2 server behind the ALB, per the portfolio-infra design; host `resumeiq.jameslittlefield.net`; image built for `linux/amd64`.
   - **Environment** (service, migrate, and cleanup tasks share it): SSM SecureString under `/portfolio/resumeiq/`: `SECRET_KEY`, `DATABASE_URL` (`postgres://resumeiq:<password>@172.17.0.1:5432/resumeiq`), `ANTHROPIC_API_KEY` (Resume IQ workspace, monthly limit $12, alerts $5 and $9), `TURNSTILE_SECRET_KEY`. Plain: `ALLOWED_HOSTS=resumeiq.jameslittlefield.net`, `CLIENT_URL=https://resumeiq.jameslittlefield.net`, `DEMO_MODE=true`, `TURNSTILE_SITE_KEY=<site key>`, `RUN_MIGRATIONS=0`, `AI_MONTHLY_BUDGET_USD=10`, `AI_PACING_MULTIPLIER=3`, `AI_DAILY_FLOOR_USD=0.50`, `AI_VISITOR_BUDGET_USD=0.15`, `DEMO_STARTS_PER_HOUR=15`, `DEMO_STARTS_PER_DAY=50`. Leave `DEBUG`, `DJANGO_ADMIN_ENABLED`, and `SECURE_SSL_REDIRECT` unset. Off switch: `AI_MONTHLY_BUDGET_USD=0`.
   - **One-off migrate task** (runs before every service update; the deploy waits for exit 0): command `["python", "manage.py", "migrate", "--noinput"]` (the entrypoint `exec`s the command), the shared environment, `RUN_MIGRATIONS=0`. Migrations stay backward compatible with the previous image during the two-copy overlap (new columns use `db_default`).
@@ -1636,14 +1636,14 @@ git commit -m "docs: privacy and terms for the no-account demo, and the resumeiq
   - **PostgreSQL 17 setup** (once, as the init superuser): the three statements from `docker/postgres-init/01-resumeiq-role.sql` with a generated password; `scram-sha-256` authentication. Connection budget: up to 16 connections per task (2 workers x 8 threads, `CONN_MAX_AGE` 60), 32 during a rolling deploy, plus the two tasks.
   - **Turnstile:** one site covering the four hostnames; action `start-demo`.
   - **Rollback:** redeploy the previous image; migrations are additive.
-- [ ] **Step 2: Update `CLAUDE.md`:** line 7 to `resumeiq.jameslittlefield.net` (after the Phase 3 deploy); the DB line to Postgres 17; the AI line to the env limits and the ledger (`apps/ai/pricing.py`, `apps/ai/ledger.py`; admins and DEBUG pay dollars too); commands (`cleanup_demo`; the prod profile now needs `docker compose --profile prod run --rm app python manage.py migrate --noinput` before `up`; `npm run screenshots` in `client/`); CI now on Postgres 17 plus `security.yml`; repo map adds `apps/demo/` and `docs/DEPLOYMENT.md`; remove the two-tab item from "Future hardening" (fixed); replace the "Phase 10 infra checklist" with a pointer to `docs/DEPLOYMENT.md`, the portfolio-infra design, and this plan; add security invariants ("every Anthropic call goes through `service._call` and the ledger"; "new account endpoints use `ClosedInDemoModeMixin`"; "the CSP allows only `challenges.cloudflare.com` beyond self and Google Fonts"); add a phase status line for this plan in the file's existing style; update the Phase 10 line (ECS on EC2, shared Postgres 17, SSM; no RDS, no Fargate).
-- [ ] **Step 3: Update `README.md`** (Live URL `https://resumeiq.jameslittlefield.net` "after deploy"; a short "Live demo" section; Postgres 17; the production-like local run), `.env.example` (`DEMO_MODE=False`; commented always-pass Turnstile keys; the AI budget settings with their defaults; `AI_SERVER_SIDE_FALLBACK=True`), `PLAN.md` (one line under "Locked technical decisions" and Phase 10: superseded by the portfolio-infra design), and `CHANGELOG.md:6-8` (`1.0.0` marks the first release to `resumeiq.jameslittlefield.net`).
-- [ ] **Step 4: Check for leftovers**
+- [x] **Step 2: Update `CLAUDE.md`:** line 7 to `resumeiq.jameslittlefield.net` (after the Phase 3 deploy); the DB line to Postgres 17; the AI line to the env limits and the ledger (`apps/ai/pricing.py`, `apps/ai/ledger.py`; admins and DEBUG pay dollars too); commands (`cleanup_demo`; the prod profile now needs `docker compose --profile prod run --rm app python manage.py migrate --noinput` before `up`; `npm run screenshots` in `client/`); CI now on Postgres 17 plus `security.yml`; repo map adds `apps/demo/` and `docs/DEPLOYMENT.md`; remove the two-tab item from "Future hardening" (fixed); replace the "Phase 10 infra checklist" with a pointer to `docs/DEPLOYMENT.md`, the portfolio-infra design, and this plan; add security invariants ("every Anthropic call goes through `service._call` and the ledger"; "new account endpoints use `ClosedInDemoModeMixin`"; "the CSP allows only `challenges.cloudflare.com` beyond self and Google Fonts"); add a phase status line for this plan in the file's existing style; update the Phase 10 line (ECS on EC2, shared Postgres 17, SSM; no RDS, no Fargate).
+- [x] **Step 3: Update `README.md`** (Live URL `https://resumeiq.jameslittlefield.net` "after deploy"; a short "Live demo" section; Postgres 17; the production-like local run), `.env.example` (`DEMO_MODE=False`; commented always-pass Turnstile keys; the AI budget settings with their defaults; `AI_SERVER_SIDE_FALLBACK=True`), `PLAN.md` (one line under "Locked technical decisions" and Phase 10: superseded by the portfolio-infra design), and `CHANGELOG.md:6-8` (`1.0.0` marks the first release to `resumeiq.jameslittlefield.net`).
+- [x] **Step 4: Check for leftovers**
 
 Run: `grep -rn "resume\.jameslittlefield" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=.claude . | grep -v "^./CHANGELOG.md"` and `grep -rn "$(printf '\342\200\224')" docs/DEPLOYMENT.md CLAUDE.md README.md .env.example` (finds em dashes)
 Expected: only historical `PLAN.md` lines that the new note marks as superseded; no em dashes in the new text.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 ```bash
@@ -1658,12 +1658,12 @@ git commit -m "docs: deployment notes for Phase 2 and the demo-mode project docs
 **Files:**
 - Modify: `CHANGELOG.md`, `package.json`, `package-lock.json`, `/Users/jameslittlefield/Documents/github_things/portfolio-infra/PLAN.md:23`, this plan (tick boxes)
 
-- [ ] **Step 1: Everything green**
+- [x] **Step 1: Everything green**
 
 Run: `npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e && server/.venv/bin/python server/manage.py check --fail-level WARNING && server/.venv/bin/python server/manage.py makemigrations --check --dry-run && (cd client && npm run gen:api) && git status --porcelain -- client/openapi.yaml client/src/api/generated`
 Expected: all pass; the last command prints nothing.
 
-- [ ] **Step 2: Build and migrate like production**
+- [x] **Step 2: Build and migrate like production**
 
 ```bash
 docker compose up -d db
@@ -1673,7 +1673,7 @@ docker compose --profile prod up -d app
 ```
 Expected: migrate exits 0 as the non-superuser `resumeiq` role; the app starts with `DEBUG` off, `DEMO_MODE` on, test Turnstile keys, budget 0.
 
-- [ ] **Step 3: Walk the checks.** Record each result in the session notes.
+- [x] **Step 3: Walk the checks.** Record each result in the session notes.
 
 | Check | Command or action | Pass when |
 |---|---|---|
@@ -1704,11 +1704,13 @@ rm /tmp/resumeiq-app.env
 
 Notes: the refresh cookie is `Secure` because `DEBUG` is off; Chrome accepts it on `http://localhost`, so use Chrome for the browser checks. The always-pass Turnstile site key loads the real Cloudflare script (a free request); the server answers the test secret locally. If any check fails, fix it in the task that owns it, rerun that task's tests, and commit separately (with the same stop).
 
-- [ ] **Step 4: Security and code review**
+Done 2026-11-20: every check passed. Step 1: client 263, server 405, e2e 98, generated client clean. App memory after the walk 133 MiB of 640 MiB; cleanup at 128 MiB exited 0 (no guests left to delete, so not a loaded test); graceful stop 0.65 s; readiness 503 with the database stopped while liveness stayed 200. Two observations (Swagger UI 500 with a malformed Bearer, gunicorn's control-socket ERROR on the read-only root) were fixed in `61ed93a` with the Step 4 review findings (whole-branch code review "with fixes", security review with one Low); after it: server 451, client 273, e2e 98.
+
+- [x] **Step 4: Security and code review**
 
 Run the `security-review` skill on the branch, then the `code-review` skill (design 5.10: every implementation PR gets a security review). Fix findings in their own commits, each with the stop.
 
-- [ ] **Step 5: Cut 0.17.0**
+- [x] **Step 5: Cut 0.17.0**
 
 Move `[Unreleased]` into `## [0.17.0] - <today>` with a one-paragraph summary (demo mode with guest starts, the AI spend ledger, friendly refusals, Postgres 17, readiness, CI hardening); leave an empty `## [Unreleased]`; set the links `[Unreleased]: .../compare/v0.17.0...HEAD` and `[0.17.0]: .../compare/v0.16.0...v0.17.0`. Run `npm version 0.17.0 --no-git-tag-version` at the repo root (updates `package.json` and `package-lock.json`). Tick this plan's finished boxes.
 Stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
@@ -1717,7 +1719,7 @@ git add CHANGELOG.md package.json package-lock.json docs/superpowers/plans/2026-
 git commit -m "chore: cut 0.17.0, demo mode and deploy readiness"
 ```
 
-- [ ] **Step 6: Update the master plan row**
+- [x] **Step 6: Update the master plan row**
 
 In `/Users/jameslittlefield/Documents/github_things/portfolio-infra/PLAN.md:23`, set Resume IQ's status to "Phase 1 done on `feat/portfolio-demo-readiness` (0.17.0); local go-live checks passed; PR into `dev` pending" (or what is true) and the date. Committing in `portfolio-infra` follows that repo's rules: stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 
