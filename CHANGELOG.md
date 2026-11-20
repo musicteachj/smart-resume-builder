@@ -10,6 +10,9 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- `manage.py cleanup_demo`, run hourly in production: deletes expired demo guests (with their data) in batches
+  (`--batch-size`, default 100), charges stale AI reservations, flushes expired refresh tokens, prunes settled
+  reservations older than 35 days, and prints one summary line.
 - **Demo mode** (`apps/demo`): `DEMO_MODE` makes register, login, password reset, and the API schema and Swagger pages
   answer 404 (refresh, logout, and `me` stay open), and the admin can't be enabled alongside it in production. New
   settings: `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `DEMO_GUEST_TTL_HOURS`, `DEMO_MAX_LIVE_GUESTS`,
