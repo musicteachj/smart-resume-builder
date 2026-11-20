@@ -10,6 +10,10 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 ## [Unreleased]
 
 ### Added
+- Per-guest limits so one demo guest can't fill the disk: 20 résumés, 64 KB per résumé, and 5 MiB stored in total
+  (résumés, versions, and cover letters), tunable with `DEMO_GUEST_MAX_RESUMES`, `DEMO_GUEST_MAX_CONTENT_BYTES`, and
+  `DEMO_GUEST_MAX_STORAGE_BYTES`. Accounts are never capped. The server's message shows in the editor's save status and
+  on the dashboard.
 - `manage.py cleanup_demo`, run hourly in production: deletes expired demo guests (with their data) in batches
   (`--batch-size`, default 100), charges stale AI reservations, flushes expired refresh tokens, prunes settled
   reservations older than 35 days, and prints one summary line.

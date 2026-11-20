@@ -13,6 +13,8 @@ import re
 
 from rest_framework import serializers
 
+from apps.demo.quotas import CONTENT_COPY, content_too_large
+
 from .models import CoverLetter, Resume, ResumeVersion
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")  # YYYY-MM
@@ -140,6 +142,12 @@ class ResumeSerializer(serializers.ModelSerializer):
             "content", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_content(self, value):
+        request = self.context.get("request")
+        if getattr(getattr(request, "user", None), "is_guest", False) and content_too_large(value):
+            raise serializers.ValidationError(CONTENT_COPY)
+        return value
 
     def validate_section_order(self, value):
         if len(set(value)) != len(value):

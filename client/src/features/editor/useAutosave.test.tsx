@@ -149,6 +149,18 @@ describe("useAutosave retries", () => {
     expect(patch).toHaveBeenCalledTimes(1);
   });
 
+  it("exposes the server's reason when a save is refused", async () => {
+    patch.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 400, headers: {}, data: { detail: "This demo has reached its storage limit.", code: "demo_limit" } },
+    });
+    const { result } = renderHook(useHarness, { wrapper });
+    act(() => result.current.methods.setValue("title", "Edited"));
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(result.current.autosave.status).toBe("error");
+    expect(result.current.autosave.errorDetail).toBe("This demo has reached its storage limit.");
+  });
+
   it("a new edit replaces the scheduled retry with a fresh save", async () => {
     patch.mockRejectedValueOnce(httpError(503)).mockResolvedValue({ id: "r1" });
     const { result } = renderHook(useHarness, { wrapper });

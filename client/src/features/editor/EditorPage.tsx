@@ -101,7 +101,7 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
     defaultValues: toFormValues(resume),
     mode: "onChange",
   });
-  const { status, flush, abandonPending } = useAutosave(resume.id, methods);
+  const { status, errorDetail, flush, abandonPending } = useAutosave(resume.id, methods);
   const queryClient = useQueryClient();
   const session = useMemo<EditorSession>(
     () => ({
@@ -149,7 +149,7 @@ function EditorForm({ resume, onRemount }: { resume: Resume; onRemount: () => vo
     <EditorSessionProvider value={session}>
       <FormProvider {...methods}>
         <div className="flex h-dvh flex-col bg-background">
-          <EditorTopBar status={status} onExport={exportAs} />
+          <EditorTopBar status={status} errorDetail={errorDetail} onExport={exportAs} />
           <main
             id={MAIN_CONTENT_ID}
             tabIndex={-1}

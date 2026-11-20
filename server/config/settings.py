@@ -457,6 +457,12 @@ DEMO_GUEST_TTL_HOURS = _env_int("DEMO_GUEST_TTL_HOURS", "24", minimum=1)
 DEMO_MAX_LIVE_GUESTS = _env_int("DEMO_MAX_LIVE_GUESTS", "300", minimum=1)
 DEMO_STARTS_PER_HOUR = _env_int("DEMO_STARTS_PER_HOUR", "15", minimum=1)
 DEMO_STARTS_PER_DAY = _env_int("DEMO_STARTS_PER_DAY", "50", minimum=1)
+# Per-guest storage caps (guests only; accounts are never capped).
+DEMO_GUEST_MAX_RESUMES = _env_int("DEMO_GUEST_MAX_RESUMES", "20", minimum=1)
+# One résumé's `content` as UTF-8 JSON.
+DEMO_GUEST_MAX_CONTENT_BYTES = _env_int("DEMO_GUEST_MAX_CONTENT_BYTES", "65536", minimum=1)
+# Everything one guest stores (pg_column_size across résumés, versions, cover letters).
+DEMO_GUEST_MAX_STORAGE_BYTES = _env_int("DEMO_GUEST_MAX_STORAGE_BYTES", "5242880", minimum=1)
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].update(
     {
         "demo-start-hour": f"{DEMO_STARTS_PER_HOUR}/hour",
