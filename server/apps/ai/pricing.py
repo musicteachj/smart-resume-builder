@@ -196,10 +196,15 @@ def input_token_bound(*, system: str, messages: list[dict], output_config: dict 
     Assumes no token is shorter than one byte, so the byte length of the serialized request can
     never be below its token count. Bytes, not characters: one character can be four bytes and
     still cost more than one token. `INPUT_OVERHEAD_TOKENS` covers what the text does not.
+    `surrogatepass` keeps a lone surrogate from a JSON body from raising (it counts 3 bytes, still an
+    upper bound).
     """
+    def size_of(text: str) -> int:
+        return len(text.encode("utf-8", errors="surrogatepass"))
+
     size = (
-        len(system.encode("utf-8"))
-        + len(json.dumps(messages, ensure_ascii=False).encode("utf-8"))
-        + len(json.dumps(output_config or {}, ensure_ascii=False).encode("utf-8"))
+        size_of(system)
+        + size_of(json.dumps(messages, ensure_ascii=False))
+        + size_of(json.dumps(output_config or {}, ensure_ascii=False))
     )
     return size + INPUT_OVERHEAD_TOKENS

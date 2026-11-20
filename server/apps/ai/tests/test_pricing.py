@@ -62,3 +62,9 @@ def test_input_bound_counts_bytes_not_characters():  # Review Focus 4
     bound = pricing.input_token_bound(system="", messages=[{"role": "user", "content": text}])
     assert bound >= 80_000 + pricing.INPUT_OVERHEAD_TOKENS
     assert pricing.input_token_bound(system="ab", messages=[]) >= 2 + pricing.INPUT_OVERHEAD_TOKENS
+
+
+def test_input_bound_survives_a_lone_surrogate():
+    # A JSON body can carry "\ud800"; the bound must still be computed (3 bytes under surrogatepass).
+    bound = pricing.input_token_bound(system="s", messages=[{"role": "user", "content": "a\ud800b"}])
+    assert bound > pricing.INPUT_OVERHEAD_TOKENS

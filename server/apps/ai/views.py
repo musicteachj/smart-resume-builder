@@ -35,6 +35,11 @@ from .usage import (
 logger = logging.getLogger(__name__)
 
 
+def _visitor_id(user) -> int | None:
+    """Demo guests spend from their own allowance; everyone else only from the shared budget."""
+    return user.pk if user.is_guest else None
+
+
 def _gate(user):
     """Reset counters and reserve one call. Returns (429 Response, None) if over,
     else (None, reservation). Run the AI call inside refund_on_failure(user, reservation)."""
@@ -105,7 +110,7 @@ class ImproveBulletView(_AIView):
         role = req.validated_data.get("role", "")
         try:
             with refund_on_failure(user, reservation):
-                suggestion = service.improve_bullet(text, role)
+                suggestion = service.improve_bullet(text, role, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "improve-bullet", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "improve-bullet")
@@ -132,7 +137,7 @@ class GenerateSummaryView(_AIView):
         content = req.validated_data["content"]
         try:
             with refund_on_failure(user, reservation):
-                summary = service.generate_summary(content)
+                summary = service.generate_summary(content, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "generate-summary", input_length=len(str(content)), output_length=0, success=False)
             return _ai_error(exc, "generate-summary")
@@ -161,7 +166,7 @@ class TailorJDView(_AIView):
         in_len = len(jd) + len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                result = service.tailor_to_jd(content, jd)
+                result = service.tailor_to_jd(content, jd, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "tailor-jd", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "tailor-jd")
@@ -188,7 +193,7 @@ class ParseResumeView(_AIView):
         text = req.validated_data["text"]
         try:
             with refund_on_failure(user, reservation):
-                content = service.parse_resume(text)
+                content = service.parse_resume(text, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "parse-resume")
@@ -217,7 +222,7 @@ class CoverLetterView(_AIView):
         in_len = len(jd) + len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                letter = service.generate_cover_letter(content, jd)
+                letter = service.generate_cover_letter(content, jd, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "cover-letter", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "cover-letter")
@@ -245,7 +250,7 @@ class AtsCheckView(_AIView):
         in_len = len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                result = service.ats_health_check(content)
+                result = service.ats_health_check(content, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "ats-check", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "ats-check")

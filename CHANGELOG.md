@@ -15,10 +15,21 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
   Own tables in integer micro-dollars (`AIBudgetDay`, `AIReservation`), reserve before and settle after a call,
   a stale-reservation sweeper, and no lock held across a model call. Settings: `AI_MONTHLY_BUDGET_USD` (0 turns live AI
   off), `AI_PACING_MULTIPLIER`, `AI_DAILY_FLOOR_USD`, `AI_VISITOR_BUDGET_USD`, `AI_STALE_RESERVATION_MINUTES`.
-  Not wired to the Claude calls yet.
+  Every Claude call now goes through it (see Security below).
 - **Micro-dollar pricing of Claude calls** (`apps/ai/pricing.py`): pinned per-model rates for Sonnet 5.5, Sonnet 5,
   and Haiku 5.5 (including Haiku's long-prompt tier), exact whole-micro-dollar cost and worst-case reservation
   math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.
+
+### Changed
+- **The refusal fallback can be turned off** with `AI_SERVER_SIDE_FALLBACK` (default on), and its second pass now has
+  an explicit `max_tokens`. The per-user AI call limits `AI_DAILY_LIMIT` and `AI_MONTHLY_LIMIT` come from the
+  environment (defaults 10 and 50).
+
+### Security
+- **Every Claude call goes through the spend ledger**: it reserves its worst case (both passes when the fallback is
+  on) before anything is sent and settles from real usage afterward, admins and `DEBUG` included. Known unbilled
+  rejections settle to zero; a timeout, dropped connection, or unknown error keeps the full reservation. Haiku no
+  longer retries automatically, so a retry can never be a second paid attempt outside its reservation.
 
 ## [0.16.0] - 2026-11-18
 

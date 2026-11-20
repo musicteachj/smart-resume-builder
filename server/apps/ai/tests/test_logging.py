@@ -18,7 +18,7 @@ class FakeUpstreamError(Exception):
 
 
 def test_ai_failure_is_logged_without_user_content(auth_client, monkeypatch, caplog):
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         try:
             raise FakeUpstreamError(f"overloaded while processing: {text}")
         except FakeUpstreamError as exc:

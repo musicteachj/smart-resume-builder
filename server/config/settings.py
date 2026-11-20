@@ -350,9 +350,6 @@ LOGGING = {
 
 # App constants
 
-AI_DAILY_LIMIT = 10
-AI_MONTHLY_LIMIT = 50
-
 # AI (Claude): Haiku 5.5 for the short rewrites, Sonnet 5.5 for tailoring, cover letters,
 # the ATS check, and import (Opus/Fable aren't needed). Env-overridable, but the service sends
 # `effort` and structured outputs, so an override must be a model that supports both.
@@ -361,7 +358,7 @@ AI_MODEL_SIMPLE = os.environ.get("AI_MODEL_SIMPLE", "claude-haiku-5-5")
 AI_MODEL_TAILOR = os.environ.get("AI_MODEL_TAILOR", "claude-sonnet-5-5")
 # Timeout chain: Anthropic (100s, no retry) < ALB idle (120s) < client axios (125s).
 AI_TIMEOUT_SECONDS = 100
-AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, with 2 retries
+AI_SIMPLE_TIMEOUT_SECONDS = 30  # Haiku, one attempt (no retries)
 # Résumé text sent to the model is capped to bound per-call cost.
 AI_MAX_PROMPT_CHARS = 20000
 
@@ -389,6 +386,12 @@ def _env_int(name: str, default: str, *, minimum: int) -> int:
     return value
 
 
+# Per-user AI call limits (admins and DEBUG bypass them).
+AI_DAILY_LIMIT = _env_int("AI_DAILY_LIMIT", "10", minimum=0)
+AI_MONTHLY_LIMIT = _env_int("AI_MONTHLY_LIMIT", "50", minimum=0)
+# Let the API re-run a request Sonnet 5.5 declines on Sonnet 5 inside the same call. A declined
+# attempt is billed, so the ledger reserves for both passes while this is on.
+AI_SERVER_SIDE_FALLBACK = os.environ.get("AI_SERVER_SIDE_FALLBACK", "True").lower() in ("true", "1", "yes")
 # The month's live-AI budget; 0 turns live AI off.
 AI_MONTHLY_BUDGET_USD = _env_decimal("AI_MONTHLY_BUDGET_USD", "10", minimum="0")
 # One day may spend up to this multiple of an even share of what the month has left.

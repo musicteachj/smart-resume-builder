@@ -26,6 +26,9 @@ print(json.dumps({
     "renderers": s.REST_FRAMEWORK.get("DEFAULT_RENDERER_CLASSES"),
     "admin_enabled": s.DJANGO_ADMIN_ENABLED,
     "middleware": s.MIDDLEWARE,
+    "ai_daily_limit": s.AI_DAILY_LIMIT,
+    "ai_monthly_limit": s.AI_MONTHLY_LIMIT,
+    "ai_fallback": s.AI_SERVER_SIDE_FALLBACK,
     "ai_monthly_budget": [type(s.AI_MONTHLY_BUDGET_USD).__name__, str(s.AI_MONTHLY_BUDGET_USD)],
 }))
 """
@@ -140,3 +143,10 @@ def test_bad_ai_budget_settings_fail_to_import(overrides):
 
 def test_ai_monthly_budget_reads_back_as_a_decimal():
     assert _settings(AI_MONTHLY_BUDGET_USD="25")["ai_monthly_budget"] == ["Decimal", "25"]
+
+
+def test_ai_call_limits_and_fallback_come_from_the_environment():
+    read = _settings(AI_DAILY_LIMIT="3", AI_MONTHLY_LIMIT="7", AI_SERVER_SIDE_FALLBACK="False")
+    assert (read["ai_daily_limit"], read["ai_monthly_limit"], read["ai_fallback"]) == (3, 7, False)
+    default = _settings()
+    assert (default["ai_daily_limit"], default["ai_monthly_limit"], default["ai_fallback"]) == (10, 50, True)

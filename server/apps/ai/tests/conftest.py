@@ -1,5 +1,8 @@
 import pytest
 
+from .fakes import fake  # noqa: F401  (re-exported so every AI test module can use it)
+
+
 def make_content():
     return {
         "personalInfo": {"name": "Maya Chen", "email": "maya@example.com"},
@@ -27,11 +30,11 @@ def content():
 @pytest.fixture(autouse=True)
 def mock_claude(monkeypatch):
     """Stub the Claude service so tests never hit the network or need a key."""
-    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="": "Improved: " + text)
-    monkeypatch.setattr("apps.ai.service.generate_summary", lambda content: "A crisp professional summary.")
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **_kw: "Improved: " + text)
+    monkeypatch.setattr("apps.ai.service.generate_summary", lambda content, **_kw: "A crisp professional summary.")
     monkeypatch.setattr(
         "apps.ai.service.tailor_to_jd",
-        lambda content, jd: {
+        lambda content, jd, **_kw: {
             "match_score": 82,
             "missing_keywords": ["Roadmapping", "A/B testing"],
             "suggestions": [
@@ -46,7 +49,7 @@ def mock_claude(monkeypatch):
     )
     monkeypatch.setattr(
         "apps.ai.service.parse_resume",
-        lambda text: {
+        lambda text, **_kw: {
             "personalInfo": {"name": "Maya Chen", "email": "maya@example.com",
                              "headline": "", "phone": "", "location": "",
                              "linkedin": "", "github": "", "website": ""},
@@ -60,11 +63,11 @@ def mock_claude(monkeypatch):
     )
     monkeypatch.setattr(
         "apps.ai.service.generate_cover_letter",
-        lambda content, jd: "Dear Hiring Manager,\n\nI am excited about this role.\n\nSincerely,\nMaya",
+        lambda content, jd, **_kw: "Dear Hiring Manager,\n\nI am excited about this role.\n\nSincerely,\nMaya",
     )
     monkeypatch.setattr(
         "apps.ai.service.ats_health_check",
-        lambda content: {
+        lambda content, **_kw: {
             "score": 78,
             "issues": ["Summary is generic.", "Few quantified results."],
             "recommendations": ["Add metrics to bullets.", "Sharpen the summary."],

@@ -103,7 +103,7 @@ def test_debug_bypasses_limit(auth_client, settings):
 
 @pytest.mark.django_db
 def test_failure_logs_and_does_not_consume(auth_client, user, monkeypatch):
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("upstream down")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -118,7 +118,7 @@ def test_failure_logs_and_does_not_consume(auth_client, user, monkeypatch):
 def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
     settings.DEBUG = False
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("missing ANTHROPIC_API_KEY")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -132,7 +132,7 @@ def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
 def test_ai_error_is_verbose_in_debug(auth_client, monkeypatch, settings):
     settings.DEBUG = True
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("missing ANTHROPIC_API_KEY")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -203,7 +203,7 @@ def test_failure_refunds_the_reservation_in_production(auth_client, user, settin
     user.last_ai_call_date = timezone.now().date()  # same (UTC) day, so no daily reset
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("upstream down")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -236,7 +236,7 @@ def test_unexpected_error_also_refunds_the_reservation(auth_client, user, settin
     user.last_ai_call_date = timezone.now().date()
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def broken(text, role=""):
+    def broken(text, role="", **_kw):
         raise TypeError("'int' object is not iterable")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", broken)
@@ -283,7 +283,7 @@ def test_refusal_is_a_clear_422_and_is_not_charged(auth_client, user, settings, 
     user.last_ai_call_date = timezone.now().date()
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def refuse(text, role=""):
+    def refuse(text, role="", **_kw):
         raise AIRefusedError("cyber")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", refuse)
@@ -296,3 +296,17 @@ def test_refusal_is_a_clear_422_and_is_not_charged(auth_client, user, settings, 
     assert (user.ai_calls_today, user.ai_calls_this_month) == (2, 3)
     assert "category=cyber" in caplog.text
     assert "secret bullet text" not in caplog.text
+
+
+@pytest.mark.django_db
+def test_views_charge_guests_to_their_own_allowance(auth_client, guest_client, guest, monkeypatch):
+    seen = []
+
+    def record(text, role="", *, visitor_id=None):
+        seen.append(visitor_id)
+        return "Improved: " + text
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", record)
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert seen == [guest.pk, None]
