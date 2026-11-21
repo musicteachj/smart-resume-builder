@@ -11,6 +11,7 @@ import {
 } from "@/api/generated/resumes/resumes";
 
 import { fieldErrors } from "@/lib/apiError";
+import { isAuthenticated } from "@/stores/auth";
 
 import type { EditorValues } from "./editorSchema";
 
@@ -22,18 +23,24 @@ const MAX_BACKOFF_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 120_000;
 /** After the editor closes, nobody's watching: give its last save this many retries. */
 const CLOSED_MAX_ATTEMPTS = 5;
+/** A 401 while still signed in (the token refresh couldn't finish yet) is retried this many times. */
+export const AUTH_MAX_ATTEMPTS = 5;
 
 /**
  * How long to wait before retrying a failed save, or null if retrying won't help.
  * Transient: 429 (honors `Retry-After`), 5xx, and network errors (an axios error
- * with no response). Anything else (other 4xx, cancellations, bugs) isn't retried.
+ * with no response). A 401 is retried (up to AUTH_MAX_ATTEMPTS) only while the auth store still
+ * says "authenticated": the session is in use and its refresh may just not have run yet. Once
+ * signed out, it stops. Anything else (other 4xx, cancellations, bugs) isn't retried.
  * Without `Retry-After`: exponential backoff from 2s, capped at 30s.
  */
 export function retryDelay(err: unknown, attempt: number): number | null {
   const ax = err as AxiosError;
   if (!ax?.isAxiosError || ax.code === "ERR_CANCELED") return null;
   const res = ax.response;
-  if (res && res.status !== 429 && res.status < 500) return null;
+  if (res?.status === 401) {
+    if (!isAuthenticated() || attempt >= AUTH_MAX_ATTEMPTS) return null;
+  } else if (res && res.status !== 429 && res.status < 500) return null;
   const header = res?.headers?.["retry-after"];
   if (header !== undefined) {
     const secs = Number(header);
@@ -189,7 +196,9 @@ export function useAutosave(id: string, methods: UseFormReturn<EditorValues>): A
         const delay = retryDelay(err, tries.current);
         if (delay === null || (!open && tries.current >= CLOSED_MAX_ATTEMPTS)) {
           if (open) {
-            const fields = fieldErrors(err);
+            // A 401's detail is SimpleJWT's raw token message, never shown: the plain "Couldn't save" is.
+            const fields: Record<string, string> =
+              (err as AxiosError)?.response?.status === 401 ? {} : fieldErrors(err);
             setErrorDetail(fields.detail ?? fields.content ?? null);
             setStatus("error");
           }

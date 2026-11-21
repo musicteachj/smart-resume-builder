@@ -56,7 +56,7 @@ Scheduled by EventBridge Scheduler.
 
 - Command: `["python", "manage.py", "cleanup_demo"]`.
 - The shared environment, with `RUN_MIGRATIONS=0`.
-- Memory: 128 MiB (the design's value; Task 17 confirms it locally).
+- Memory: 256 MiB until it is measured under load (Django plus the cleanup queries; lower it only after a measured run).
 - A non-zero exit raises the failed-task alarm.
 
 ## Service

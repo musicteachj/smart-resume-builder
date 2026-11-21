@@ -96,13 +96,29 @@ def _dearest_price() -> Price:
     )
 
 
-def _price_of(model: str, prompt_tokens: int) -> Price:
-    """The pinned price for this model and prompt size. An unknown model gets the dearest rates and
-    a warning naming it, because the call is already billed and must still be counted."""
+class UnpricedModelError(LookupError):
+    """A model we would request has no pinned price. The app refuses to start with one configured
+    (`apps.ai.apps.check_configured_models`), so this only fires if that check was bypassed."""
+
+
+def unpriced_models(models: Sequence[str]) -> list[str]:
+    """The models in `models` with no pinned price, in order, without duplicates."""
+    return list(dict.fromkeys(m for m in models if m not in PRICES))
+
+
+def _price_of(model: str, prompt_tokens: int, *, served: bool) -> Price:
+    """The pinned price for this model and prompt size.
+
+    A model we request must have a price (reserving at a guess would let the budget undercount), so an
+    unknown one raises. A model Anthropic served that we didn't request can't be refused after the fact:
+    the call is already billed and must still be counted, so it gets the dearest rates and a warning
+    naming it."""
     price = PRICES.get(model)
     if price is None:
+        if not served:
+            raise UnpricedModelError(f"No price is pinned for the model {model}")
         logger.warning(
-            "No price is pinned for the model %s; counting it at the dearest price", model
+            "No price is pinned for the served model %s; counting it at the dearest price", model
         )
         return _dearest_price()
     if model == HAIKU and prompt_tokens > HAIKU_PROMPT_LIMIT_TOKENS:
@@ -123,13 +139,14 @@ def cost_micros(
     cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
 ) -> int:
-    """The cost of one model's usage in whole micro-dollars (half to even).
+    """The cost of one model's usage in whole micro-dollars (half to even). This prices what was
+    served, so an unknown model is counted at the dearest rates rather than refused.
 
     `input_tokens` is the plain input only; cache reads and writes are reported separately by the
     API. The Haiku long-prompt tier is chosen from all three together.
     """
     prompt_tokens = input_tokens + cache_read_tokens + cache_write_tokens
-    price = _price_of(model, prompt_tokens)
+    price = _price_of(model, prompt_tokens, served=True)
     exact = (
         Decimal(input_tokens) * price.input_usd_per_mtok
         + Decimal(cache_write_tokens) * price.cache_write_5m_usd_per_mtok
@@ -145,10 +162,11 @@ def reservation_micros(attempts: Sequence[Attempt], input_tokens: int) -> int:
     Every attempt may be billed (a declined attempt is, then a fallback runs), so the attempts are
     summed. Input is priced at the dearer of the plain and cache-write rates, which bounds every
     split of the same input between plain and cached; output is priced in full at `max_tokens`.
+    Raises UnpricedModelError for an attempt whose model has no pinned price.
     """
     total = Decimal(0)
     for attempt in attempts:
-        price = _price_of(attempt.model, input_tokens)
+        price = _price_of(attempt.model, input_tokens, served=False)
         input_rate = max(price.input_usd_per_mtok, price.cache_write_5m_usd_per_mtok)
         total += (
             Decimal(input_tokens) * input_rate

@@ -134,16 +134,21 @@ def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
 
 
 @pytest.mark.django_db
-def test_ai_error_is_verbose_in_debug(auth_client, monkeypatch, settings):
+def test_ai_error_is_masked_in_debug_too(auth_client, monkeypatch, settings, caplog):
+    # Exception text never goes into a response, DEBUG included (CodeQL: information exposure).
     settings.DEBUG = True
 
     def boom(text, role="", **_kw):
         raise AIServiceError("missing ANTHROPIC_API_KEY")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
-    res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
+    with caplog.at_level("WARNING", logger="apps.ai.views"):
+        res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
     assert res.status_code == 502
-    assert "ANTHROPIC_API_KEY" in res.json()["detail"]
+    assert "ANTHROPIC_API_KEY" not in res.json()["detail"]
+    assert res.json()["code"] == "ai_unavailable"
+    # The server log still has it, for the developer.
+    assert "missing ANTHROPIC_API_KEY" in caplog.text
 
 
 @pytest.mark.django_db

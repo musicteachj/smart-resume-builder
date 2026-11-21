@@ -87,6 +87,17 @@ describe("auth interceptors", () => {
     expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
   });
 
+  it("a 401 refresh still fails the request with the original 401", async () => {
+    respond = (config) =>
+      config.url === "/api/auth/refresh"
+        ? { status: 401, data: { detail: "Your session ended.", code: "session_ended" } }
+        : { status: 401, data: { detail: "original" } };
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toMatchObject({
+      response: { status: 401, data: { detail: "original" } },
+      config: { url: "/api/resumes/" },
+    });
+  });
+
   it("a cookie gone mid-session (the demo expired or ended in another tab) also ends it", async () => {
     respond = (config) =>
       config.url === "/api/auth/refresh"
@@ -99,9 +110,13 @@ describe("auth interceptors", () => {
   it.each([
     ["a 429 (shared office IP)", { status: 429, data: { detail: "Request was throttled." } }],
     ["a 5xx", { status: 503, data: {} }],
-  ])("%s on refresh mid-session keeps the session and fails only the request", async (_label, refreshReply) => {
+  ])("%s on refresh mid-session keeps the session and fails the request with the refresh's error", async (_label, refreshReply) => {
     respond = (config) => (config.url === "/api/auth/refresh" ? refreshReply : { status: 401 });
-    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toMatchObject({ response: { status: 401 } });
+    // The refresh's own error (its status and URL), not the original 401, so callers see the real cause.
+    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toMatchObject({
+      response: { status: refreshReply.status, data: refreshReply.data },
+      config: { url: "/api/auth/refresh" },
+    });
     expect(seen.map((c) => c.url)).toEqual(["/api/resumes/", "/api/auth/refresh"]);
     expect(useAuthStore.getState()).toMatchObject({
       status: "authenticated",
@@ -110,12 +125,15 @@ describe("auth interceptors", () => {
     });
   });
 
-  it("a network error on refresh mid-session keeps the session", async () => {
+  it("a network error on refresh mid-session keeps the session and is what the request fails with", async () => {
     respond = (config) => {
       if (config.url === "/api/auth/refresh") throw new AxiosError("Network Error", "ERR_NETWORK", config);
       return { status: 401 };
     };
-    await expect(AXIOS_INSTANCE.get("/api/resumes/")).rejects.toBeInstanceOf(AxiosError);
+    const failure = await AXIOS_INSTANCE.get("/api/resumes/").catch((err: unknown) => err);
+    expect(failure).toBeInstanceOf(AxiosError);
+    expect(failure).toMatchObject({ code: "ERR_NETWORK" });
+    expect((failure as AxiosError).response).toBeUndefined();
     expect(useAuthStore.getState()).toMatchObject({ status: "authenticated", sessionEnded: false });
   });
 

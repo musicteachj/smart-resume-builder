@@ -29,6 +29,7 @@ def _disable_throttling(monkeypatch):
         "THROTTLE_RATES",
         {
             "auth": None,
+            "refresh": None,
             "ai-burst": None,
             "writes": None,
             "password-reset": None,

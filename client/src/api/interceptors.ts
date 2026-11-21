@@ -4,26 +4,31 @@ import { isAuthenticated, useAuthStore } from "@/stores/auth";
 
 import { AXIOS_INSTANCE } from "./axios";
 
-// Single-flight refresh: concurrent 401s share one refresh request.
-let refreshing: Promise<string | null> | null = null;
+/** A new access token, or why the refresh failed (`ended`: it was a 401, so the session is over). */
+type RefreshResult = { access: string } | { error: unknown; ended: boolean };
 
-async function refreshAccessToken(): Promise<string | null> {
+// Single-flight refresh: concurrent 401s share one refresh request.
+let refreshing: Promise<RefreshResult> | null = null;
+
+async function refreshAccessToken(): Promise<RefreshResult> {
   const { setAccessToken, logout } = useAuthStore.getState();
   const wasSignedIn = isAuthenticated();
   try {
     // The refresh token rides along as an httpOnly cookie, so no request body is needed.
     const { data } = await AXIOS_INSTANCE.post<{ access: string }>("/api/auth/refresh");
     setAccessToken(data.access);
-    return data.access;
+    return { access: data.access };
   } catch (err) {
     // Only a 401 ends the session. While a session was in use that means it ended under us:
     // refused (`session_ended`), or its cookie is gone (`no_session`: a demo past its 24 hours,
     // whose cookie the browser dropped, or one ended in another tab).
     // A 429 (several visitors behind one office IP), a 5xx, or a network error says nothing about
-    // the session, so it stays as it is and only the original request fails. The next request that
-    // gets a 401 tries the refresh once more; nothing retries on its own.
-    if ((err as AxiosError)?.response?.status === 401) logout({ sessionEnded: wasSignedIn });
-    return null;
+    // the session, so it stays as it is and the original request fails with the refresh's own error
+    // (not the original 401), so callers see the real cause and can retry it (autosave does). The next
+    // request that gets a 401 tries the refresh once more.
+    const ended = (err as AxiosError)?.response?.status === 401;
+    if (ended) logout({ sessionEnded: wasSignedIn });
+    return { error: err, ended };
   }
 }
 
@@ -64,12 +69,14 @@ export function installAuthInterceptors() {
       if (error.response?.status === 401 && original && !original._retry && !isAuthCall && hasSession) {
         original._retry = true;
         refreshing = refreshing ?? refreshAccessToken();
-        const newToken = await refreshing;
+        const result = await refreshing;
         refreshing = null;
-        if (newToken) {
-          original.headers.set("Authorization", `Bearer ${newToken}`);
+        if ("access" in result) {
+          original.headers.set("Authorization", `Bearer ${result.access}`);
           return AXIOS_INSTANCE(original);
         }
+        // The session is still in use but the refresh couldn't run (429, 5xx, offline): surface that.
+        if (!result.ended) return Promise.reject(result.error);
       }
       return Promise.reject(error);
     },

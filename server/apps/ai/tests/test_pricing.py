@@ -1,7 +1,11 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+from django.core.exceptions import ImproperlyConfigured
+
 from apps.ai import pricing
+from apps.ai.apps import check_configured_models
 from apps.ai.pricing import Attempt
 
 
@@ -24,7 +28,8 @@ def test_cost_is_whole_micro_dollars():
     assert pricing.cost_micros("claude-haiku-5-5", input_tokens=120_000, output_tokens=100) == 60_250
 
 
-def test_an_unknown_model_is_priced_at_the_dearest_rates(caplog):
+def test_an_unknown_served_model_is_priced_at_the_dearest_rates(caplog):
+    # Anthropic served a model we didn't request: the call is billed, so it is counted, not refused.
     unknown = pricing.cost_micros("claude-mystery", input_tokens=1_000, output_tokens=1_000)
     assert unknown >= pricing.cost_micros("claude-sonnet-5-5", input_tokens=1_000, output_tokens=1_000)
     assert "claude-mystery" in caplog.text
@@ -68,3 +73,25 @@ def test_input_bound_survives_a_lone_surrogate():
     # A JSON body can carry "\ud800"; the bound must still be computed (3 bytes under surrogatepass).
     bound = pricing.input_token_bound(system="s", messages=[{"role": "user", "content": "a\ud800b"}])
     assert bound > pricing.INPUT_OVERHEAD_TOKENS
+
+
+def test_a_requested_model_without_a_price_is_refused_not_guessed():
+    with pytest.raises(pricing.UnpricedModelError, match="claude-mystery"):
+        pricing.reservation_micros([Attempt("claude-mystery", 1_000)], input_tokens=1_000)
+
+
+def test_the_configured_models_all_have_prices():
+    check_configured_models()  # the real settings and fallbacks: no error
+
+
+@pytest.mark.parametrize("setting", ["AI_MODEL_SIMPLE", "AI_MODEL_TAILOR"])
+def test_an_unpriced_configured_model_stops_startup(settings, setting):
+    setattr(settings, setting, "claude-mystery")
+    with pytest.raises(ImproperlyConfigured, match="claude-mystery"):
+        check_configured_models()
+
+
+def test_an_unpriced_fallback_target_stops_startup(monkeypatch):
+    monkeypatch.setattr("apps.ai.service._FALLBACKS", {"claude-sonnet-5-5": "claude-mystery-fallback"})
+    with pytest.raises(ImproperlyConfigured, match="claude-mystery-fallback"):
+        check_configured_models()

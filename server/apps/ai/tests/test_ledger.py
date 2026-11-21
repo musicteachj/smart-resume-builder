@@ -88,11 +88,61 @@ def test_visitor_allowance_admits_while_room_is_left(at, guest, settings):
     first = ledger.reserve(amount_micros=345_000, feature="tailor-jd", model="claude-sonnet-5-5", visitor_id=guest.pk)
     with pytest.raises(BudgetRefused) as refused:
         ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
-    assert refused.value.scope == "visitor"
+    # Their own first call still holds the allowance, so the refusal says "wait", not "used up".
+    assert refused.value.scope == "visitor_busy"
     ledger.settle(first, 31_000, how="usage")
     ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
     guest.refresh_from_db()
     assert guest.demo_ai_spent_micros == 32_200
+
+
+def test_a_spent_visitor_with_nothing_in_flight_is_told_the_allowance_is_used(at, guest, settings):
+    settings.AI_VISITOR_BUDGET_USD = Decimal("0.15")
+    at(datetime(2026, 11, 1, 12, tzinfo=UTC))
+    first = ledger.reserve(amount_micros=345_000, feature="tailor-jd", model="claude-sonnet-5-5", visitor_id=guest.pk)
+    ledger.settle(first, 150_000, how="usage")
+    with pytest.raises(BudgetRefused) as refused:
+        ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    assert refused.value.scope == "visitor"
+
+
+def test_an_open_call_on_top_of_a_spent_allowance_is_used_not_busy(at, guest, settings):
+    # Two calls admitted under the cap; the first settles above it while the second is still open. Settling the
+    # second can't bring the visitor back under the cap, so the refusal says "used up", not "wait".
+    settings.AI_VISITOR_BUDGET_USD = Decimal("0.15")
+    at(datetime(2026, 11, 1, 12, tzinfo=UTC))
+    first = ledger.reserve(amount_micros=100_000, feature="tailor-jd", model="claude-sonnet-5-5", visitor_id=guest.pk)
+    ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    ledger.settle(first, 160_000, how="usage")
+    guest.refresh_from_db()
+    assert guest.demo_ai_spent_micros == 161_200  # 160,000 settled + 1,200 open
+    with pytest.raises(BudgetRefused) as refused:
+        ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    assert refused.value.scope == "visitor"
+
+
+def test_an_open_call_that_holds_the_allowance_is_busy(at, guest, settings):
+    # Without the open call the visitor is under the cap (149,999 < 150,000), so waiting may free room.
+    settings.AI_VISITOR_BUDGET_USD = Decimal("0.15")
+    at(datetime(2026, 11, 1, 12, tzinfo=UTC))
+    first = ledger.reserve(amount_micros=100_000, feature="tailor-jd", model="claude-sonnet-5-5", visitor_id=guest.pk)
+    ledger.settle(first, 149_999, how="usage")
+    ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    with pytest.raises(BudgetRefused) as refused:
+        ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    assert refused.value.scope == "visitor_busy"
+
+
+def test_another_visitors_open_call_does_not_make_this_one_busy(at, guest, make_guest, settings):
+    settings.AI_VISITOR_BUDGET_USD = Decimal("0.15")
+    at(datetime(2026, 11, 1, 12, tzinfo=UTC))
+    other = make_guest()
+    ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=other.pk)
+    mine = ledger.reserve(amount_micros=345_000, feature="tailor-jd", model="claude-sonnet-5-5", visitor_id=guest.pk)
+    ledger.settle(mine, 150_000, how="usage")
+    with pytest.raises(BudgetRefused) as refused:
+        ledger.reserve(amount_micros=1_200, feature="improve-bullet", model="claude-haiku-5-5", visitor_id=guest.pk)
+    assert refused.value.scope == "visitor"
 
 
 def test_a_daily_refusal_leaves_the_visitor_untouched(at, guest):

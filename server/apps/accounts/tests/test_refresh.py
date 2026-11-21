@@ -211,3 +211,22 @@ def test_no_successor_is_recorded_when_the_grace_is_off(signed_in_client, settin
     settings.REFRESH_REUSE_GRACE_SECONDS = 0
     old, _new = _rotate(signed_in_client)
     assert cache.get(f"refresh-successor:{RefreshToken(old, verify=False)['jti']}") is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_rotation_is_all_or_nothing(signed_in_client, monkeypatch):
+    """The blacklist, the successor, and the cache link commit together, so a second tab never sees the old
+    token blacklisted without the link it needs for the grace path. A failure part way leaves the old
+    token usable."""
+    old = signed_in_client.cookies["refresh_token"].value
+    jti = RefreshToken(old)["jti"]
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("cache write failed")
+
+    with monkeypatch.context() as patched:
+        patched.setattr("apps.accounts.refresh.cache.set", fail)
+        with pytest.raises(RuntimeError):
+            signed_in_client.post(REFRESH)
+    assert not BlacklistedToken.objects.filter(token__jti=jti).exists()
+    assert signed_in_client.post(REFRESH).status_code == 200

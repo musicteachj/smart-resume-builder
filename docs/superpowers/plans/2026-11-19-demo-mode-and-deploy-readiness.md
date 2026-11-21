@@ -1723,7 +1723,7 @@ git commit -m "chore: cut 0.17.0, demo mode and deploy readiness"
 
 In `/Users/jameslittlefield/Documents/github_things/portfolio-infra/PLAN.md:23`, set Resume IQ's status to "Phase 1 done on `feat/portfolio-demo-readiness` (0.17.0); local go-live checks passed; PR into `dev` pending" (or what is true) and the date. Committing in `portfolio-infra` follows that repo's rules: stop: show the diff summary and the proposed commit message, and wait for James's explicit OK before committing.
 
-- [ ] **Step 7: Push and open the PR (each only with OK)**
+- [x] **Step 7: Push and open the PR (each only with OK)**
 
 Stop: wait for James's explicit OK, then `git push -u origin feat/portfolio-demo-readiness`.
 Stop: show the PR title and body, wait for James's explicit OK, then `gh pr create --base dev --head feat/portfolio-demo-readiness --title "feat: demo mode and deploy readiness (0.17.0)" --body-file <file>`. The body lists the go-live check results from Step 3 and the items deferred below. The merge into `dev` and, later, `dev` into `main` (Phase 3) each need their own OK.

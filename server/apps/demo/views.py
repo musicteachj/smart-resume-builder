@@ -32,7 +32,8 @@ from .throttles import DemoStartDayThrottle, DemoStartHourThrottle
 logger = logging.getLogger(__name__)
 
 # Below this much room left today, a call is likely to be refused, so the UI says so up front.
-STATUS_MIN_ROOM_MICROS = 250_000
+# $0.40 covers one Sonnet reservation (about $0.33 to $0.37), the dearest single call.
+STATUS_MIN_ROOM_MICROS = 400_000
 STATUS_CACHE_KEY = "demo-status"
 STATUS_CACHE_SECONDS = 60
 

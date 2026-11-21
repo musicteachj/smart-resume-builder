@@ -279,6 +279,8 @@ REST_FRAMEWORK = {
     # so continuous typing stays well under it).
     "DEFAULT_THROTTLE_RATES": {
         "auth": "10/min",
+        # Session refresh, keyed by IP: every page load refreshes, so it gets more room than login.
+        "refresh": "60/min",
         "ai-burst": "20/hour",
         "writes": "120/min",
         # Password-reset email requests, keyed by IP: limits reset-email spam.

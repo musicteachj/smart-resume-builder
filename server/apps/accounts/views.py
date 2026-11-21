@@ -1,4 +1,5 @@
 import logging
+import math
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -12,6 +13,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlencode, urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import Throttled
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -43,6 +45,7 @@ User = get_user_model()
 DUMMY_EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 RESET_REQUESTED = "If an account exists for that email, we sent a reset link."
 INVALID_RESET_LINK = "This reset link is invalid or has expired."
+REFRESH_RATE_LIMITED = "Too many requests from your network. Please wait a minute and try again."
 
 
 def revoke_refresh_tokens(user):
@@ -127,7 +130,20 @@ class CookieTokenRefreshView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "auth"
+    # Its own scope, looser than login: every page load refreshes, so an office behind one IP
+    # would otherwise share login's 10/min and be signed out.
+    throttle_scope = "refresh"
+
+    def handle_exception(self, exc):
+        # Plain copy and a `code` instead of DRF's "Request was throttled. Expected available in N seconds."
+        if isinstance(exc, Throttled):
+            headers = {"Retry-After": str(max(1, math.ceil(exc.wait)))} if exc.wait else None
+            return Response(
+                {"detail": REFRESH_RATE_LIMITED, "code": "refresh_rate_limited"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers=headers,
+            )
+        return super().handle_exception(exc)
 
     def post(self, request):
         raw = request.COOKIES.get(REFRESH_COOKIE_NAME)

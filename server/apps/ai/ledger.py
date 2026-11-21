@@ -43,9 +43,10 @@ def utcnow() -> datetime:
 
 
 class BudgetRefused(Exception):
-    """A reservation was refused: live AI is off, today is full, or the visitor spent their share."""
+    """A reservation was refused: live AI is off, today is full, or the visitor spent their share
+    (`visitor_busy` when part of that share is held by their own call still in flight)."""
 
-    def __init__(self, scope: Literal["off", "daily", "visitor"]) -> None:
+    def __init__(self, scope: Literal["off", "daily", "visitor", "visitor_busy"]) -> None:
         super().__init__(f"the {scope} AI budget does not allow this call")
         self.scope = scope
 
@@ -96,6 +97,19 @@ def room_today_micros() -> int:
     return max(0, _allowance_today(today) - used)
 
 
+def _settling_could_free_room(visitor_id: int, visitor_cap: int) -> bool:
+    """Whether the visitor's own calls still in flight hold the allowance they're refused on: their spend
+    without those open reservations is under the cap, so waiting for them to settle may free room. Only
+    then does the refusal say "wait" rather than "used up"."""
+    held = AIReservation.objects.filter(visitor_id=visitor_id, settled_at__isnull=True).aggregate(
+        total=Sum("amount_micros")
+    )["total"]
+    if not held:
+        return False
+    spent = User.objects.filter(pk=visitor_id).values_list("demo_ai_spent_micros", flat=True).first()
+    return spent is not None and spent - held < visitor_cap
+
+
 def reserve(*, amount_micros: int, feature: str, model: str, visitor_id: int | None) -> Reservation:
     """Hold `amount_micros` against today and (for a guest) the visitor's allowance, or refuse.
 
@@ -121,7 +135,7 @@ def reserve(*, amount_micros: int, feature: str, model: str, visitor_id: int | N
                 pk=visitor_id, demo_ai_spent_micros__lt=visitor_cap
             ).update(demo_ai_spent_micros=F("demo_ai_spent_micros") + amount_micros)
             if updated == 0:
-                raise BudgetRefused("visitor")
+                raise BudgetRefused("visitor_busy" if _settling_could_free_room(visitor_id, visitor_cap) else "visitor")
         updated = (
             AIBudgetDay.objects.filter(day=today)
             .filter(settled_micros__lte=allowance - amount_micros - F("reserved_micros"))

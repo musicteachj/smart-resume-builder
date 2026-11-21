@@ -24,7 +24,7 @@ from django.db import Error as DBError  # the base of every database error, Inte
 from django.utils import timezone
 
 from . import ledger
-from .pricing import Attempt, input_token_bound, reservation_micros, served_cost_micros
+from .pricing import Attempt, UnpricedModelError, input_token_bound, reservation_micros, served_cost_micros
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +37,13 @@ _BUDGET_MESSAGES = {
     "off": "Live AI is off.",
     "daily": "Today's AI budget is used up.",
     "visitor": "This demo's AI allowance is used up.",
+    "visitor_busy": "Another AI request from this demo is still running.",
 }
 
 
 class AIBudgetRefusedError(AIServiceError):
-    """The dollar ledger refused the call before anything was sent. `scope` is "off", "daily", or "visitor"."""
+    """The dollar ledger refused the call before anything was sent. `scope` is "off", "daily", "visitor", or
+    "visitor_busy" (the visitor's own earlier call still holds part of their allowance)."""
 
     def __init__(self, scope: str):
         super().__init__(_BUDGET_MESSAGES.get(scope, "The AI budget does not allow this call."))
@@ -156,7 +158,13 @@ def _call(client, *, model: str, effort: str, feature: str, visitor_id: int | No
     bound = input_token_bound(
         system=params.get("system", ""), messages=params["messages"], output_config=params["output_config"]
     )
-    amount = reservation_micros(attempts, bound)
+    try:
+        amount = reservation_micros(attempts, bound)
+    except UnpricedModelError as exc:
+        # Startup refuses an unpriced configured model, so this means that check was bypassed. Nothing is
+        # reserved or sent; the caller refunds the per-user slot like any other failure.
+        logger.error("AI model has no pinned price: feature=%s model=%s", feature, model)
+        raise AIUnavailableError("The AI model is not priced.") from exc
     try:
         reservation = ledger.reserve(amount_micros=amount, feature=feature, model=model, visitor_id=visitor_id)
     except ledger.BudgetRefused as refused:

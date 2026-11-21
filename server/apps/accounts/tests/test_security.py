@@ -32,6 +32,47 @@ def test_auth_endpoint_throttles_burst(client, monkeypatch):
     assert client.post(LOGIN, creds, format="json").status_code == 429
 
 
+def test_refresh_has_its_own_throttle_scope():
+    # Every page load refreshes, so sharing login's 10/min would sign out an office behind one IP.
+    from django.conf import settings
+
+    from apps.accounts.views import CookieTokenRefreshView, LoginView
+
+    assert CookieTokenRefreshView.throttle_scope == "refresh"
+    assert LoginView.throttle_scope == "auth"
+    assert settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["refresh"] == "60/min"
+
+
+@pytest.mark.django_db
+def test_a_throttled_refresh_is_friendly_and_keeps_retry_after(client, monkeypatch):
+    monkeypatch.setattr(SimpleRateThrottle, "THROTTLE_RATES", {"refresh": "1/min"})
+    cache.clear()
+    assert client.post("/api/auth/refresh").status_code == 401
+    res = client.post("/api/auth/refresh")
+    assert res.status_code == 429
+    assert res.json() == {
+        "detail": "Too many requests from your network. Please wait a minute and try again.",
+        "code": "refresh_rate_limited",
+    }
+    assert 1 <= int(res.headers["Retry-After"]) <= 60
+
+
+@pytest.mark.django_db
+def test_refreshes_do_not_spend_the_login_budget(client, monkeypatch):
+    monkeypatch.setattr(SimpleRateThrottle, "THROTTLE_RATES", {"auth": "2/min", "refresh": "3/min"})
+    cache.clear()
+
+    # Refreshes (no cookie, so 401) are counted on their own scope...
+    for _ in range(3):
+        assert client.post("/api/auth/refresh").status_code == 401
+    assert client.post("/api/auth/refresh").status_code == 429
+    # ...so login still has its whole budget.
+    creds = {"email": "nobody@example.com", "password": "whatever"}
+    for _ in range(2):
+        assert client.post(LOGIN, creds, format="json").status_code == 401
+    assert client.post(LOGIN, creds, format="json").status_code == 429
+
+
 def test_csp_header_present_in_production(client, settings):
     settings.DEBUG = False
     # Any non-/health route (health answers before the middleware stack, see below).

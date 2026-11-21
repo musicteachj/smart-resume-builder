@@ -47,6 +47,7 @@ def test_budget_off_refuses_every_route_with_the_free_path(auth_client, user, se
         (AIBudgetRefusedError("off"), 503, "ai_off"),
         (AIBudgetRefusedError("daily"), 503, "ai_daily_used"),
         (AIBudgetRefusedError("visitor"), 429, "ai_visitor_used"),
+        (AIBudgetRefusedError("visitor_busy"), 429, "ai_busy"),
         (AIProviderLimitError("limit"), 503, "ai_provider_limit"),
         (AIUnavailableError("down"), 502, "ai_unavailable"),
         (AIServiceError("missing ANTHROPIC_API_KEY"), 502, "ai_unavailable"),
@@ -96,12 +97,66 @@ def test_emoji_and_cjk_at_the_cap_get_the_friendly_daily_refusal_through_the_rea
 
 
 @pytest.mark.django_db
-def test_debug_keeps_the_raw_message_with_the_same_code(auth_client, settings, monkeypatch):
+@pytest.mark.parametrize(
+    "raised, status, code",
+    [
+        (AIServiceError("missing ANTHROPIC_API_KEY"), 502, "ai_unavailable"),
+        (AIProviderLimitError("spend limit ANTHROPIC_API_KEY"), 503, "ai_provider_limit"),
+    ],
+)
+def test_debug_also_gets_the_table_copy_never_the_exception_text(
+    auth_client, settings, monkeypatch, raised, status, code
+):
     settings.DEBUG = True
-    monkeypatch.setattr("apps.ai.service.improve_bullet", Mock(side_effect=AIServiceError("missing ANTHROPIC_API_KEY")))
+    monkeypatch.setattr("apps.ai.service.improve_bullet", Mock(side_effect=raised))
     res = auth_client.post("/api/ai/improve-bullet", {"text": "x"}, format="json")
-    assert (res.status_code, res.json()["code"]) == (502, "ai_unavailable")
-    assert "ANTHROPIC_API_KEY" in res.json()["detail"]
+    assert (res.status_code, res.json()) == (status, {"detail": REFUSALS[code][1], "code": code})
+
+
+BUSY_COPY = (
+    "Another AI request from this demo is still running. Please wait for it to finish, then try again. "
+    "You can still edit, switch templates, and export your resume as a PDF or Word file."
+)
+
+
+def test_busy_refusal_copy_is_exact():
+    assert REFUSALS["ai_busy"] == (429, BUSY_COPY)
+
+
+@pytest.mark.django_db
+def test_a_guest_whose_own_call_is_in_flight_is_told_to_wait(guest_client, guest, settings, monkeypatch, fake):
+    """Through the real service and ledger (only the Anthropic client is faked): the guest's earlier call holds
+    their whole allowance, so the next one gets `ai_busy` (not "used up"), nothing is sent, and the per-user call
+    slot is refunded."""
+    settings.DEBUG = False
+    settings.AI_VISITOR_BUDGET_USD = Decimal("0.01")
+    monkeypatch.setattr("apps.ai.service.improve_bullet", real_improve_bullet)  # undo the autouse stub
+    ledger.reserve(amount_micros=10_000, feature="tailor-jd", model=settings.AI_MODEL_TAILOR, visitor_id=guest.pk)
+    client = fake(SimpleNamespace())  # never reached
+
+    res = guest_client.post("/api/ai/improve-bullet", {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()) == (429, {"detail": BUSY_COPY, "code": "ai_busy"})
+    assert client.messages.calls == [] and client.beta.messages.calls == []
+    guest.refresh_from_db()
+    assert guest.ai_calls_today == 0 and guest.ai_calls_this_month == 0
+
+
+@pytest.mark.django_db
+def test_an_unpriced_model_that_slipped_past_startup_is_a_clean_502(auth_client, user, settings, monkeypatch, fake):
+    """Through the real service: no reservation is opened, nothing is sent, and the per-user slot is refunded."""
+    from apps.ai.models import AIReservation
+
+    settings.DEBUG = False
+    settings.AI_MODEL_SIMPLE = "claude-mystery"  # startup would refuse this; the override bypasses that check
+    monkeypatch.setattr("apps.ai.service.improve_bullet", real_improve_bullet)  # undo the autouse stub
+    client = fake(SimpleNamespace())  # never reached
+
+    res = auth_client.post("/api/ai/improve-bullet", {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()) == (502, {"detail": REFUSALS["ai_unavailable"][1], "code": "ai_unavailable"})
+    assert client.messages.calls == [] and client.beta.messages.calls == []
+    assert not AIReservation.objects.exists()
+    user.refresh_from_db()
+    assert user.ai_calls_today == 0
 
 
 @pytest.mark.django_db

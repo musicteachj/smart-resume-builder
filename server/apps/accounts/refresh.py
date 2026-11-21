@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import transaction
 from django.utils import timezone
 from rest_framework_simplejwt.exceptions import TokenBackendError, TokenError
 from rest_framework_simplejwt.settings import api_settings
@@ -55,16 +56,20 @@ def refresh_session(raw: str) -> Refreshed:
     if user.is_guest and user.guest_expires_at is not None and user.guest_expires_at <= timezone.now():
         raise SessionEnded
     old_jti = token[api_settings.JTI_CLAIM]
-    token.blacklist()
-    token.set_jti()
-    token.set_exp()
-    token.set_iat()
-    token.outstand()
-    cap_guest_expiry(user, token)
-    if settings.REFRESH_REUSE_GRACE_SECONDS > 0:
-        cache.set(
-            _successor_key(old_jti), token[api_settings.JTI_CLAIM], settings.REFRESH_REUSE_GRACE_SECONDS
-        )
+    # One transaction (the cache is the database cache, on the same connection): a second tab presenting
+    # the same cookie sees the old token blacklisted only together with its live successor and the link to
+    # it. Between the blacklist and the link it found neither, took the grace path, and was signed out.
+    with transaction.atomic():
+        token.blacklist()
+        token.set_jti()
+        token.set_exp()
+        token.set_iat()
+        token.outstand()
+        cap_guest_expiry(user, token)
+        if settings.REFRESH_REUSE_GRACE_SECONDS > 0:
+            cache.set(
+                _successor_key(old_jti), token[api_settings.JTI_CLAIM], settings.REFRESH_REUSE_GRACE_SECONDS
+            )
     return Refreshed(str(token.access_token), str(token), refresh_cookie_max_age(user))
 
 

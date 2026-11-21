@@ -36,10 +36,18 @@ function installFakeApi() {
   return { rendered, removed, executed };
 }
 
+const CLOUDFLARE_ORIGIN = "https://challenges.cloudflare.com";
+
+/** Scripts served from Cloudflare's origin, parsed and compared exactly (a prefix check would also
+ * match a look-alike host such as challenges.cloudflare.com.example.net). */
 const scripts = () =>
-  [...document.head.querySelectorAll<HTMLScriptElement>("script")].filter((s) =>
-    s.src.startsWith("https://challenges.cloudflare.com"),
-  );
+  [...document.head.querySelectorAll<HTMLScriptElement>("script")].filter((s) => {
+    try {
+      return new URL(s.src).origin === CLOUDFLARE_ORIGIN;
+    } catch {
+      return false;
+    }
+  });
 
 /** Lets a pending promise attach the widget after the script's load. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));

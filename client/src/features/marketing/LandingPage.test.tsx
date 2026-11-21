@@ -13,7 +13,9 @@ const { demo } = vi.hoisted(() => ({
   },
 }));
 vi.mock("@/features/demo/useDemoStatus", () => ({ useDemoStatus: () => demo }));
-vi.mock("@/api/generated/demo/demo", () => ({
+// Partial: the auth store reads the real demo-status query key.
+vi.mock("@/api/generated/demo/demo", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/generated/demo/demo")>()),
   useStartDemo: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 

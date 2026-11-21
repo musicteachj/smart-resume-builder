@@ -1,7 +1,8 @@
 import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from "axios";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AXIOS_INSTANCE } from "@/api/axios";
+import { queryClient } from "@/api/queryClient";
 import { useAuthStore } from "@/stores/auth";
 
 import { bootstrapAuth } from "./bootstrap";
@@ -31,6 +32,7 @@ beforeEach(() => {
 
 afterEach(() => {
   AXIOS_INSTANCE.defaults.adapter = original;
+  vi.restoreAllMocks();
 });
 
 describe("bootstrapAuth", () => {
@@ -93,5 +95,30 @@ describe("bootstrapAuth", () => {
     refreshBody = { detail: "No refresh token.", code: "no_session" };
     await bootstrapAuth();
     expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: false });
+  });
+
+  it.each([
+    ["no cookie (no_session)", 401, { detail: "No refresh token.", code: "no_session" }, false],
+    ["a refused cookie (session_ended)", 401, { detail: "Your session ended.", code: "session_ended" }, true],
+    ["a 429", 429, { detail: "Request was throttled." }, false],
+  ])("a failure at load (%s) never clears or removes cached queries", async (_label, status, body, ended) => {
+    const clear = vi.spyOn(queryClient, "clear");
+    const remove = vi.spyOn(queryClient, "removeQueries");
+    refreshStatus = status;
+    refreshBody = body;
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: ended });
+    expect(clear).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("a failure after a session was in use still signs out the usual way (cache cleared)", async () => {
+    useAuthStore.setState({ status: "authenticated", accessToken: "a", user: { id: 1 } as never });
+    const remove = vi.spyOn(queryClient, "removeQueries");
+    refreshStatus = 401;
+    refreshBody = { detail: "Your session ended.", code: "session_ended" };
+    await bootstrapAuth();
+    expect(useAuthStore.getState()).toMatchObject({ status: "unauthenticated", sessionEnded: true });
+    expect(remove).toHaveBeenCalledTimes(1);
   });
 });

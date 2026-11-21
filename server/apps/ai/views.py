@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -67,12 +66,17 @@ def _gate(user):
         ), None
 
 
-_BUDGET_CODES = {"off": "ai_off", "daily": "ai_daily_used", "visitor": "ai_visitor_used"}
+_BUDGET_CODES = {
+    "off": "ai_off",
+    "daily": "ai_daily_used",
+    "visitor": "ai_visitor_used",
+    "visitor_busy": "ai_busy",
+}
 
 
 def _ai_error(exc, feature):
-    """A friendly refusal with a `code` for an AI failure (422 for a model refusal, below). The raw message is handy
-    in dev but may expose internals, so it only replaces the copy under DEBUG; production always gets the table copy.
+    """A friendly refusal with a `code` for an AI failure (422 for a model refusal, below). The response is always the
+    table copy, DEBUG included: exception text can expose internals, so it only ever goes to the log.
 
     Logs the failure for CloudWatch: the upstream error type, HTTP status, and
     Anthropic request id, never the message text (it can echo the prompt) or any
@@ -98,11 +102,10 @@ def _ai_error(exc, feature):
             getattr(cause, "status_code", None),
             getattr(cause, "request_id", None),
         )
-    detail = str(exc) if settings.DEBUG else None
     if isinstance(exc, AIProviderLimitError):
         logger.error("Anthropic spend limit reached: feature=%s", feature)
-        return refusal("ai_provider_limit", detail=detail)
-    return refusal("ai_unavailable", detail=detail)
+        return refusal("ai_provider_limit")
+    return refusal("ai_unavailable")
 
 
 class _AIView(APIView):

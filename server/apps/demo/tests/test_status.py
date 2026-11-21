@@ -36,11 +36,20 @@ def test_status_says_live_ai_is_off(db, settings):
 
 def test_status_says_todays_budget_is_used(db, at):
     at(datetime(2026, 11, 1, 12, tzinfo=UTC))  # default $10 budget: day one allows $1.00
-    ledger.reserve(amount_micros=750_001, feature="improve_bullet", model="m", visitor_id=None)
-    assert ledger.room_today_micros() == 249_999
+    ledger.reserve(amount_micros=600_001, feature="improve_bullet", model="m", visitor_id=None)
+    assert ledger.room_today_micros() == 399_999
     body = APIClient().get(URL).json()
     assert body["ai_available"] is False
     assert body["ai_reason"] == "daily_used"
+
+
+def test_status_stays_available_with_room_for_one_sonnet_call(db, at):
+    at(datetime(2026, 11, 1, 12, tzinfo=UTC))
+    ledger.reserve(amount_micros=600_000, feature="improve_bullet", model="m", visitor_id=None)
+    assert ledger.room_today_micros() == 400_000
+    body = APIClient().get(URL).json()
+    assert body["ai_available"] is True
+    assert body["ai_reason"] == "ok"
 
 
 def test_status_is_cached_for_a_minute(db, monkeypatch):

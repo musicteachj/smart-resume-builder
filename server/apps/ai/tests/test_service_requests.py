@@ -6,7 +6,7 @@ the real ones are imported here before it runs and exercised against a fake clie
 
 import pytest
 
-from apps.ai import service
+from apps.ai import pricing, service
 from apps.ai.service import (
     AIRefusedError,
     AIServiceError,
@@ -109,8 +109,10 @@ def test_sonnet_5_5_requests_carry_the_refusal_fallback(fake, settings):
     assert call["fallbacks"] == [{"model": "claude-sonnet-5", "max_tokens": 4000}]
 
 
-def test_other_tailor_models_skip_the_fallback(fake, settings):
+def test_other_tailor_models_skip_the_fallback(fake, settings, monkeypatch):
     # The fallback list is only valid for claude-sonnet-5-5; an env override must not 400.
+    # (A configured model needs a pinned price to start, so the test pins one.)
+    monkeypatch.setattr(pricing, "PRICES", {**pricing.PRICES, "claude-opus-5-5": pricing.PRICES["claude-sonnet-5-5"]})
     settings.AI_MODEL_TAILOR = "claude-opus-5-5"
     client = fake(_response(_text("Dear Hiring Manager, ...")))
 
