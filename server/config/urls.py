@@ -6,6 +6,16 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from apps.demo.closed import ClosedInDemoModeMixin
+
+
+class DemoClosedSchemaView(ClosedInDemoModeMixin, SpectacularAPIView):
+    """The OpenAPI schema, hidden (404) in demo mode."""
+
+
+class DemoClosedSwaggerView(ClosedInDemoModeMixin, SpectacularSwaggerView):
+    """Swagger UI, hidden (404) in demo mode."""
+
 
 # Built SPA index, read once at startup (present only in the production image).
 _SPA_INDEX = settings.SPA_ROOT / "index.html"
@@ -28,16 +38,17 @@ urlpatterns = [
     path("api/auth/", include("apps.accounts.urls")),
     path("api/", include("apps.resumes.urls")),
     path("api/ai/", include("apps.ai.urls")),
+    path("api/demo/", include("apps.demo.urls")),
     # OpenAPI schema + docs (Orval consumes /api/schema/)
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/schema/", DemoClosedSchemaView.as_view(), name="schema"),
     path(
         "api/schema/swagger-ui/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
+        DemoClosedSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
     # SPA fallback — anything not handled above (and not a static/asset path) returns
     # index.html so React Router can take over. WhiteNoise serves real asset files first.
-    re_path(r"^(?!api/|admin/|static/|assets/|health$).*$", spa_index),
+    re_path(r"^(?!api/|admin/|static/|assets/|health(?:/|$)).*$", spa_index),
 ]
 
 # Django admin: dev, or production only when DJANGO_ADMIN_ENABLED is set. Otherwise

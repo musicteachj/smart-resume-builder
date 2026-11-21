@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Accounts mode (the demo status comes from the server).
+vi.mock("@/features/demo/useDemoStatus", () => ({
+  useDemoStatus: () => ({ status: undefined, isLoading: false, demoMode: false }),
+}));
 
 import { LandingPage } from "@/features/marketing/LandingPage";
 import { CONTACT_EMAIL } from "@/lib/site";

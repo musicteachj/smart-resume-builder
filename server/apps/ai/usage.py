@@ -3,23 +3,28 @@
 Resets the daily counter on a new day and the monthly counter every 30 days, then
 reserves one call against the configured limits before the AI call runs, and gives
 the reservation back if the call fails. Admins and DEBUG (local dev) bypass the cap
-but are still counted and logged.
+but are still counted and logged. Demo guests are different: they get AI_GUEST_CALL_LIMIT
+calls for their whole life, with no reset and no bypass.
 
 The reservation is a single conditional UPDATE, so concurrent requests can't all pass
 a stale "under the limit" read and overspend the quota together.
 """
 
+import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import Error, IntegrityError, transaction
 from django.db.models import F
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from .models import AIUsageLog
+
+logger = logging.getLogger(__name__)
 
 _COUNTERS = ["ai_calls_today", "ai_calls_this_month"]
 
@@ -30,7 +35,7 @@ class AIRateLimitError(Exception):
     def __init__(self, message: str, scope: str):
         super().__init__(message)
         self.message = message
-        self.scope = scope  # "daily" | "monthly"
+        self.scope = scope  # "daily" | "monthly" | "guest"
 
 
 def _rows(user):
@@ -44,6 +49,8 @@ def reset_if_needed(user) -> None:
     no query); the UPDATE's own condition decides whether it happens, so a request
     holding a stale copy can't wipe out a call another request already reserved today.
     """
+    if user.is_guest:
+        return  # A guest's allowance is for life: it never resets.
     now = timezone.now()
     today = now.date()
     changed = False
@@ -80,7 +87,10 @@ def reserve(user) -> Reservation:
     counters are fresh from the database (the 429 body and responses report them).
     """
     rows = _rows(user)
-    if not (user.is_admin or settings.DEBUG):
+    if user.is_guest:
+        # Lifetime cap (the monthly counter never resets for a guest); no admin or DEBUG bypass.
+        rows = rows.filter(ai_calls_this_month__lt=settings.AI_GUEST_CALL_LIMIT)
+    elif not (user.is_admin or settings.DEBUG):
         rows = rows.filter(
             ai_calls_today__lt=settings.AI_DAILY_LIMIT,
             ai_calls_this_month__lt=settings.AI_MONTHLY_LIMIT,
@@ -93,6 +103,10 @@ def reserve(user) -> Reservation:
     user.refresh_from_db(fields=[*_COUNTERS, "last_ai_call_date", "last_month_reset"])
     if claimed:
         return Reservation(day=user.last_ai_call_date, month_reset=user.last_month_reset)
+    if user.is_guest:
+        raise AIRateLimitError(
+            f"This demo's AI allowance is used up ({settings.AI_GUEST_CALL_LIMIT} calls).", "guest"
+        )
     if user.ai_calls_today >= settings.AI_DAILY_LIMIT:
         raise AIRateLimitError(
             f"Daily AI limit reached ({settings.AI_DAILY_LIMIT}/day). Resets tomorrow.",
@@ -118,7 +132,10 @@ def refund(user, reservation: Reservation) -> None:
     rows.filter(last_month_reset=reservation.month_reset).update(
         ai_calls_this_month=Greatest(F("ai_calls_this_month") - 1, 0)
     )
-    user.refresh_from_db(fields=_COUNTERS)
+    try:
+        user.refresh_from_db(fields=_COUNTERS)
+    except get_user_model().DoesNotExist:
+        pass  # the user was removed mid-call: nothing left to refund
 
 
 @contextmanager
@@ -133,14 +150,34 @@ def refund_on_failure(user, reservation: Reservation):
 
 
 def record_usage(user, feature: str, *, input_length: int, output_length: int, success: bool) -> None:
-    """Log one AI call. The quota itself is counted by reserve() and refund()."""
-    AIUsageLog.objects.create(
-        user=user,
-        feature=feature,
-        input_length=input_length,
-        output_length=output_length,
-        success=success,
-    )
+    """Log one AI call. The quota itself is counted by reserve() and refund().
+
+    Never raises: it runs after the AI call, so a paid answer must still reach the visitor if the
+    log row can't be written. Any database error (a removed user's foreign key, a dropped connection,
+    a lock timeout) is logged and swallowed. Only the error's class is logged, never its text.
+    """
+    try:
+        with transaction.atomic():
+            AIUsageLog.objects.create(
+                user=user,
+                feature=feature,
+                input_length=input_length,
+                output_length=output_length,
+                success=success,
+            )
+    except Error as exc:  # django.db.Error: the base of every database error, InterfaceError included
+        if isinstance(exc, IntegrityError) and _user_removed(user):
+            # Expected: a demo guest ended or expired during the call.
+            logger.info("AI usage not logged: the user was removed during the call (feature=%s).", feature)
+            return
+        logger.error("AI usage not logged: feature=%s error=%s", feature, type(exc).__name__)
+
+
+def _user_removed(user) -> bool:
+    try:
+        return not get_user_model().objects.filter(pk=user.pk).exists()
+    except Error:
+        return False  # can't tell: report it as an error
 
 
 def usage_snapshot(user) -> dict:

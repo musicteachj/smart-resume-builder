@@ -1,13 +1,16 @@
 import logging
 
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
+from rest_framework.exceptions import Throttled
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from . import service
+from apps.accounts.refresh import SESSION_ENDED_DETAIL
+
+from . import ledger, service
 from .serializers import (
     AtsCheckRequestSerializer,
     AtsCheckResponseSerializer,
@@ -22,7 +25,8 @@ from .serializers import (
     TailorJDRequestSerializer,
     TailorJDResponseSerializer,
 )
-from .service import AIRefusedError, AIServiceError
+from .refusals import refusal
+from .service import AIBudgetRefusedError, AIProviderLimitError, AIRefusedError, AIServiceError
 from .usage import (
     AIRateLimitError,
     record_usage,
@@ -35,22 +39,44 @@ from .usage import (
 logger = logging.getLogger(__name__)
 
 
+def _visitor_id(user) -> int | None:
+    """Demo guests spend from their own allowance; everyone else only from the shared budget."""
+    return user.pk if user.is_guest else None
+
+
 def _gate(user):
-    """Reset counters and reserve one call. Returns (429 Response, None) if over,
-    else (None, reservation). Run the AI call inside refund_on_failure(user, reservation)."""
-    reset_if_needed(user)
+    """Reset counters and reserve one call. Returns (refusal Response, None) if live AI is off or the user is
+    over, else (None, reservation). Run the AI call inside refund_on_failure(user, reservation)."""
+    if ledger.live_ai_off():
+        return refusal("ai_off"), None
     try:
+        reset_if_needed(user)
         return None, reserve(user)
+    except get_user_model().DoesNotExist:
+        # The account was removed after authentication (a guest ending or expiring): end the session cleanly.
+        return Response(
+            {"detail": SESSION_ENDED_DETAIL, "code": "session_ended"}, status=status.HTTP_401_UNAUTHORIZED
+        ), None
     except AIRateLimitError as exc:
+        if exc.scope == "guest":
+            return refusal("ai_visitor_used"), None
         return Response(
             {"detail": exc.message, "scope": exc.scope, "ai_usage": usage_snapshot(user)},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         ), None
 
 
+_BUDGET_CODES = {
+    "off": "ai_off",
+    "daily": "ai_daily_used",
+    "visitor": "ai_visitor_used",
+    "visitor_busy": "ai_busy",
+}
+
+
 def _ai_error(exc, feature):
-    """502 for an upstream/AI failure (422 for a refusal, below). The raw message is handy in dev but may expose
-    internals, so it's only surfaced under DEBUG; production gets a generic message.
+    """A friendly refusal with a `code` for an AI failure (422 for a model refusal, below). The response is always the
+    table copy, DEBUG included: exception text can expose internals, so it only ever goes to the log.
 
     Logs the failure for CloudWatch: the upstream error type, HTTP status, and
     Anthropic request id, never the message text (it can echo the prompt) or any
@@ -62,6 +88,9 @@ def _ai_error(exc, feature):
     if isinstance(exc, AIRefusedError):
         logger.warning("AI call refused: feature=%s category=%s", feature, exc.category)
         return Response({"detail": exc.message}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    if isinstance(exc, AIBudgetRefusedError):
+        logger.warning("AI call refused by the budget: feature=%s scope=%s", feature, exc.scope)
+        return refusal(_BUDGET_CODES.get(exc.scope, "ai_unavailable"))
     cause = exc.__cause__
     if cause is None:
         logger.warning("AI call failed: feature=%s error=%s", feature, exc)
@@ -73,8 +102,10 @@ def _ai_error(exc, feature):
             getattr(cause, "status_code", None),
             getattr(cause, "request_id", None),
         )
-    detail = str(exc) if settings.DEBUG else "The AI service is temporarily unavailable. Please try again."
-    return Response({"detail": detail}, status=status.HTTP_502_BAD_GATEWAY)
+    if isinstance(exc, AIProviderLimitError):
+        logger.error("Anthropic spend limit reached: feature=%s", feature)
+        return refusal("ai_provider_limit")
+    return refusal("ai_unavailable")
 
 
 class _AIView(APIView):
@@ -84,6 +115,11 @@ class _AIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "ai-burst"
+
+    def handle_exception(self, exc):
+        if isinstance(exc, Throttled):
+            return refusal("ai_rate_limited", headers={"Retry-After": str(int(exc.wait or 60))})
+        return super().handle_exception(exc)
 
 
 class ImproveBulletView(_AIView):
@@ -105,7 +141,7 @@ class ImproveBulletView(_AIView):
         role = req.validated_data.get("role", "")
         try:
             with refund_on_failure(user, reservation):
-                suggestion = service.improve_bullet(text, role)
+                suggestion = service.improve_bullet(text, role, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "improve-bullet", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "improve-bullet")
@@ -132,7 +168,7 @@ class GenerateSummaryView(_AIView):
         content = req.validated_data["content"]
         try:
             with refund_on_failure(user, reservation):
-                summary = service.generate_summary(content)
+                summary = service.generate_summary(content, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "generate-summary", input_length=len(str(content)), output_length=0, success=False)
             return _ai_error(exc, "generate-summary")
@@ -161,7 +197,7 @@ class TailorJDView(_AIView):
         in_len = len(jd) + len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                result = service.tailor_to_jd(content, jd)
+                result = service.tailor_to_jd(content, jd, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "tailor-jd", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "tailor-jd")
@@ -188,7 +224,7 @@ class ParseResumeView(_AIView):
         text = req.validated_data["text"]
         try:
             with refund_on_failure(user, reservation):
-                content = service.parse_resume(text)
+                content = service.parse_resume(text, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "parse-resume", input_length=len(text), output_length=0, success=False)
             return _ai_error(exc, "parse-resume")
@@ -217,7 +253,7 @@ class CoverLetterView(_AIView):
         in_len = len(jd) + len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                letter = service.generate_cover_letter(content, jd)
+                letter = service.generate_cover_letter(content, jd, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "cover-letter", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "cover-letter")
@@ -245,7 +281,7 @@ class AtsCheckView(_AIView):
         in_len = len(str(content))
         try:
             with refund_on_failure(user, reservation):
-                result = service.ats_health_check(content)
+                result = service.ats_health_check(content, visitor_id=_visitor_id(user))
         except AIServiceError as exc:
             record_usage(user, "ats-check", input_length=in_len, output_length=0, success=False)
             return _ai_error(exc, "ats-check")

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,8 +11,11 @@ vi.mock("@/api/generated/resumes/resumes", () => ({
   getListResumesQueryKey: () => ["resumes"],
 }));
 
+import { useAuthStore } from "@/stores/auth";
+
+import { SaveIndicator } from "./components/SaveIndicator";
 import type { EditorValues } from "./editorSchema";
-import { retryDelay, useAutosave } from "./useAutosave";
+import { AUTH_MAX_ATTEMPTS, retryDelay, useAutosave } from "./useAutosave";
 
 function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
@@ -88,10 +91,15 @@ describe("useAutosave", () => {
   });
 });
 
-const httpError = (status: number, headers: Record<string, string> = {}) => ({
+const httpError = (status: number, headers: Record<string, string> = {}, data: unknown = {}) => ({
   isAxiosError: true,
-  response: { status, headers, data: {} },
+  response: { status, headers, data },
 });
+/** What SimpleJWT answers for a token it won't accept: never shown to the visitor. */
+const RAW_TOKEN_DETAIL = "Given token not valid for any token type";
+const tokenError = () => httpError(401, {}, { detail: RAW_TOKEN_DETAIL, code: "token_not_valid" });
+const signedIn = () => useAuthStore.setState({ status: "authenticated", accessToken: "a" });
+const signedOut = () => useAuthStore.setState({ status: "unauthenticated", accessToken: null, user: null });
 const networkError = () => ({ isAxiosError: true, code: "ERR_NETWORK", message: "Network Error" });
 
 describe("retryDelay", () => {
@@ -115,6 +123,18 @@ describe("retryDelay", () => {
     expect(retryDelay(httpError(404), 0)).toBeNull();
     expect(retryDelay(new TypeError("x is undefined"), 0)).toBeNull(); // a bug, not the network
     expect(retryDelay({ isAxiosError: true, code: "ERR_CANCELED" }, 0)).toBeNull();
+  });
+
+  it("retries a 401 with backoff while still signed in, a bounded number of times", () => {
+    signedIn();
+    expect(retryDelay(tokenError(), 0)).toBe(2000);
+    expect(retryDelay(tokenError(), AUTH_MAX_ATTEMPTS - 1)).not.toBeNull();
+    expect(retryDelay(tokenError(), AUTH_MAX_ATTEMPTS)).toBeNull();
+  });
+
+  it("never retries a 401 once signed out", () => {
+    signedOut();
+    expect(retryDelay(tokenError(), 0)).toBeNull();
   });
 });
 
@@ -147,6 +167,61 @@ describe("useAutosave retries", () => {
     expect(result.current.autosave.status).toBe("error");
     await act(() => vi.advanceTimersByTimeAsync(60_000));
     expect(patch).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes the server's reason when a save is refused", async () => {
+    patch.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 400, headers: {}, data: { detail: "This demo has reached its storage limit.", code: "demo_limit" } },
+    });
+    const { result } = renderHook(useHarness, { wrapper });
+    act(() => result.current.methods.setValue("title", "Edited"));
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(result.current.autosave.status).toBe("error");
+    expect(result.current.autosave.errorDetail).toBe("This demo has reached its storage limit.");
+  });
+
+  it("retries a 401 while signed in (the refresh hadn't finished), then shows saved", async () => {
+    signedIn();
+    patch.mockRejectedValueOnce(tokenError()).mockResolvedValue({ id: "r1" });
+    const { result } = renderHook(useHarness, { wrapper });
+    act(() => result.current.methods.setValue("title", "Edited"));
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(result.current.autosave.status).toBe("retrying");
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(patch).toHaveBeenCalledTimes(2);
+    expect(result.current.autosave.status).toBe("saved");
+  });
+
+  it("stops retrying a 401 once signed out, and never shows the raw token message", async () => {
+    signedIn();
+    patch.mockRejectedValue(tokenError());
+    const { result } = renderHook(useHarness, { wrapper });
+    act(() => result.current.methods.setValue("title", "Edited"));
+    await act(() => vi.advanceTimersByTimeAsync(800)); // fails, retry scheduled
+    expect(result.current.autosave.status).toBe("retrying");
+    act(() => signedOut());
+    await act(() => vi.advanceTimersByTimeAsync(2000)); // the retry fails while signed out: stop
+    expect(result.current.autosave.status).toBe("error");
+    expect(result.current.autosave.errorDetail).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60_000));
+    expect(patch).toHaveBeenCalledTimes(2);
+
+    render(<SaveIndicator status={result.current.autosave.status} detail={result.current.autosave.errorDetail} />);
+    expect(screen.getByText("Couldn't save")).toBeInTheDocument();
+    expect(screen.queryByText(RAW_TOKEN_DETAIL)).not.toBeInTheDocument();
+  });
+
+  it("gives up on a 401 that keeps coming back while signed in, with the plain error", async () => {
+    signedIn();
+    patch.mockRejectedValue(tokenError());
+    const { result } = renderHook(useHarness, { wrapper });
+    act(() => result.current.methods.setValue("title", "Edited"));
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60_000));
+    expect(patch).toHaveBeenCalledTimes(AUTH_MAX_ATTEMPTS + 1);
+    expect(result.current.autosave.status).toBe("error");
+    expect(result.current.autosave.errorDetail).toBeNull();
   });
 
   it("a new edit replaces the scheduled retry with a fresh save", async () => {

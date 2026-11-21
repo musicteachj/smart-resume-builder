@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * A real account must confirm with its password; a demo guest has none, so it needs nothing.
+ */
 export interface DeleteAccount {
-  password: string;
+  /** @nullable */
+  password?: string | null;
 }

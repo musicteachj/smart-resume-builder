@@ -1,4 +1,5 @@
 import logging
+import math
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -12,16 +13,19 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlencode, urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import Throttled
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.demo.closed import ClosedInDemoModeMixin
+
 from .cookies import REFRESH_COOKIE_NAME, clear_refresh_cookie, set_refresh_cookie
+from .refresh import SESSION_ENDED_DETAIL, SessionEnded, end_rotated_session, refresh_session
 from .serializers import (
     AuthResponseSerializer,
     DeleteAccountSerializer,
@@ -41,6 +45,7 @@ User = get_user_model()
 DUMMY_EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 RESET_REQUESTED = "If an account exists for that email, we sent a reset link."
 INVALID_RESET_LINK = "This reset link is invalid or has expired."
+REFRESH_RATE_LIMITED = "Too many requests from your network. Please wait a minute and try again."
 
 
 def revoke_refresh_tokens(user):
@@ -62,7 +67,7 @@ def revoke_refresh_tokens(user):
         tags=["auth"],
     )
 )
-class RegisterView(generics.CreateAPIView):
+class RegisterView(ClosedInDemoModeMixin, generics.CreateAPIView):
     """Create an account; return the user + access token, set the refresh cookie."""
 
     serializer_class = RegisterSerializer
@@ -92,7 +97,7 @@ class RegisterView(generics.CreateAPIView):
         tags=["auth"],
     )
 )
-class LoginView(TokenObtainPairView):
+class LoginView(ClosedInDemoModeMixin, TokenObtainPairView):
     """Obtain an access token via email + password; set the refresh cookie."""
 
     serializer_class = EmailTokenObtainPairSerializer
@@ -125,23 +130,39 @@ class CookieTokenRefreshView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "auth"
+    # Its own scope, looser than login: every page load refreshes, so an office behind one IP
+    # would otherwise share login's 10/min and be signed out.
+    throttle_scope = "refresh"
+
+    def handle_exception(self, exc):
+        # Plain copy and a `code` instead of DRF's "Request was throttled. Expected available in N seconds."
+        if isinstance(exc, Throttled):
+            headers = {"Retry-After": str(max(1, math.ceil(exc.wait)))} if exc.wait else None
+            return Response(
+                {"detail": REFRESH_RATE_LIMITED, "code": "refresh_rate_limited"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers=headers,
+            )
+        return super().handle_exception(exc)
 
     def post(self, request):
-        token = request.COOKIES.get(REFRESH_COOKIE_NAME)
-        if not token:
-            return Response({"detail": "No refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
-        serializer = TokenRefreshSerializer(data={"refresh": token})
+        raw = request.COOKIES.get(REFRESH_COOKIE_NAME)
+        if not raw:
+            return Response(
+                {"detail": "No refresh token.", "code": "no_session"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         try:
-            serializer.is_valid(raise_exception=True)
-        except (InvalidToken, TokenError):
-            return Response({"detail": "Invalid refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
-        response = Response({"access": serializer.validated_data["access"]})
-        # ROTATE_REFRESH_TOKENS puts the replacement token in validated_data;
-        # the old one is already blacklisted (BLACKLIST_AFTER_ROTATION).
-        rotated = serializer.validated_data.get("refresh")
-        if rotated:
-            set_refresh_cookie(response, rotated)
+            result = refresh_session(raw)
+        except SessionEnded:
+            return clear_refresh_cookie(
+                Response(
+                    {"detail": SESSION_ENDED_DETAIL, "code": "session_ended"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            )
+        response = Response({"access": result.access})
+        if result.refresh:
+            set_refresh_cookie(response, result.refresh, max_age=result.cookie_max_age)
         return response
 
 
@@ -163,7 +184,9 @@ class LogoutView(APIView):
             try:
                 RefreshToken(token).blacklist()
             except TokenError:
-                pass  # expired/garbage cookie — clearing it is all that's left to do
+                # Garbage or expired: nothing to revoke. A just-rotated cookie is blacklisted, so also end
+                # its live successor (another tab may hold it).
+                end_rotated_session(token)
         return clear_refresh_cookie(Response(status=status.HTTP_204_NO_CONTENT))
 
 
@@ -230,7 +253,7 @@ def _send_reset_email(user):
         tags=["auth"],
     )
 )
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(ClosedInDemoModeMixin, APIView):
     """Email a password-reset link. Always answers the same way, so it can't reveal
     whether an email has an account."""
 
@@ -265,7 +288,7 @@ class PasswordResetRequestView(APIView):
         tags=["auth"],
     )
 )
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(ClosedInDemoModeMixin, APIView):
     """Set a new password from an emailed reset link, then revoke every refresh token
     (other devices are signed out once their 15-minute access token expires)."""
 
@@ -312,7 +335,7 @@ class PasswordResetConfirmView(APIView):
 )
 class DeleteAccountView(APIView):
     """Permanently delete the signed-in user and everything they own (résumés, versions,
-    cover letters, and AI usage logs all cascade). Requires the current password."""
+    cover letters, and AI usage logs all cascade). Requires the current password; a demo guest has none and needs nothing."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]

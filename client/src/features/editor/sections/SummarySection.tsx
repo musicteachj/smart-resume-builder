@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { Textarea } from "@/components/ui/Textarea";
@@ -10,10 +11,16 @@ export function SummarySection() {
     formState: { errors },
   } = useFormContext<EditorValues>();
   const error = errors.content?.summary?.message;
+  const fieldId = useId();
 
   return (
     <div>
+      {/* The section heading already says "Summary" on screen, so the label is for assistive technology only. */}
+      <label htmlFor={fieldId} className="sr-only">
+        Summary
+      </label>
       <Textarea
+        id={fieldId}
         rows={4}
         placeholder="A 2–3 sentence professional overview…"
         {...register("content.summary")}

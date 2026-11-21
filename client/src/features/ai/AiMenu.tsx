@@ -18,10 +18,11 @@ import { TailorModal } from "./TailorModal";
 
 type AiModal = "summary" | "tailor" | "cover" | "ats";
 
-/** The editor's AI menu — content + analysis tools, with a usage readout. */
+/** The editor's AI menu: content and analysis tools, with a usage readout (not for demo
+ * guests, whose allowance is a budget, not a daily call count). */
 export function AiMenu() {
   const [modal, setModal] = useState<AiModal | null>(null);
-  const usage = useAuthStore((s) => s.user?.ai_usage);
+  const usage = useAuthStore((s) => (s.user?.is_guest ? undefined : s.user?.ai_usage));
 
   return (
     <>

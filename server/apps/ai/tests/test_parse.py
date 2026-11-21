@@ -90,7 +90,7 @@ def test_parse_blank_text_rejected(auth_client):
 
 @pytest.mark.django_db
 def test_parse_ai_down_returns_502(auth_client, monkeypatch):
-    def boom(text):
+    def boom(text, **_kw):
         raise service.AIServiceError("AI is not configured (missing ANTHROPIC_API_KEY).")
     monkeypatch.setattr("apps.ai.service.parse_resume", boom)
     res = auth_client.post(PARSE, {"text": "some resume text"}, format="json")

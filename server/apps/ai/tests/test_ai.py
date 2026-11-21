@@ -1,4 +1,8 @@
+import logging
+
 import pytest
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError, InterfaceError, OperationalError
 from rest_framework.test import APIClient
 
 from apps.ai.models import AIUsageLog
@@ -103,7 +107,7 @@ def test_debug_bypasses_limit(auth_client, settings):
 
 @pytest.mark.django_db
 def test_failure_logs_and_does_not_consume(auth_client, user, monkeypatch):
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("upstream down")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -118,7 +122,7 @@ def test_failure_logs_and_does_not_consume(auth_client, user, monkeypatch):
 def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
     settings.DEBUG = False
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("missing ANTHROPIC_API_KEY")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -126,19 +130,25 @@ def test_ai_error_is_masked_in_production(auth_client, monkeypatch, settings):
     assert res.status_code == 502
     # The raw upstream string must not leak in production.
     assert "ANTHROPIC_API_KEY" not in res.json()["detail"]
+    assert res.json()["code"] == "ai_unavailable"
 
 
 @pytest.mark.django_db
-def test_ai_error_is_verbose_in_debug(auth_client, monkeypatch, settings):
+def test_ai_error_is_masked_in_debug_too(auth_client, monkeypatch, settings, caplog):
+    # Exception text never goes into a response, DEBUG included (CodeQL: information exposure).
     settings.DEBUG = True
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("missing ANTHROPIC_API_KEY")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
-    res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
+    with caplog.at_level("WARNING", logger="apps.ai.views"):
+        res = auth_client.post(IMPROVE, {"text": "x"}, format="json")
     assert res.status_code == 502
-    assert "ANTHROPIC_API_KEY" in res.json()["detail"]
+    assert "ANTHROPIC_API_KEY" not in res.json()["detail"]
+    assert res.json()["code"] == "ai_unavailable"
+    # The server log still has it, for the developer.
+    assert "missing ANTHROPIC_API_KEY" in caplog.text
 
 
 @pytest.mark.django_db
@@ -203,7 +213,7 @@ def test_failure_refunds_the_reservation_in_production(auth_client, user, settin
     user.last_ai_call_date = timezone.now().date()  # same (UTC) day, so no daily reset
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def boom(text, role=""):
+    def boom(text, role="", **_kw):
         raise AIServiceError("upstream down")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
@@ -236,7 +246,7 @@ def test_unexpected_error_also_refunds_the_reservation(auth_client, user, settin
     user.last_ai_call_date = timezone.now().date()
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def broken(text, role=""):
+    def broken(text, role="", **_kw):
         raise TypeError("'int' object is not iterable")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", broken)
@@ -283,7 +293,7 @@ def test_refusal_is_a_clear_422_and_is_not_charged(auth_client, user, settings, 
     user.last_ai_call_date = timezone.now().date()
     user.save(update_fields=["ai_calls_today", "ai_calls_this_month", "last_ai_call_date"])
 
-    def refuse(text, role=""):
+    def refuse(text, role="", **_kw):
         raise AIRefusedError("cyber")
 
     monkeypatch.setattr("apps.ai.service.improve_bullet", refuse)
@@ -296,3 +306,154 @@ def test_refusal_is_a_clear_422_and_is_not_charged(auth_client, user, settings, 
     assert (user.ai_calls_today, user.ai_calls_this_month) == (2, 3)
     assert "category=cyber" in caplog.text
     assert "secret bullet text" not in caplog.text
+
+
+@pytest.mark.django_db
+def test_views_charge_guests_to_their_own_allowance(auth_client, guest_client, guest, monkeypatch):
+    seen = []
+
+    def record(text, role="", *, visitor_id=None):
+        seen.append(visitor_id)
+        return "Improved: " + text
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", record)
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert seen == [guest.pk, None]
+
+
+@pytest.mark.django_db
+def test_a_guest_at_the_lifetime_cap_is_refused_even_in_debug(guest_client, guest, settings, monkeypatch):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    settings.DEBUG = True
+    guest.ai_calls_this_month = settings.AI_GUEST_CALL_LIMIT
+    guest.last_ai_call_date = timezone.now().date() - timedelta(days=1)
+    guest.save(update_fields=["ai_calls_this_month", "last_ai_call_date"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda *a, **k: pytest.fail("called Claude"))
+    res = guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert res.status_code == 429
+    assert res.json()["code"] == "ai_visitor_used"
+
+
+@pytest.mark.django_db
+def test_a_guest_cap_does_not_reset_daily_or_after_thirty_days(guest_client, guest, settings, monkeypatch):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    guest.ai_calls_today = 1
+    guest.ai_calls_this_month = settings.AI_GUEST_CALL_LIMIT
+    guest.last_ai_call_date = timezone.now().date() - timedelta(days=2)
+    guest.last_month_reset = timezone.now() - timedelta(days=45)
+    guest.save()
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda *a, **k: pytest.fail("called Claude"))
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").json()["code"] == "ai_visitor_used"
+    guest.refresh_from_db()
+    assert guest.ai_calls_this_month == settings.AI_GUEST_CALL_LIMIT
+
+
+@pytest.mark.django_db
+def test_a_guest_can_use_the_whole_cap_and_failed_calls_are_refunded(guest_client, guest, settings, monkeypatch):
+    settings.DEBUG = False
+    settings.AI_GUEST_CALL_LIMIT = 2
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **k: "ok")
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    assert guest_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+    third = guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    assert (third.status_code, third.json()["code"]) == (429, "ai_visitor_used")
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("upstream")
+
+    guest.refresh_from_db()
+    guest.ai_calls_this_month = 1
+    guest.save(update_fields=["ai_calls_this_month"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    with pytest.raises(RuntimeError):
+        guest_client.post(IMPROVE, {"text": "x"}, format="json")
+    guest.refresh_from_db()
+    assert guest.ai_calls_this_month == 1
+
+
+@pytest.mark.django_db
+def test_a_non_guest_is_not_held_to_the_guest_cap(auth_client, user, settings, monkeypatch):
+    settings.AI_GUEST_CALL_LIMIT = 1
+    user.ai_calls_this_month = 1  # At the guest cap, still well under the 10/day and 50/month limits.
+    user.save(update_fields=["ai_calls_this_month"])
+    monkeypatch.setattr("apps.ai.service.improve_bullet", lambda text, role="", **k: "ok")
+    assert auth_client.post(IMPROVE, {"text": "x"}, format="json").status_code == 200
+
+
+@pytest.mark.django_db(transaction=True)  # FK checks are deferred to commit; only autocommit shows the real error
+def test_guest_removed_during_an_ai_call_gets_no_500(guest, monkeypatch):
+    client = APIClient()
+    client.force_authenticate(guest)
+
+    def improve(text, role="", **_):
+        get_user_model().objects.filter(pk=guest.pk).delete()
+        return "Better."
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", improve)
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()["suggestion"]) == (200, "Better.")
+    assert not AIUsageLog.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_user_removed_before_the_gate_gets_session_ended(user):
+    client = APIClient()
+    client.force_authenticate(user)
+    get_user_model().objects.filter(pk=user.pk).delete()
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert (res.status_code, res.json()["code"]) == (401, "session_ended")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_guest_removed_during_a_failing_ai_call_gets_the_ai_error_not_a_500(guest, monkeypatch):
+    client = APIClient()
+    client.force_authenticate(guest)
+
+    def boom(text, role="", **_):
+        get_user_model().objects.filter(pk=guest.pk).delete()
+        raise AIServiceError("down")
+
+    monkeypatch.setattr("apps.ai.service.improve_bullet", boom)
+    res = client.post(IMPROVE, {"text": "Led a team."}, format="json")
+    assert res.status_code == 502
+    assert not AIUsageLog.objects.exists()
+
+
+_ALL_VIEWS = [
+    (IMPROVE, lambda c: {"text": "Led a team."}),
+    (SUMMARY, lambda c: {"content": c}),
+    (TAILOR, lambda c: {"content": c, "job_description": "Senior PM"}),
+    ("/api/ai/parse-resume", lambda c: {"text": "Maya Chen, Senior Product Designer at Meridian since 2022."}),
+    (COVER_LETTER, lambda c: {"content": c, "job_description": "Senior PM"}),
+    (ATS_CHECK, lambda c: {"content": c}),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("error", [OperationalError, InterfaceError, IntegrityError])
+@pytest.mark.parametrize(("url", "body"), _ALL_VIEWS)
+def test_a_usage_log_failure_after_a_paid_answer_still_returns_the_answer(
+    auth_client, user, content, monkeypatch, caplog, url, body, error
+):
+    # The call was paid for, so a database blip writing the log row must not turn it into a 500.
+    def broken_create(**_kwargs):
+        raise error("the log write failed: secret detail")
+
+    monkeypatch.setattr(AIUsageLog.objects, "create", broken_create)
+    with caplog.at_level(logging.ERROR, logger="apps.ai.usage"):
+        res = auth_client.post(url, body(content), format="json")
+    assert res.status_code == 200
+    assert "ai_usage" in res.json()
+    user.refresh_from_db()
+    assert user.ai_calls_today == 1  # the reservation stands: the call happened
+    logged = [r for r in caplog.records if r.name == "apps.ai.usage"]
+    assert [r.levelname for r in logged] == ["ERROR"]
+    assert error.__name__ in logged[0].getMessage()
+    assert "secret detail" not in caplog.text  # the error's class only, never its text

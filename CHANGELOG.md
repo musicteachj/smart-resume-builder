@@ -5,9 +5,154 @@ All notable changes to ResumeIQ (formerly Smart Resume Builder) are documented h
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project follows
 [Semantic Versioning](https://semver.org/). Until the first production deploy, each completed
 implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the first release to
-`resume.jameslittlefield.net`.
+`resumeiq.jameslittlefield.net`.
 
 ## [Unreleased]
+
+## [0.17.0] - 2026-11-20
+
+Resume IQ is ready for a public, no-sign-up demo: one click starts a 24-hour guest behind Cloudflare Turnstile,
+every Claude call is paid from a paced monthly dollar budget with a per-guest allowance, every refusal points at
+editing, templates, and export, and the demo is rehearsed locally on Postgres 17 with a readiness check, a
+production-like Docker run, hardened CI, and deploy notes for Phase 2.
+
+### Added
+- `GET /health/ready`: a readiness check (`SELECT 1` with a 2 s statement timeout, 200 `{"status": "ready"}` or 503
+  `{"status": "unavailable"}`), answered before host validation like `/health`, which still never touches the database.
+- A Playwright demo-mode suite (Chromium and WebKit, on its own Django 8013 and Vite 5182 with Cloudflare's test
+  keys, AI and Turnstile mocked): the guest start, two tabs reloading together, an ended demo (on reload and on
+  autosave), AI refusals, and ending the demo, each with axe scans in light and dark. And three landing screenshots
+  of the sample resume (`npm run screenshots`, JPEG under 250 KB) so the landing shows the AI features with no demo.
+- **The demo landing** (demo mode): one primary action, "Try the live demo", passes Cloudflare's bot check (its
+  script loads only on that click, with the site key from `GET /api/demo/status`), starts a guest, and opens its
+  sample resume, with "Please don't upload a real resume." under it. The page says when today's live AI budget is
+  used up (before any bot check), disables the start when the demo is full, shows the server's words when a start
+  is refused, and says "Your demo ended" when a demo in use ends (past its 24 hours, or ended in another tab). A
+  guest who is still signed in sees "Back to your demo" instead of a second start.
+- Guests see "Demo guest" in the header (never the placeholder email), no usage pill or AI usage line, and one menu
+  item, "Sign out and end demo", which confirms and then deletes the demo and its resumes right away. The import
+  dialog asks guests not to upload a real resume, and a guest's blank resume starts without a name or email.
+- Per-guest limits so one demo guest can't fill the disk: 20 résumés, 64 KB per résumé, and 5 MiB stored in total
+  (résumés, versions, and cover letters), tunable with `DEMO_GUEST_MAX_RESUMES`, `DEMO_GUEST_MAX_CONTENT_BYTES`, and
+  `DEMO_GUEST_MAX_STORAGE_BYTES`. Accounts are never capped. The server's message shows in the editor's save status and
+  on the dashboard.
+- `manage.py cleanup_demo`, run hourly in production: deletes expired demo guests (with their data) in batches
+  (`--batch-size`, default 100), charges stale AI reservations, flushes expired refresh tokens, prunes settled
+  reservations older than 35 days, and prints one summary line.
+- **Demo mode** (`apps/demo`): `DEMO_MODE` makes register, login, password reset, and the API schema and Swagger pages
+  answer 404 (refresh, logout, and `me` stay open), and the admin can't be enabled alongside it in production. New
+  settings: `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `DEMO_GUEST_TTL_HOURS`, `DEMO_MAX_LIVE_GUESTS`,
+  `DEMO_STARTS_PER_HOUR`, `DEMO_STARTS_PER_DAY`.
+- `GET /api/demo/status`: a public, cached (60 s) flag for the SPA with `demo_mode`, `turnstile_site_key`,
+  `ai_available`, `ai_reason` (`ok`, `off`, `daily_used`), and `guest_start_available`.
+- **AI spend ledger** (`apps/ai/ledger.py`): a monthly dollar budget paced by day (a day may spend up to a multiple of
+  an even share of what the month has left, never below a floor), a per-guest allowance, and guest fields on the user.
+  Own tables in integer micro-dollars (`AIBudgetDay`, `AIReservation`), reserve before and settle after a call,
+  a stale-reservation sweeper, and no lock held across a model call. Settings: `AI_MONTHLY_BUDGET_USD` (0 turns live AI
+  off), `AI_PACING_MULTIPLIER`, `AI_DAILY_FLOOR_USD`, `AI_VISITOR_BUDGET_USD`, `AI_STALE_RESERVATION_MINUTES`.
+  Every Claude call now goes through it (see Security below).
+- **Micro-dollar pricing of Claude calls** (`apps/ai/pricing.py`): pinned per-model rates for Sonnet 5.5, Sonnet 5,
+  and Haiku 5.5 (including Haiku's long-prompt tier), exact whole-micro-dollar cost and worst-case reservation
+  math, and a byte-safe input-token bound. Pure math, no model or network; groundwork for a dollar budget ledger.
+- **Guest demos** (`POST /api/demo/start`, demo mode only): a visitor passes a Cloudflare Turnstile check and gets a
+  throwaway guest account with a sample résumé (a fictional senior engineer, ready to edit) and a refresh cookie that
+  ends when the guest does (24 hours by default). Starts are limited per IP (`DEMO_STARTS_PER_HOUR`,
+  `DEMO_STARTS_PER_DAY`) and capped by the number of live guests (`DEMO_MAX_LIVE_GUESTS`), each refused with plain copy
+  and a `code`. A guest ends the demo with "delete account" and no password, and gets a lifetime cap on live AI calls
+  (`AI_GUEST_CALL_LIMIT`, default 30) with no daily reset and no admin or `DEBUG` bypass. `User` responses carry
+  `is_guest`.
+
+### Changed
+- Privacy and Terms describe the no-account demo (24-hour retention, 7-day backups, 14-day logs, Anthropic, Cloudflare,
+  AWS), and the account-era wording is gone. Link previews and addresses use `resumeiq.jameslittlefield.net`.
+- PostgreSQL 17 (`pgvector/pgvector:pg17`) locally and in CI, with a non-superuser `resumeiq` app role that owns its
+  database in the local production run. The old `postgres_data` volume is left untouched.
+- Database connections live 60 s (was 600) and must connect within 5 s. Gunicorn recycles each worker after about 1000
+  requests (jittered) to cap slow memory growth.
+- The compose `prod` profile now runs production-like: demo mode with Cloudflare's test keys, a zero AI budget,
+  separate migrations, a read-only root filesystem, dropped capabilities, a 640 MB memory limit, and a 120 s stop grace.
+- The CI Docker job smoke-tests demo mode and `/health/ready`.
+- In demo mode the account pages (sign-in, register, password reset, account) redirect home, and signed-out visits
+  to signed-in pages go home rather than to sign-in. If the demo status can't be fetched, the app assumes demo mode.
+- A failed session refresh no longer starts another refresh from a request that comes back after sign-out.
+- Every AI refusal (budget off, daily budget used, demo allowance used, rate limit, Anthropic spend limit, outage)
+  returns plain copy pointing at editing, templates, and export, with a `code` the client can read. A guest whose own
+  earlier AI call is still running gets 429 `ai_busy` ("Another AI request from this demo is still running. Please
+  wait for it to finish, then try again.") instead of being told the allowance is used up, but only when settling
+  that call could bring the guest back under the allowance.
+- The session refresh has its own rate limit (`refresh`, 60/min per IP) instead of sharing login's 10/min `auth`
+  limit: every page load refreshes, so an office behind one IP could be signed out. A throttled refresh answers 429
+  `refresh_rate_limited` ("Too many requests from your network. Please wait a minute and try again.") with
+  `Retry-After`.
+- The demo status says today's live AI budget is used up below $0.40 of room (was $0.25, less than one Sonnet
+  reservation of about $0.33 to $0.37).
+- The deploy notes give the hourly cleanup task 256 MiB (was 128 MiB) until it is measured under load.
+- **The refusal fallback can be turned off** with `AI_SERVER_SIDE_FALLBACK` (default on), and its second pass now has
+  an explicit `max_tokens`. The per-user AI call limits `AI_DAILY_LIMIT` and `AI_MONTHLY_LIMIT` come from the
+  environment (defaults 10 and 50).
+
+### Fixed
+- Refreshing the session of a removed user answers 401 `session_ended` (and clears the cookie) instead of a 500. The
+  refresh endpoint's errors now carry a `code`: `no_session` (no cookie) or `session_ended`.
+- Two tabs restoring a session at the same moment no longer sign the visitor out: a just-rotated refresh token still
+  trades for an access token for `REFRESH_REUSE_GRACE_SECONDS` (default 30), as long as its successor is live. The
+  rotation (blacklisting the old token, its successor, and the link between them) commits as one transaction, so the
+  second tab never arrives in between and finds the old token blacklisted with no successor.
+- An AI call whose guest is removed mid-call no longer fails with a 500, and a removed user gets 401 `session_ended`.
+- A failed AI usage log write (a database blip after a paid answer) no longer turns the answer into a 500: the visitor
+  gets the answer and the failure is logged at error level with the error's class only. The ledger also catches
+  `InterfaceError` (a closed connection): the reserve still fails closed, and a failed settle still keeps the answer.
+- Importing a résumé that can't be created (a guest at the résumé or storage cap) shows the server's reason, or "We
+  couldn't create the resume. Please try again.", instead of failing silently.
+- A refresh that answers 429, a 5xx, or a network error no longer signs the visitor out: only a 401 ends a session.
+  Mid-session the request fails with the refresh's own error (not the original 401), so callers see the real cause,
+  and the session stays; at load the visitor shows as signed out (never as an ended demo) and the cookie stays, so a
+  reload restores the session.
+- Sign-in, register, password reset, and the landing page no longer hang on the Loading splash after a cold load with
+  no session: the on-load sign-out cleared the query cache while the demo status was still loading, which stranded
+  it. A failed restore at load now leaves the cache alone, and every sign-out keeps the demo status (it holds no user
+  data) while dropping everything else.
+- Autosave retries a 401 (with its usual backoff, a bounded number of times) while the visitor is still signed in, and
+  stops once signed out. The save status never shows the raw token message for a 401: it says "Couldn't save".
+- The demo landing says "Live AI is off in this demo right now." when live AI is switched off, instead of saying
+  today's budget is used up.
+- The Swagger UI page answers 404 in demo mode with a malformed `Authorization` header too (it was a 500).
+- The production image no longer logs `Control server error` at boot under the read-only root filesystem: gunicorn
+  runs with `--no-control-socket`.
+- The editor's Summary field has an accessible name ("Summary"), with no visual change.
+
+### Security
+- **CI security hardening**: gitleaks scans the full history on every push and pull request, a weekly dependency audit
+  (`npm audit` and `pip-audit`) runs on a schedule, every workflow action is pinned to a commit SHA, and every checkout
+  sets `persist-credentials: false`. `.gitleaks.toml` keeps the default rules and allows only the fake e2e test password.
+- `.dockerignore` excludes every `.env*` file from the image build context.
+- **The bot check fails closed**: a failed check, a timeout, a bad reply, or an unset secret never creates a guest
+  (production with `DEMO_MODE` on requires both Turnstile keys, and refuses Cloudflare's test keys unless every
+  allowed host is `localhost` or `127.0.0.1`). The token, secret, and visitor IP are never logged.
+- The Content-Security-Policy allows `challenges.cloudflare.com` for scripts and frames only, for the bot check.
+- **Every Claude call goes through the spend ledger**: it reserves its worst case (both passes when the fallback is
+  on) before anything is sent and settles from real usage afterward, admins and `DEBUG` included. Known unbilled
+  rejections settle to zero; a timeout, dropped connection, or unknown error keeps the full reservation. Haiku no
+  longer retries automatically, so a retry can never be a second paid attempt outside its reservation.
+- **Session reuse grace is access-only and bounded**: the grace path never issues a refresh cookie, needs a live
+  (unexpired, not blacklisted) successor, ends at logout, follows at most five rotations, and treats a cache miss as an
+  ended session. A guest's rotated token and cookie are capped at the guest's end, and an expired guest cannot refresh.
+- A forged leftmost `X-Forwarded-For` entry can't change a rate-limit key or dodge the guest start limit (tested).
+- `DEMO_MODE` and `AI_SERVER_SIDE_FALLBACK` are parsed strictly: true/1/yes or false/0/no (any case, spaces
+  ignored), empty means the default, and anything else stops the app from starting, so a typo can't quietly reopen
+  register, login, and password reset in production.
+- An expired demo guest is refused (401 `session_ended`) on every authenticated route, even with a live access token,
+  instead of editing and using AI until cleanup runs.
+- The guest start limits count an IPv6 visitor per /64 (IPv4 stays per address), so rotating addresses within one
+  /64 can't dodge them.
+- AI error responses never carry exception text, `DEBUG` included: the response is always the plain refusal copy,
+  and the details go to the server log (CodeQL "information exposure through an exception").
+- The app refuses to start when a configured AI model (`AI_MODEL_SIMPLE`, `AI_MODEL_TAILOR`, or a fallback target)
+  has no pinned price, instead of reserving it at a guessed rate. Only a model Anthropic serves that wasn't requested
+  is still counted at the dearest rates, with a warning. If that startup check is ever bypassed, the call answers 502
+  `ai_unavailable` with nothing reserved or sent.
+- The Turnstile tests match Cloudflare's script by its parsed origin, not a URL prefix (CodeQL "incomplete URL
+  substring sanitization").
 
 ## [0.16.0] - 2026-11-18
 
@@ -641,7 +786,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.13.0...v0.14.0

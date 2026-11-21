@@ -26,6 +26,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_ai_call_date = models.DateField(null=True, blank=True)
     last_month_reset = models.DateTimeField(default=timezone.now)
 
+    # Demo guests (apps/demo): short-lived accounts with their own AI dollar allowance.
+    is_guest = models.BooleanField(default=False, db_default=False)
+    guest_expires_at = models.DateTimeField(null=True, blank=True)
+    demo_ai_spent_micros = models.BigIntegerField(default=0, db_default=0)
+
     date_joined = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -39,6 +44,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         indexes = [
             models.Index(fields=["email"]),
             models.Index(fields=["google_id"]),
+            models.Index(
+                fields=["guest_expires_at"],
+                name="accounts_guest_expiry_idx",
+                condition=models.Q(is_guest=True),
+            ),
         ]
 
     def __str__(self):

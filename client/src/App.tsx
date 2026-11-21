@@ -5,7 +5,7 @@ import { AuthedLayout } from "@/components/layout/AuthedLayout";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { PageErrorBoundary } from "@/components/PageErrorBoundary";
 import { bootstrapAuth } from "@/features/auth/bootstrap";
-import { LoadingSplash, ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
+import { AccountsOnlyRoute, LoadingSplash, ProtectedRoute, PublicOnlyRoute } from "@/routes/guards";
 
 // Each page is its own chunk, so visitors only download the page they open (the
 // editor, with drag-and-drop, templates, and print, is by far the largest).
@@ -51,18 +51,23 @@ function App() {
             {/* Public for everyone, signed in or not. */}
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-            <Route element={<PublicOnlyRoute />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* Account pages: in demo mode they don't exist, so they redirect home. */}
+            <Route element={<AccountsOnlyRoute />}>
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route element={<PublicOnlyRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              </Route>
             </Route>
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthedLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/account" element={<AccountPage />} />
+                <Route element={<AccountsOnlyRoute />}>
+                  <Route path="/account" element={<AccountPage />} />
+                </Route>
               </Route>
               {/* Editor is full-screen with its own top bar (no app header). */}
               <Route path="/resumes/:id" element={<EditorPage />} />

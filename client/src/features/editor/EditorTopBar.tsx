@@ -24,9 +24,11 @@ import type { SaveStatus } from "./useAutosave";
 
 export function EditorTopBar({
   status,
+  errorDetail,
   onExport,
 }: {
   status: SaveStatus;
+  errorDetail?: string | null;
   onExport: (format: ExportFormat) => void;
 }) {
   const navigate = useNavigate();
@@ -53,7 +55,7 @@ export function EditorTopBar({
           aria-label="Resume title"
           className="min-w-0 max-w-[40ch] truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <SaveIndicator status={status} />
+        <SaveIndicator status={status} detail={errorDetail} />
       </div>
 
       <div className="flex shrink-0 items-center gap-2">

@@ -4,11 +4,9 @@ The autouse `mock_claude` fixture replaces the service functions for the view te
 the real ones are imported here before it runs and exercised against a fake client.
 """
 
-from types import SimpleNamespace
-
 import pytest
 
-from apps.ai import service
+from apps.ai import pricing, service
 from apps.ai.service import (
     AIRefusedError,
     AIServiceError,
@@ -21,51 +19,9 @@ from apps.ai.service import (
 )
 
 from .conftest import make_content
+from .fakes import THINKING, _response, _text
 
-
-def _response(*blocks, stop_reason="end_turn", category=None):
-    details = SimpleNamespace(type="refusal", category=category, explanation="") if stop_reason == "refusal" else None
-    return SimpleNamespace(content=list(blocks), stop_reason=stop_reason, stop_details=details)
-
-
-def _text(text):
-    return SimpleNamespace(type="text", text=text)
-
-
-# The new models can open a response with thinking blocks (empty text by default).
-THINKING = SimpleNamespace(type="thinking", thinking="", signature="sig")
-
-
-class _Messages:
-    def __init__(self, response):
-        self.response = response
-        self.calls = []
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        return self.response
-
-
-class _FakeClient:
-    def __init__(self, response):
-        self.messages = _Messages(response)
-        self.beta = SimpleNamespace(messages=_Messages(response))
-
-    def with_options(self, **_kwargs):
-        return self
-
-
-@pytest.fixture
-def fake(monkeypatch):
-    holder = {}
-
-    def install(response):
-        client = _FakeClient(response)
-        monkeypatch.setattr(service, "_client", lambda: client)
-        holder["client"] = client
-        return client
-
-    return install
+pytestmark = pytest.mark.django_db
 
 
 def _only_call(client):
@@ -150,11 +106,13 @@ def test_sonnet_5_5_requests_carry_the_refusal_fallback(fake, settings):
     assert not client.messages.calls
     (call,) = client.beta.messages.calls
     assert call["betas"] == ["server-side-fallback-2026-07-01"]
-    assert call["fallbacks"] == [{"model": "claude-sonnet-5"}]
+    assert call["fallbacks"] == [{"model": "claude-sonnet-5", "max_tokens": 4000}]
 
 
-def test_other_tailor_models_skip_the_fallback(fake, settings):
+def test_other_tailor_models_skip_the_fallback(fake, settings, monkeypatch):
     # The fallback list is only valid for claude-sonnet-5-5; an env override must not 400.
+    # (A configured model needs a pinned price to start, so the test pins one.)
+    monkeypatch.setattr(pricing, "PRICES", {**pricing.PRICES, "claude-opus-5-5": pricing.PRICES["claude-sonnet-5-5"]})
     settings.AI_MODEL_TAILOR = "claude-opus-5-5"
     client = fake(_response(_text("Dear Hiring Manager, ...")))
 

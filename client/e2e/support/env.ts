@@ -24,3 +24,19 @@ export const DJANGO_ENV: Record<string, string> = {
   E2E_DATABASE_URL:
     process.env.E2E_DATABASE_URL ?? "postgres://resume_user:resume_pass@localhost:5432/resume_builder_e2e",
 };
+
+/** The demo-mode pair: a second Django and Vite (the demo landing replaces the account pages). */
+export const DEMO_API_PORT = 8013;
+export const DEMO_CLIENT_PORT = 5182;
+export const DEMO_CLIENT_URL = `http://localhost:${DEMO_CLIENT_PORT}`;
+
+/** Same as `DJANGO_ENV`, plus demo mode with Cloudflare's published always-pass Turnstile test keys. */
+export const DJANGO_DEMO_ENV: Record<string, string> = {
+  ...DJANGO_ENV,
+  DEMO_MODE: "True",
+  TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+  TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+  CLIENT_URL: DEMO_CLIENT_URL,
+  E2E_DATABASE_URL:
+    process.env.E2E_DEMO_DATABASE_URL ?? "postgres://resume_user:resume_pass@localhost:5432/resume_builder_e2e_demo",
+};

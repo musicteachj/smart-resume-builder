@@ -11,6 +11,8 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.demo.quotas import check_guest_write
+
 from . import versions
 from .models import CoverLetter, Resume, ResumeVersion
 from .serializers import (
@@ -66,9 +68,11 @@ class ResumeViewSet(viewsets.ModelViewSet):
         return Resume.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        check_guest_write(self.request.user, adding_resume=True)
         serializer.save(user=self.request.user)
 
     def perform_update(self, serializer):
+        check_guest_write(self.request.user)
         # Lock the row so concurrent saves (two tabs, a restore) serialize: no
         # duplicate checkpoints, and the checkpoint sees the committed state.
         with transaction.atomic():
@@ -86,6 +90,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def duplicate(self, request, pk=None):
         original = self.get_object()
+        check_guest_write(request.user, adding_resume=True)
         suffix = " (Copy)"
         # Trim so "<title> (Copy)" still fits the column (a 100-char title would 500).
         room = Resume._meta.get_field("title").max_length - len(suffix)
@@ -136,9 +141,14 @@ class CoverLetterViewSet(viewsets.ModelViewSet):
         return filter_by_resume_param(self.request, CoverLetter.objects.filter(user=self.request.user))
 
     def perform_create(self, serializer):
+        check_guest_write(self.request.user)
         letter = serializer.save(user=self.request.user)
         # Keep only the newest RETENTION letters for this résumé.
         versions.keep_newest(letter.resume.cover_letters.all(), self.RETENTION, order_by="-updated_at")
+
+    def perform_update(self, serializer):
+        check_guest_write(self.request.user)
+        serializer.save()
 
 
 @extend_schema_view(
@@ -197,6 +207,7 @@ class ResumeVersionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        check_guest_write(request.user)
         try:
             version = versions.snapshot(data["resume"], data["kind"], data["label"])
         except versions.ManualLimitReached:
@@ -215,6 +226,8 @@ class ResumeVersionViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
-        resume = versions.restore(self.get_object())
+        version = self.get_object()
+        check_guest_write(request.user)  # a restore writes a new snapshot
+        resume = versions.restore(version)
         return Response(ResumeSerializer(resume).data)
 
