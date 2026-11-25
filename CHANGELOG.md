@@ -9,6 +9,21 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+### Added
+- `deploy/`: the ECS task definitions (`ecs/web.json`, `setup.json`, `cleanup.json`, `service.json`), `deploy.sh`,
+  `head-of-main.sh`, and `smoke.sh` for the shared portfolio cluster. The three tasks share one environment and one
+  list of SSM secrets; the setup (migrate) task runs and must exit 0 before the service is touched.
+- A `deploy` job in `ci.yml`: on `main` only, after every other job passes and the `production` environment approves, it
+  builds one plain image (no provenance or SBOM), refuses a run that is not for the head of `main`, deploys, and runs the
+  smoke checks. `workflow_dispatch` redeploys the current commit.
+- `server/tests/test_deploy.py`: tests for the deploy files and scripts, run against a fake `aws`, `curl`, and `gh`.
+
+### Changed
+- `TURNSTILE_SITE_KEY` and `AI_MONTHLY_BUDGET_USD` move from plain environment variables to SSM parameters in
+  `docs/DEPLOYMENT.md`. The budget starts at `0`; the off switch is the parameter plus a forced new deployment.
+- The CI workflow's `concurrency` cancels only pull request runs, so a run by hand on `main` never cancels a deploy.
+- pytest's `testpaths` now include `tests`, so `npm run test:server` and CI's server job run the deploy tests.
+
 ## [0.17.0] - 2026-11-20
 
 Resume IQ is ready for a public, no-sign-up demo: one click starts a 24-hour guest behind Cloudflare Turnstile,

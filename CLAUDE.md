@@ -71,12 +71,13 @@ Server health check: `GET http://localhost:8000/health` → `{"status": "ok"}`.
 Python deps: edit `server/requirements.in` (direct pins), then regenerate the hashed lock `server/requirements.txt`
 with the `uv pip compile` command in its header. Everything installs from the lock with `--require-hashes`.
 
-**CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has six jobs: client
+**CI** (`.github/workflows/`, runs on PRs and pushes to `dev`/`main`): `ci.yml` has seven jobs: client
 (lint, typecheck, Vitest, build), server (`check`, `check --deploy`, `makemigrations --check`, pytest on
 Postgres 17), API schema (`spectacular --validate --fail-on-warn`, then fails if the committed Orval client
 differs from a fresh `gen:api`), Docker (build the image, boot it against Postgres, curl `/health` and the SPA),
 dependency audit (`npm audit --omit=dev --audit-level=high` + `pip-audit`), and e2e (Playwright + axe on
-Chromium and WebKit; not a required check). `codeql.yml` scans
+Chromium and WebKit; not a required check), and deploy (only on a push to `main` or a run by hand on `main`, after
+every other job passes, behind James's `production` environment approval; see `docs/DEPLOYMENT.md`). `codeql.yml` scans
 JS/TS, Python, and the workflows (also weekly). `security.yml` runs gitleaks on every push and PR plus a weekly
 dependency audit; actions are pinned to commit SHAs. Node version comes from `.nvmrc`. If the API schema job fails,
 run `npm run gen:api` in `client/` and commit the result.
@@ -96,7 +97,7 @@ server/
   config/      settings.py urls.py wsgi.py, env-driven
   apps/        accounts/ resumes/ ai/ demo/ (Django apps, Phase 2+; demo = guests, Turnstile, caps, cleanup)
 docs/DESIGN.md design system (truth)   docs/DEPLOYMENT.md (deploy runbook values)
-.github/       workflows/ci.yml (PR checks) + codeql.yml + security.yml
+.github/       workflows/ci.yml (PR checks + deploy) + codeql.yml + security.yml
 screens/       mockup references (1 editor, 2 tailor-JD modal, 3 dashboard, 4 template, 5 landing+auth)
 PLAN.md        implementation plan + phase list + build punch-list
 docs/qa/      manual pre-launch checklist (real Safari, VoiceOver, zoom, keyboard)
@@ -237,6 +238,7 @@ off in prod, the accessibility audit, and automated WebKit coverage. Still open:
 - ⬜ Phase 10: AWS deploy, now per the portfolio-infra design: ECS on the shared EC2 server behind the shared ALB,
   shared Postgres 17 (role `resumeiq`), SSM Parameter Store secrets, hourly cleanup via EventBridge Scheduler, host
   `resumeiq.jameslittlefield.net`. No RDS, no Fargate. Values in `docs/DEPLOYMENT.md`; run `check --deploy`.
+  Deploy files in `deploy/` (ECS JSON, `deploy.sh`, `smoke.sh`); the `deploy` job in `ci.yml` runs them on `main` after approval.
 - ⬜ Phase 11 Google OAuth · 12 stretch
 
 Client notes: regenerate the API client with `npm run gen:api` after any backend API change (writes

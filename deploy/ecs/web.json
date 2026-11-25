@@ -1,0 +1,129 @@
+{
+  "family": "resumeiq-web",
+  "networkMode": "bridge",
+  "requiresCompatibilities": [
+    "EC2"
+  ],
+  "executionRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/resumeiq-execution",
+  "taskRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/resumeiq-task",
+  "containerDefinitions": [
+    {
+      "name": "resumeiq",
+      "image": "__IMAGE__",
+      "essential": true,
+      "memoryReservation": 320,
+      "memory": 640,
+      "stopTimeout": 120,
+      "user": "1000",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 0,
+          "protocol": "tcp"
+        }
+      ],
+      "privileged": false,
+      "readonlyRootFilesystem": true,
+      "linuxParameters": {
+        "capabilities": {
+          "drop": [
+            "ALL"
+          ]
+        },
+        "tmpfs": [
+          {
+            "containerPath": "/tmp",
+            "size": 64
+          }
+        ]
+      },
+      "dockerSecurityOptions": [
+        "no-new-privileges"
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD",
+          "python",
+          "-c",
+          "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
+        ],
+        "interval": 15,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "environment": [
+        {
+          "name": "ALLOWED_HOSTS",
+          "value": "resumeiq.jameslittlefield.net"
+        },
+        {
+          "name": "CLIENT_URL",
+          "value": "https://resumeiq.jameslittlefield.net"
+        },
+        {
+          "name": "DEMO_MODE",
+          "value": "true"
+        },
+        {
+          "name": "RUN_MIGRATIONS",
+          "value": "0"
+        },
+        {
+          "name": "AI_PACING_MULTIPLIER",
+          "value": "3"
+        },
+        {
+          "name": "AI_DAILY_FLOOR_USD",
+          "value": "0.50"
+        },
+        {
+          "name": "AI_VISITOR_BUDGET_USD",
+          "value": "0.15"
+        },
+        {
+          "name": "DEMO_STARTS_PER_HOUR",
+          "value": "15"
+        },
+        {
+          "name": "DEMO_STARTS_PER_DAY",
+          "value": "50"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/SECRET_KEY"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/DATABASE_URL"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/ANTHROPIC_API_KEY"
+        },
+        {
+          "name": "TURNSTILE_SITE_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/TURNSTILE_SITE_KEY"
+        },
+        {
+          "name": "TURNSTILE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/TURNSTILE_SECRET_KEY"
+        },
+        {
+          "name": "AI_MONTHLY_BUDGET_USD",
+          "valueFrom": "arn:aws:ssm:__REGION__:__ACCOUNT_ID__:parameter/portfolio/resumeiq/AI_MONTHLY_BUDGET_USD"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/portfolio/resumeiq",
+          "awslogs-region": "__REGION__",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}
