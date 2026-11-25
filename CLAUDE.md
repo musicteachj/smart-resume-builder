@@ -230,12 +230,12 @@ off in prod, the accessibility audit, and automated WebKit coverage. Still open:
   press (`SortableList` coordinate getter), README refreshed. PRs #45, #46, #47 and the README/version PR.
 - ⬜ Streaming AI responses (last of the post-audit batch; needs async-capable gunicorn workers, so it's tied to
   the deploy setup).
-- 🟡 Demo mode and deploy readiness (in progress, Tasks 1 to 16 done; the `0.17.0` release is cut in Task 17):
+- ✅ Demo mode and deploy readiness (`0.17.0`, PR #49):
   dollar spend ledger + friendly AI refusals, `apps.demo` (`DEMO_MODE`, `/api/demo/status`, `/api/demo/start` behind
   Turnstile, per-guest caps, `cleanup_demo`), session refresh with a 30 s two-tab grace, client demo mode, demo e2e +
   `npm run screenshots`, `/health/ready`, Postgres 17 locally and in CI, the production-like compose `prod` profile,
   CI hardening (`security.yml`), and demo Privacy/Terms. Spec/plan: `docs/superpowers/plans/2026-11-19-demo-mode-and-deploy-readiness.md`.
-- ⬜ Phase 10: AWS deploy, now per the portfolio-infra design: ECS on the shared EC2 server behind the shared ALB,
+- 🟡 Phase 10 (`1.0.0`): AWS deploy, now per the portfolio-infra design: ECS on the shared EC2 server behind the shared ALB,
   shared Postgres 17 (role `resumeiq`), SSM Parameter Store secrets, hourly cleanup via EventBridge Scheduler, host
   `resumeiq.jameslittlefield.net`. No RDS, no Fargate. Values in `docs/DEPLOYMENT.md`; run `check --deploy`.
   Deploy files in `deploy/` (ECS JSON, `deploy.sh`, `smoke.sh`); the `deploy` job in `ci.yml` runs them on `main` after approval.
