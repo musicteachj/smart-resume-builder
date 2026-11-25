@@ -643,12 +643,23 @@ def test_the_deploy_job_checks_the_head_of_main_before_credentials_and_before_th
 
 
 def test_only_pull_requests_cancel_a_running_workflow() -> None:
-    # A run by hand shares the push run's group, and must not cancel a deploy under way.
+    # A push or a run by hand on main may be deploying, and must never be canceled partway.
     cancel = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["concurrency"][
         "cancel-in-progress"
     ]
     assert cancel is not True
     assert cancel == "${{ github.event_name == 'pull_request' }}"
+
+
+def test_runs_that_share_a_commit_get_their_own_group_per_event_and_branch() -> None:
+    # A fast-forward release puts dev's tip on main: keyed by the commit alone, main's run (and its
+    # deploy) would wait behind dev's CI, and a run by hand would queue behind a push run waiting for
+    # approval. Keyed by event, branch and commit, none of them waits on another.
+    group = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["concurrency"]["group"]
+    assert group == (
+        "ci-${{ github.event_name == 'pull_request' && github.ref"
+        " || format('{0}-{1}-{2}', github.event_name, github.ref, github.sha) }}"
+    )
 
 
 # --- smoke.sh ---------------------------------------------------------------------------------

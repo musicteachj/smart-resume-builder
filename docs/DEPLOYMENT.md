@@ -92,6 +92,20 @@ Scheduled by EventBridge Scheduler. The task definition family is `resumeiq-clea
 - `POST /api/auth/login` returns 404 (account routes are closed in demo mode).
 - `GET /api/demo/status` returns 200 with `"demo_mode":true`.
 
+If a smoke check fails, the new release keeps serving (the load balancer and the container check only `/health`),
+the deploy exits 1, and no cleanup revision is written. Follow portfolio-infra's `docs/runbooks/incident.md`, "A
+deploy's smoke test failed", which rolls back by hand.
+
+## Deploy job
+
+- **Build and push time:** not yet measured for this repo. The deploy builds with no layer cache; the CI docker job's
+  partly cached build took 49 seconds. Record the first release's figure here and in the build step's comment in
+  `ci.yml` (the step's limit is 8 minutes).
+- **After each release:** `deploy.sh` only writes `/portfolio/resumeiq/cleanup-revision`. The hourly cleanup keeps
+  running the old revision until the next `PortfolioApps` deploy in portfolio-infra. So after each release, run
+  portfolio-infra's revision check (its Phase 3 plan, Task 1, Interfaces) and then a `PortfolioApps` deploy. That
+  way the schedule never trails a migration or points at an image that has aged out of ECR (each repository keeps 5).
+
 ## WAF expensive-paths rule
 
 Rate-limit `/api/ai/*` and `POST /api/demo/start`. The app's own start limits key IPv4 per address and IPv6 per /64.
@@ -112,4 +126,5 @@ unless every `ALLOWED_HOSTS` entry is `localhost` or `127.0.0.1`.
 
 ## Rollback
 
-Redeploy the previous image. Migrations are additive, so the previous image runs against the migrated schema.
+Redeploy the previous image. Migrations are additive, so the previous image runs against the migrated schema. For a
+failed smoke test, follow portfolio-infra's `docs/runbooks/incident.md`, "A deploy's smoke test failed".

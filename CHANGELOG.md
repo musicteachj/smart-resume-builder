@@ -22,6 +22,8 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - `TURNSTILE_SITE_KEY` and `AI_MONTHLY_BUDGET_USD` move from plain environment variables to SSM parameters in
   `docs/DEPLOYMENT.md`. The budget starts at `0`; the off switch is the parameter plus a forced new deployment.
 - The CI workflow's `concurrency` cancels only pull request runs, so a run by hand on `main` never cancels a deploy.
+  Other runs are grouped by event, branch and commit, so a fast-forward release to `main` no longer waits behind
+  `dev`'s run of the same commit.
 - pytest's `testpaths` now include `tests`, so `npm run test:server` and CI's server job run the deploy tests.
 
 ## [0.17.0] - 2026-11-20

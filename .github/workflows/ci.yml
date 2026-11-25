@@ -10,12 +10,16 @@ on:
 permissions:
   contents: read
 
-# Runs for a pull request share a group, so a newer push cancels the older run. Each push to dev
-# or main gets its own group, its commit, so no merge's run is ever canceled or left waiting.
-# Only a pull request cancels: a run by hand on main shares the push run's group (same commit),
-# and canceling that run could stop a deploy partway, mid-setup, which the deploy role cannot undo.
+# Runs for a pull request share a group, so a newer push cancels the older run. Every other run is
+# grouped by its event, branch and commit. A fast-forward release puts dev's tip on main, and a run by
+# hand on main can name the same commit as a push run, so keyed by the commit alone those runs would
+# wait on each other (main's deploy behind dev's CI, or a run by hand behind a push run waiting for
+# approval). Runs in one of these groups still queue, which happens only for two runs by hand on one
+# commit; deploys from different runs queue on the deploy job's own deploy-production group.
+# Only a pull request cancels: a push or a run by hand on main may be deploying, and canceling it
+# could stop a deploy partway, mid-setup, which the deploy role cannot undo.
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || format('{0}-{1}-{2}', github.event_name, github.ref, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -317,8 +321,8 @@ jobs:
 
       # Main can move while the job waits for approval or runs, so ask again right before the push: a
       # run refused here has pushed nothing, and costs no place in ECR's keep-5. Main can still move
-      # during the build and push (measured 16 to 29 seconds on Packwright and Open Door); the newer run is then queued behind this one by
-      # the deploy-production concurrency group, and deploys after it.
+      # during the build and push (see its timing below); the newer run is then queued behind this one
+      # by the deploy-production concurrency group, and deploys after it.
       - name: Refuse again, right before the push, if main moved
         env:
           GH_TOKEN: ${{ github.token }}
@@ -334,8 +338,12 @@ jobs:
       # attestation manifests beside the image. ECR's scan on push and the keep-5 lifecycle rule both
       # need exactly one plain image manifest per tag.
       # Its own timeout (build and push together), so a slow or hung build fails here, before the
-      # service is touched, instead of eating the time the settle wait and smoke checks need. 8 minutes
-      # is generous headroom: builds and pushes measured 16 to 29 seconds on Packwright and Open Door.
+      # service is touched, instead of eating the time the settle wait and smoke checks need. This build
+      # starts with no layer cache (a clean production image): npm ci, the Vite build, the hashed pip
+      # install, whitenoise compress and collectstatic all run from scratch, then the push. The docker
+      # job's build, with its cache partly warm, took 49 seconds (PR #50, run 45520925165), so a cold
+      # build and push should take a few minutes, well inside 8. Record the first release's real figure
+      # here (docs/DEPLOYMENT.md, "Deploy job").
       - name: Build and push the image
         timeout-minutes: 8
         env:
