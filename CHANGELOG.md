@@ -9,6 +9,14 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-25
+
+The first production release, for `resumeiq.jameslittlefield.net` on the shared portfolio ECS cluster. It deploys
+from `main` through a CI deploy job that waits for James's approval, runs the migrations first, and smoke-tests the
+service through the load balancer. The live AI budget starts at $0 and is turned on only after the go-live checks
+pass. The `v1.0.0` tag goes on `main` once the deploy and its smoke checks pass; if the go-live slips, this date moves
+with it.
+
 ### Added
 - `deploy/`: the ECS task definitions (`ecs/web.json`, `setup.json`, `cleanup.json`, `service.json`), `deploy.sh`,
   `head-of-main.sh`, and `smoke.sh` for the shared portfolio cluster. The three tasks share one environment and one
@@ -24,6 +32,7 @@ implementation phase (see `PLAN.md`) cuts a `0.x.0` version; `1.0.0` marks the f
 - The CI workflow's `concurrency` cancels only pull request runs, so a run by hand on `main` never cancels a deploy.
   Other runs are grouped by event, branch and commit, so a fast-forward release to `main` no longer waits behind
   `dev`'s run of the same commit.
+- The OpenAPI schema's version is `1.0.0` (it had stayed at `0.1.0` since the first phase).
 - pytest's `testpaths` now include `tests`, so `npm run test:server` and CI's server job run the deploy tests.
 
 ## [0.17.0] - 2026-11-20
@@ -803,7 +812,8 @@ Project planning and Phase 1 scaffold.
 - Abandoned prior scaffold (pnpm workspaces, `packages/shared`, Prisma schema, implementation
   guide) — superseded by the fresh Django + React plan in `PLAN.md`
 
-[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/musicteachj/smart-resume-builder/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.17.0...v1.0.0
 [0.17.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/musicteachj/smart-resume-builder/compare/v0.14.0...v0.15.0
