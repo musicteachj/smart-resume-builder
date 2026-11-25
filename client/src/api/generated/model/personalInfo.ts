@@ -3,7 +3,7 @@
  * Do not edit manually.
  * ResumeIQ API
  * AI resume builder: resumes, auth, and Claude-assisted content.
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.0.0
  */
 
 export interface PersonalInfo {

@@ -307,7 +307,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "ResumeIQ API",
     "DESCRIPTION": "AI resume builder: resumes, auth, and Claude-assisted content.",
-    "VERSION": "0.1.0",
+    "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     # Schema + Swagger UI are open in dev (Orval reads /api/schema/) but
     # login-gated in production — no anonymous API-surface disclosure.

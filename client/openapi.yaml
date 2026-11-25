@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: ResumeIQ API
-  version: 0.1.0
+  version: 1.0.0
   description: 'AI resume builder: resumes, auth, and Claude-assisted content.'
 paths:
   /api/ai/ats-check:
