@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Stage 1: build the React SPA ---
-FROM node:22-alpine AS client-build
+FROM node:26-alpine AS client-build
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
